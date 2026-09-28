@@ -94,8 +94,9 @@ public class FiscalPeriodService {
     /**
      * Refuses a posting into a period that is not open.
      *
-     * <p>The ledger round calls this; nothing does yet, which is why it is worth
-     * saying plainly that it exists to be called rather than to be admired.
+     * <p>FIN-12: called by the fund-chain writes that move money on a date —
+     * transferring an allocation and paying a batch. It used to be called by nothing,
+     * so money moved in a closed year.
      */
     public void assertPeriodOpen(LocalDate on) {
         FiscalPeriod period = periodFor(on);
@@ -107,6 +108,20 @@ public class FiscalPeriodService {
         if (!FiscalYear.OPEN.equals(year.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Fiscal year " + year.getYearNo() + " is " + year.getStatus().toLowerCase() + ".");
+        }
+    }
+
+    /**
+     * FIN-12: refuses (409) a write that belongs to a fiscal year that is no longer
+     * open — drafting or approving an allocation or a payment batch of that year. The
+     * dated postings also go through {@link #assertPeriodOpen}.
+     */
+    public void assertYearOpen(Integer fiscalYearId) {
+        FiscalYear year = requireYear(fiscalYearId);
+        if (!FiscalYear.OPEN.equals(year.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Fiscal year " + year.getYearNo() + " is " + String.valueOf(year.getStatus()).toLowerCase()
+                            + "; nothing may be recorded in it.");
         }
     }
 

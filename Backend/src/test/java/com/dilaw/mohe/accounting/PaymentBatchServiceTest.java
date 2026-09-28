@@ -32,7 +32,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -85,6 +84,23 @@ class PaymentBatchServiceTest {
         l.setEntitledAmount(new BigDecimal(entitled));
         l.setDisbursedAmount(new BigDecimal(disbursed));
         return l;
+    }
+
+    /** A JdbcTemplate query recognised by a fragment of its SQL. */
+    static String sqlContaining(String fragment) {
+        return org.mockito.ArgumentMatchers.argThat(sql -> sql != null && sql.contains(fragment));
+    }
+
+    /** The existence check (R5-20): the live-student read that is not the FIN-04 country check. */
+    static String existenceQuery() {
+        return org.mockito.ArgumentMatchers.argThat(sql -> sql != null && sql.contains("IS_DELETED")
+                && !sql.contains("STUDY_COUNTRY_IN"));
+    }
+
+    /** The existence check (R5-20) finds these students. */
+    private void studentsExist(Integer... ids) {
+        when(jdbcTemplate.queryForList(existenceQuery(), eq(Integer.class), any(Object[].class)))
+                .thenReturn(List.of(ids));
     }
 
     // ── scope ────────────────────────────────────────────────────────────────
@@ -155,7 +171,12 @@ class PaymentBatchServiceTest {
             return b;
         });
         when(lineRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
-        when(jdbcTemplate.queryForList(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(List.of(10, 11));
+        studentsExist(10, 11);
+        // FIN-04: both study at 1004 and neither is already paid this quarter.
+        when(jdbcTemplate.queryForList(sqlContaining("STUDY_COUNTRY_IN, -1) <> ?"), eq(Integer.class), any(Object[].class)))
+                .thenReturn(List.of());
+        when(jdbcTemplate.queryForList(sqlContaining("PAYMENT_BATCH_LINE"), eq(Integer.class), any(Object[].class)))
+                .thenReturn(List.of());
 
         // No country in the request: the officer holds exactly one, so it is theirs.
         PaymentBatchCreateRequest req = new PaymentBatchCreateRequest(20253, null, 1, 1, "batch 3",
@@ -209,7 +230,7 @@ class PaymentBatchServiceTest {
         FiscalYear fy = new FiscalYear();
         fy.setId(2);
         when(fiscalPeriodService.requireYearOfQuarter(20253)).thenReturn(fy);
-        when(jdbcTemplate.queryForList(anyString(), eq(Integer.class), any(Object[].class))).thenReturn(List.of(10));
+        studentsExist(10);
 
         PaymentBatchCreateRequest req = new PaymentBatchCreateRequest(20253, 1, 1, 1, null,
                 List.of(new PaymentBatchCreateRequest.Line(10, new BigDecimal("100"), null, null),
@@ -285,7 +306,8 @@ class PaymentBatchServiceTest {
         when(batchRepository.findById(7)).thenReturn(Optional.of(batch(7, 1, PaymentBatch.APPROVED, 13)));
         when(lineRepository.findByBatchIdOrderByIdAsc(7))
                 .thenReturn(List.of(line(10, "300", "300"), line(11, "200", "150")));
-        when(batchRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        // FIN-03: flushed at once, so a concurrent payer's version conflict surfaces here.
+        when(batchRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
         PaymentBatch paid = service.markPaid(7, 2);
 

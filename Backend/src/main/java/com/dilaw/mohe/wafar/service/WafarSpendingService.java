@@ -131,6 +131,21 @@ public class WafarSpendingService {
         if (dto == null || dto.getCategoryId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose the spending category (categoryId).");
         }
+        requirePositiveAmount(dto.getAmount());
+    }
+
+    /**
+     * FIN-01: a spend is strictly positive. {@link WafarBalanceService#requireCovers}
+     * lets an amount of zero or less through (it has nothing to cover), and nothing else
+     * refused one, so a spend of -5000 was recorded, approved, and raised the attaché's
+     * balance by 5000. Checked here as well as on the DTO because the correction path
+     * reads its amount back from stored request data, which no validator sees.
+     */
+    static void requirePositiveAmount(java.math.BigDecimal amount) {
+        if (amount == null || amount.signum() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A Wafar spend must be a positive amount.");
+        }
     }
 
     @Transactional
@@ -253,7 +268,10 @@ public class WafarSpendingService {
                     id.longValue(), entity.getStatus(), WafarSpendingStatus.APPROVED);
             wafarWriteKey.elevateCurrentTransaction("super admin approving Wafar spend " + id + " (D-13 b)");
         }
-        // Live QA M1: a spend was approved with a balance of 0.
+        // Live QA M1: a spend was approved with a balance of 0. FIN-14: requireCovers
+        // first takes the attaché's balance lock, so two approvals that each fit the
+        // balance on their own cannot both pass it; the second waits and re-reads.
+        requirePositiveAmount(entity.getAmount()); // FIN-01: a legacy row of 0 or less is not approved
         balanceService.requireCovers(entity.getStudyCountryInId(), entity.getAmount());
         entity.setStatus(WafarSpendingStatus.APPROVED);
         entity.setApprovedBy(approver);
@@ -471,6 +489,9 @@ public class WafarSpendingService {
         if (correction.changesNothing()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The correction changes nothing.");
         }
+        if (correction.amount() != null) {
+            requirePositiveAmount(correction.amount()); // FIN-01
+        }
         WafarSpending entity = findOrThrow(id);
         if (entity.getStudyCountryInId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -512,6 +533,7 @@ public class WafarSpendingService {
             }
         } else {
             if (correction.amount() != null) {
+                requirePositiveAmount(correction.amount()); // FIN-01: request data is not re-validated
                 // An approved spend draws only the increase; a pending one is checked in full, as when recorded (M1).
                 java.math.BigDecimal old = entity.getAmount() == null ? java.math.BigDecimal.ZERO : entity.getAmount();
                 balanceService.requireCovers(entity.getStudyCountryInId(),

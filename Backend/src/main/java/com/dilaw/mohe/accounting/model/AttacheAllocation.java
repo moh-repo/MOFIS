@@ -43,6 +43,18 @@ public class AttacheAllocation {
     @Column(name = "ALLOCATION_ID", nullable = false)
     private Integer id;
 
+    /**
+     * FIN-03: optimistic lock ({@code ROW_VERSION}, V148). Every status change on this
+     * row was a read-modify-write with no lock, so two concurrent requests could both
+     * pass the status check and both move the money (an allocation transferred twice grew the
+     * advance twice). The second now fails with a
+     * version conflict (409) and changes nothing. Null until first persisted, so
+     * Spring Data still treats a new row as new.
+     */
+    @Version
+    @Column(name = "ROW_VERSION", nullable = false)
+    private Long rowVersion;
+
     @Column(name = "FISCAL_YEAR_ID", nullable = false)
     private Integer fiscalYearId;
 

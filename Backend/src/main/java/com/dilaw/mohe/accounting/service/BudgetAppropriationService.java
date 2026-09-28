@@ -147,6 +147,12 @@ public class BudgetAppropriationService {
      * Approves a draft. Maker and checker are two people, as everywhere else in
      * the module: the officer who entered the figure cannot be the one who
      * confirms it, and administrators are not exempt.
+     *
+     * <p>FIN-10: nor can the officer who last edited the draft. Maker-checker compared
+     * only against {@code createdBy}, so A entered 50,000, B changed it to 500,000 and
+     * approved their own figure. Editing a draft in place stamps {@code updatedBy}, and
+     * a draft's {@code updatedBy} is only ever that edit (approval moves it out of
+     * DRAFT), so it names the last editor.
      */
     @Transactional
     public BudgetAppropriation approve(Integer id, Integer userId) {
@@ -157,6 +163,10 @@ public class BudgetAppropriationService {
         }
         // R-16: MakerCheckerPolicy — the signed-in checker is not the maker; no exemptions.
         accessControl.assertAllowed(com.dilaw.mohe.security.policy.MakerChecker.appropriation(a.getCreatedBy(), userId), "APPROVE");
+        if (a.getUpdatedBy() != null) {
+            accessControl.assertAllowed(new com.dilaw.mohe.security.policy.MakerChecker(
+                    "An appropriation", "last edited", a.getUpdatedBy(), userId), "APPROVE");
+        }
         a.setStatus(BudgetAppropriation.APPROVED);
         a.setUpdatedBy(userId);
         a.setUpdatedAt(Instant.now());

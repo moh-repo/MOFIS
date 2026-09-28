@@ -208,4 +208,28 @@ class BudgetAppropriationServiceTest {
         assertThat(approved.getStatus()).isEqualTo(BudgetAppropriation.APPROVED);
         assertThat(approved.getUpdatedBy()).isEqualTo(2);
     }
+
+    @Test
+    @DisplayName("FIN-10: A enters, B edits the amount, B cannot approve; a third person can")
+    void lastEditorCannotApprove() {
+        when(countryScopeService.getScope()).thenReturn(new CountryScope(1L, true, List.of()));
+        BudgetAppropriation draft = approp(8, null, BudgetAppropriation.DRAFT, "50000", 13);
+        when(appropriationRepository.findById(8)).thenReturn(Optional.of(draft));
+        when(countryScopeService.getCurrentUserId()).thenReturn(Optional.of(14L));
+        when(appropriationRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        BudgetAppropriation edit = approp(8, null, BudgetAppropriation.DRAFT, "500000", null);
+        service.update(8, edit);
+        assertThat(draft.getUpdatedBy()).isEqualTo(14);
+
+        assertThatThrownBy(() -> service.approve(8, 14))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("last edited")
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        verify(appropriationRepository, never()).save(any());
+
+        when(appropriationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        assertThat(service.approve(8, 2).getStatus()).isEqualTo(BudgetAppropriation.APPROVED);
+    }
 }

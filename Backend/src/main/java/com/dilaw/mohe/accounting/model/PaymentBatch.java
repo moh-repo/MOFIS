@@ -38,6 +38,17 @@ public class PaymentBatch {
     @Column(name = "BATCH_ID", nullable = false)
     private Integer id;
 
+    /**
+     * FIN-03: optimistic lock ({@code ROW_VERSION}, V148). Every status change on this
+     * row was a read-modify-write with no lock, so two concurrent requests could both
+     * pass the status check and both move the money. The second now fails with a
+     * version conflict (409) and changes nothing. Null until first persisted, so
+     * Spring Data still treats a new row as new.
+     */
+    @Version
+    @Column(name = "ROW_VERSION", nullable = false)
+    private Long rowVersion;
+
     @Column(name = "FISCAL_YEAR_ID", nullable = false)
     private Integer fiscalYearId;
 
@@ -76,6 +87,13 @@ public class PaymentBatch {
 
     @Column(name = "DISBURSED_AT")
     private Instant disbursedAt;
+
+    /** FIN-16: who withdrew an open batch. Cancel used to write APPROVED_BY / APPROVED_AT. */
+    @Column(name = "CANCELLED_BY")
+    private Integer cancelledBy;
+
+    @Column(name = "CANCELLED_AT")
+    private Instant cancelledAt;
 
     @Column(name = "APPROVAL_REQUEST_ID")
     private Integer approvalRequestId;

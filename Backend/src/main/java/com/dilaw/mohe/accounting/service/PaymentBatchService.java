@@ -185,9 +185,12 @@ public class PaymentBatchService {
         attacheCountries.requireActive(countryId);
         fiscalPeriodService.requireMoheQuarter(request.moheQuarterKey()); // R5-20
         FiscalYear year = fiscalPeriodService.requireYearOfQuarter(request.moheQuarterKey());
+        fiscalPeriodService.assertYearOpen(year.getId()); // FIN-12
 
         List<PaymentBatchLine> lines = validateLines(request.lines(), countryId);
         requireStudents(lines);
+        requireStudentsOfAttache(lines, countryId);
+        requireNotAlreadyPaid(lines, request.moheQuarterKey());
 
         PaymentBatch batch = new PaymentBatch();
         batch.setFiscalYearId(year.getId());
@@ -223,6 +226,7 @@ public class PaymentBatchService {
         }
         // R-16: MakerCheckerPolicy — the signed-in checker is not the preparer; no exemptions.
         accessControl.assertAllowed(com.dilaw.mohe.security.policy.MakerChecker.paymentBatch(batch.getPreparedBy(), userId), "APPROVE");
+        fiscalPeriodService.assertYearOpen(batch.getFiscalYearId()); // FIN-12
         batch.setStatus(PaymentBatch.APPROVED);
         batch.setApprovedBy(userId);
         batch.setApprovedAt(Instant.now());
@@ -236,6 +240,12 @@ public class PaymentBatchService {
      * booked against the attaché's balance for the batch's year and currency; if
      * the attaché does not hold that much un-earmarked cash the database refuses
      * and the batch stays {@code APPROVED}.
+     *
+     * <p>FIN-03: two "mark paid" clicks at once both passed the {@code APPROVED} check
+     * and the advance was debited twice. The status change is now written and flushed
+     * first, under the batch's row version, so the second request fails with a version
+     * conflict (409) before it reaches the advance, and rolls back whole. FIN-12: the
+     * batch's year and today's period must be open.
      */
     @Transactional
     public PaymentBatch markPaid(Integer id, Integer userId) {
@@ -244,13 +254,15 @@ public class PaymentBatchService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "A batch must be approved before it is paid; this one is " + batch.getStatus() + ".");
         }
+        fiscalPeriodService.assertYearOpen(batch.getFiscalYearId());
+        fiscalPeriodService.assertPeriodOpen(java.time.LocalDate.now());
         BigDecimal disbursed = lineRepository.findByBatchIdOrderByIdAsc(id).stream()
                 .map(PaymentBatchLine::getDisbursedAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         batch.setStatus(PaymentBatch.DISBURSED);
         batch.setDisbursedAt(Instant.now());
-        PaymentBatch saved = batchRepository.save(batch);
+        PaymentBatch saved = batchRepository.saveAndFlush(batch);
 
         if (disbursed.signum() > 0) {
             // A balance row is opened at zero if the attaché has none for this year
@@ -263,7 +275,12 @@ public class PaymentBatchService {
         return saved;
     }
 
-    /** Withdraws an open batch. Nothing has moved, so nothing is reversed. */
+    /**
+     * Withdraws an open batch. Nothing has moved, so nothing is reversed.
+     *
+     * <p>FIN-16: recorded as cancelled by and at. It used to write APPROVED_BY and
+     * APPROVED_AT, so a cancelled batch read as approved by whoever withdrew it.
+     */
     @Transactional
     public PaymentBatch cancel(Integer id, Integer userId) {
         PaymentBatch batch = require(id);
@@ -272,8 +289,8 @@ public class PaymentBatchService {
                     "Only an open batch can be cancelled; this one is " + batch.getStatus() + ".");
         }
         batch.setStatus(PaymentBatch.CANCELLED);
-        batch.setApprovedBy(userId);
-        batch.setApprovedAt(Instant.now());
+        batch.setCancelledBy(userId);
+        batch.setCancelledAt(Instant.now());
         return batchRepository.save(batch);
     }
 
@@ -354,6 +371,59 @@ public class PaymentBatchService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "No student " + missing.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(", "))
                             + " can be paid from this batch: the student does not exist, was deleted, or is not in your scope.");
+        }
+    }
+
+    /**
+     * FIN-04 (b): every line's student studies at the batch's attaché. A batch is paid
+     * from one attaché's advance, and a Riyadh student on a Cairo batch was paid out of
+     * Cairo's. A student with no attaché on record is refused too: there is no advance
+     * it could rightly come from. 400 naming the students.
+     */
+    private void requireStudentsOfAttache(List<PaymentBatchLine> lines, Integer countryId) {
+        List<Integer> ids = lines.stream().map(PaymentBatchLine::getStudentId).toList();
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        List<Object> args = new ArrayList<>(ids);
+        args.add(countryId);
+        List<Integer> elsewhere = jdbcTemplate.queryForList(
+                "SELECT sd.STUDENT_ID FROM MOHECORE.STUDENT_DATA sd WHERE sd.STUDENT_ID IN (" + placeholders + ")"
+                        + " AND " + com.dilaw.mohe.util.LiveStudentSql.SD_NOT_DELETED
+                        + " AND ISNULL(sd.STUDY_COUNTRY_IN, -1) <> ?",
+                Integer.class, args.toArray());
+        if (!elsewhere.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Student " + elsewhere.stream().sorted().map(String::valueOf)
+                            .collect(java.util.stream.Collectors.joining(", "))
+                            + " does not study at this batch's attaché, so cannot be paid from its advance.");
+        }
+    }
+
+    /**
+     * FIN-04 (a): a student already paid in full by another non-cancelled batch of the
+     * same quarter is not paid again. {@link #candidates} flags such students for the
+     * screen, but nothing on the server refused them. Any attaché's batch counts: one
+     * quarter's entitlement is paid once. A held student (disbursed less than entitled)
+     * is not refused, because batch 2 exists to pay whoever batch 1 held back. 409,
+     * naming the students.
+     */
+    private void requireNotAlreadyPaid(List<PaymentBatchLine> lines, Integer moheQuarterKey) {
+        List<Integer> ids = lines.stream().map(PaymentBatchLine::getStudentId).toList();
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        List<Object> args = new ArrayList<>();
+        args.add(moheQuarterKey);
+        args.addAll(ids);
+        List<Integer> paid = jdbcTemplate.queryForList(
+                "SELECT DISTINCT l.STUDENT_ID FROM FINCORE.PAYMENT_BATCH_LINE l"
+                        + " JOIN FINCORE.PAYMENT_BATCH b ON b.BATCH_ID = l.BATCH_ID"
+                        + " WHERE b.MOHE_QUARTER_KEY = ? AND b.STATUS <> 'CANCELLED'"
+                        + " AND l.ENTITLED_AMOUNT > 0 AND l.DISBURSED_AMOUNT >= l.ENTITLED_AMOUNT"
+                        + " AND l.STUDENT_ID IN (" + placeholders + ")",
+                Integer.class, args.toArray());
+        if (!paid.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Student " + paid.stream().sorted().map(String::valueOf)
+                            .collect(java.util.stream.Collectors.joining(", "))
+                            + " is already paid in full by another batch of this quarter.");
         }
     }
 

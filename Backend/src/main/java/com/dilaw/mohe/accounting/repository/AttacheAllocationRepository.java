@@ -41,6 +41,19 @@ public interface AttacheAllocationRepository extends JpaRepository<AttacheAlloca
     BigDecimal sumTransferredForQuarter(@Param("quarterKey") Integer quarterKey);
 
     /**
+     * FIN-08: the quarter's transfers per currency, rows {@code [currencyId, amount]},
+     * for the quarter-close budget check. The single-figure roll-up above adds the
+     * currencies together and cannot be compared against anything.
+     */
+    @Query("""
+        SELECT a.currencyId, COALESCE(SUM(a.amount), 0) FROM AttacheAllocation a
+        WHERE a.moheQuarterKey = :quarterKey
+          AND a.status = :#{T(com.dilaw.mohe.codes.AllocationStatus).TRANSFERRED}
+        GROUP BY a.currencyId
+        """)
+    List<Object[]> sumTransferredForQuarterByCurrency(@Param("quarterKey") Integer quarterKey);
+
+    /**
      * Transferred allocations per quarter, for the MOHE Quarters screen.
      *
      * <p>Rows are {@code [moheQuarterKey, amount]}, one query for the whole list.

@@ -88,13 +88,40 @@ public class TravelTicketWafarService {
         balanceService.requireCovers(attache, needed);
     }
 
-    /** Create or update the single Wafar spending linked to this ticket, as an APPROVED draw-down. */
+    /**
+     * Create or update the single Wafar spending linked to this ticket, as an APPROVED draw-down.
+     *
+     * <p>FIN-02: the row carries the student's attaché. It used to carry none, and the
+     * balance ({@link WafarBalanceService#availableFor}) sums approved spends <em>per
+     * attaché</em>, so a Wafar-funded ticket never reduced anybody's balance and the same
+     * money could be spent again. The approver of record is whoever signed the ticket
+     * request, not the officer who raised it; the raiser stays the maker.
+     *
+     * @param requesterUserId who raised the ticket request (the maker, CREATED_BY)
+     * @param approverUserId  who gave the final approval (APPROVED_BY); the requester when unknown
+     */
     @Transactional
-    public void applyTravelTicketSpending(StudentTravelTicket ticket, BigDecimal total, Integer actorUserId) {
+    public void applyTravelTicketSpending(StudentTravelTicket ticket, BigDecimal total,
+                                          Integer requesterUserId, Integer approverUserId) {
         if (ticket == null || ticket.getTravelTicketId() == null) {
             return;
         }
         Integer ticketId = ticket.getTravelTicketId();
+        if (total == null || total.signum() <= 0) {
+            // FIN-01: a spend is strictly positive. A ticket that costs nothing draws
+            // nothing, so any earlier draw-down for it is released instead.
+            reverseTravelTicketSpending(ticketId);
+            return;
+        }
+        Integer attache = ticket.getStudentId() == null ? null
+                : studentDataRepository.findStudyCountryInByStudentId(ticket.getStudentId()).orElse(null);
+        if (attache == null) {
+            // The same refusal requireCovers gives: with no attaché there is no balance
+            // to draw from, and a row with none is invisible to every balance.
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "The student of travel ticket " + ticketId + " has no attaché on record, "
+                            + "so the ticket cannot be paid from Wafar.");
+        }
         WafarSpendingCategory category = categoryRepository.findByCategoryCode(CATEGORY_CODE)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                         "Wafar spending category '" + CATEGORY_CODE + "' not found. "
@@ -107,15 +134,17 @@ public class TravelTicketWafarService {
         spending.setTravelTicketId(ticketId);
         spending.setCategory(category);
         spending.setStudentId(ticket.getStudentId());
-        spending.setAmount(total != null ? total : BigDecimal.ZERO);
+        spending.setStudyCountryInId(attache);
+        spending.setBeneficiaryType(com.dilaw.mohe.codes.WafarBeneficiaryType.STUDENT);
+        spending.setAmount(total);
         spending.setSpendingDate(ticket.getTravelDate() != null ? ticket.getTravelDate() : LocalDate.now());
         spending.setReferenceNumber(ticket.getTicketNumber());
         spending.setDescriptionEn("Travel ticket #" + ticketId);
         spending.setStatus(STATUS_APPROVED);
-        spending.setApprovedBy(actorUserId);
+        spending.setApprovedBy(approverUserId != null ? approverUserId : requesterUserId);
         spending.setApprovedAt(Instant.now());
         if (isNew) {
-            spending.setCreatedBy(actorUserId);
+            spending.setCreatedBy(requesterUserId);
         }
         spendingRepository.save(spending);
     }

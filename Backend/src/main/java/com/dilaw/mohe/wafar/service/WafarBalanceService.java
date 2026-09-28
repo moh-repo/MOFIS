@@ -43,6 +43,13 @@ public class WafarBalanceService {
     @Autowired
     private CountryScopeService countryScopeService;
 
+    /** FIN-14: takes the per-attaché balance lock. Optional so plain unit tests need not wire it. */
+    @Autowired(required = false)
+    private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    /** How long a second approval waits for the first to commit before it is told to retry. */
+    static final int BALANCE_LOCK_TIMEOUT_MS = 15_000;
+
     public WafarBalanceSummaryDto getSummary() {
         CountryScope scope = countryScopeService.getScope();
 
@@ -92,6 +99,7 @@ public class WafarBalanceService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This spend names no attaché, so there is no Wafar balance to draw it from. Correct it first.");
         }
+        lockBalance(studyCountryInId);
         BigDecimal available = availableFor(studyCountryInId);
         if (amount.compareTo(available) > 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -109,6 +117,7 @@ public class WafarBalanceService {
      */
     public void requireWithdrawable(Integer studyCountryInId, BigDecimal decrease) {
         if (studyCountryInId == null || decrease == null || decrease.signum() <= 0) return;
+        lockBalance(studyCountryInId);
         BigDecimal available = availableFor(studyCountryInId);
         if (decrease.compareTo(available) > 0) {
             String taken = decrease.toPlainString();
@@ -117,6 +126,43 @@ public class WafarBalanceService {
                     "This change takes " + taken + " of Wafar away from this attaché, but only " + left
                             + " of its Wafar is not already used by approved spending.",
                     "wafar.deposit.notCovered", taken, left);
+        }
+    }
+
+    /**
+     * FIN-14: serialises every balance check of one attaché until the caller's
+     * transaction ends.
+     *
+     * <p>The balance is not a row but a sum (deposits minus approved spends), so there
+     * is no balance row to lock pessimistically. Two approvals that each fitted the
+     * balance on their own both read it before either wrote, and together overdrew it.
+     * An exclusive SQL Server application lock on {@code WAFAR_BALANCE:<country>}, owned
+     * by the transaction, makes the second check wait for the first to commit, after
+     * which it reads the balance the first one left. Other attachés are not held up.
+     *
+     * <p>Only inside a transaction: outside one there is no write to keep atomic with
+     * the check, and a transaction-owned lock cannot be taken.
+     */
+    void lockBalance(Integer studyCountryInId) {
+        if (jdbcTemplate == null
+                || !org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
+            return;
+        }
+        String resource = "WAFAR_BALANCE:" + studyCountryInId;
+        Integer result = jdbcTemplate.execute("{? = call sp_getapplock(?, ?, ?, ?)}",
+                (org.springframework.jdbc.core.CallableStatementCallback<Integer>) cs -> {
+                    cs.registerOutParameter(1, java.sql.Types.INTEGER);
+                    cs.setString(2, resource);
+                    cs.setString(3, "Exclusive");
+                    cs.setString(4, "Transaction");
+                    cs.setInt(5, BALANCE_LOCK_TIMEOUT_MS);
+                    cs.execute();
+                    return cs.getInt(1);
+                });
+        // 0 granted, 1 granted after waiting; negative is a timeout, a deadlock or an error.
+        if (result == null || result < 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Another Wafar transaction of this attaché is being approved. Try again in a moment.");
         }
     }
 }

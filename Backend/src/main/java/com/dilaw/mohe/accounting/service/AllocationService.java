@@ -66,8 +66,27 @@ public class AllocationService {
         return allocation;
     }
 
+    /**
+     * Drafts an allocation from the fields a maker may choose.
+     *
+     * <p>FIN-05: the body is copied onto a new row, never saved as sent. It binds the
+     * entity, id and status included, and a non-null id made {@code save} a merge:
+     * POSTing the id of a TRANSFERRED allocation reset it to DRAFT, and transferring
+     * it again booked the advance twice. Same approach as {@code FxRateService.create}.
+     */
     @Transactional
-    public AttacheAllocation create(AttacheAllocation draft) {
+    public AttacheAllocation create(AttacheAllocation body) {
+        if (body == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The allocation is required.");
+        }
+        AttacheAllocation draft = new AttacheAllocation();
+        draft.setMoheQuarterKey(body.getMoheQuarterKey());
+        draft.setStudyCountryInId(body.getStudyCountryInId());
+        draft.setAllocationType(body.getAllocationType());
+        draft.setFeeTypeId(body.getFeeTypeId());
+        draft.setCurrencyId(body.getCurrencyId());
+        draft.setAmount(body.getAmount());
+        draft.setNotes(body.getNotes());
         if (draft.getAmount() == null || draft.getAmount().signum() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "An allocation must be a positive amount. A downward correction becomes a Wafar "
@@ -86,13 +105,13 @@ public class AllocationService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "The MOHE quarter this allocation belongs to is required (moheQuarterKey).");
         }
+        attacheCountries.requireActive(draft.getStudyCountryInId());
         fiscalPeriodService.requireMoheQuarter(draft.getMoheQuarterKey()); // R5-20
         // The fiscal year follows from the quarter (YYYYQ), so the screen need not
-        // send both and cannot send a pair that disagree.
-        if (draft.getFiscalYearId() == null) {
-            draft.setFiscalYearId(fiscalPeriodService.requireYearOfQuarter(draft.getMoheQuarterKey()).getId());
-        }
-        attacheCountries.requireActive(draft.getStudyCountryInId());
+        // send both and cannot send a pair that disagree. FIN-13: always — a year the
+        // client sent was kept even when it contradicted the quarter.
+        draft.setFiscalYearId(fiscalPeriodService.requireYearOfQuarter(draft.getMoheQuarterKey()).getId());
+        fiscalPeriodService.assertYearOpen(draft.getFiscalYearId()); // FIN-12
         // Forbidden, not 404, and deliberately different from require(): the caller
         // named this attaché themselves, so there is nothing to conceal, and a
         // silent 404 on a create would read as the record failing to save.
@@ -127,6 +146,7 @@ public class AllocationService {
         }
         // R-16: MakerCheckerPolicy — the signed-in checker is not the maker; no exemptions.
         accessControl.assertAllowed(com.dilaw.mohe.security.policy.MakerChecker.allocation(allocation.getCreatedBy(), userId), "APPROVE");
+        fiscalPeriodService.assertYearOpen(allocation.getFiscalYearId()); // FIN-12
         allocation.setStatus(AttacheAllocation.APPROVED);
         allocation.setUpdatedBy(userId);
         allocation.setUpdatedAt(Instant.now());
@@ -139,6 +159,10 @@ public class AllocationService {
      * <p>This is the point the advance grows — not on approval. An approved
      * allocation is a decision; a transferred one is cash the attaché can spend,
      * and only the second may be drawn against.
+     *
+     * <p>FIN-03: the status change is flushed before the advance moves, so of two
+     * concurrent transfers of the same allocation the second fails on the row version
+     * (409) and books nothing. FIN-12: the transfer date must fall in an open period.
      */
     @Transactional
     public AttacheAllocation markTransferred(Integer id, LocalDate transferDate, String reference) {
@@ -148,11 +172,14 @@ public class AllocationService {
                     "An allocation must be approved before it is transferred; this one is "
                             + allocation.getStatus() + ".");
         }
+        LocalDate on = transferDate == null ? LocalDate.now() : transferDate;
+        fiscalPeriodService.assertYearOpen(allocation.getFiscalYearId());
+        fiscalPeriodService.assertPeriodOpen(on);
         allocation.setStatus(AttacheAllocation.TRANSFERRED);
-        allocation.setTransferDate(transferDate == null ? LocalDate.now() : transferDate);
+        allocation.setTransferDate(on);
         allocation.setTransferReference(reference);
         allocation.setUpdatedAt(Instant.now());
-        AttacheAllocation saved = allocationRepository.save(allocation);
+        AttacheAllocation saved = allocationRepository.saveAndFlush(allocation);
 
         advanceBalanceService.recordTransfer(
                 saved.getFiscalYearId(), saved.getStudyCountryInId(),

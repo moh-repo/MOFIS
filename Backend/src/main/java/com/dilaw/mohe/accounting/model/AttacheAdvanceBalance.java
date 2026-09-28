@@ -48,6 +48,17 @@ public class AttacheAdvanceBalance {
     @Column(name = "BALANCE_ID", nullable = false)
     private Integer id;
 
+    /**
+     * FIN-03: optimistic lock ({@code ROW_VERSION}, V148). Every counter on this row
+     * was a read-modify-write with no lock, so two concurrent postings could each add
+     * to the value they read and one of the two amounts was lost. The second now fails with a
+     * version conflict (409) and changes nothing. Null until first persisted, so
+     * Spring Data still treats a new row as new.
+     */
+    @Version
+    @Column(name = "ROW_VERSION", nullable = false)
+    private Long rowVersion;
+
     @Column(name = "FISCAL_YEAR_ID", nullable = false)
     private Integer fiscalYearId;
 
