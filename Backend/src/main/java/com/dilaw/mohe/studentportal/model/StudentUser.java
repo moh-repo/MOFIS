@@ -82,11 +82,11 @@ public class StudentUser {
     @Column(name = "totp_locked_until")
     private Instant totpLockedUntil;
 
-    /** PRT-04 (V150): a timed lock after repeated wrong passwords; null when none stands. */
+    /** PRT-04 (V149): a timed lock after repeated wrong passwords; null when none stands. */
     @Column(name = "locked_until")
     private Instant lockedUntil;
 
-    /** PRT-07 (V150): the TOTP time step last accepted, so a code cannot be used twice. */
+    /** PRT-07 (V149): the TOTP time step last accepted, so a code cannot be used twice. */
     @JsonIgnore
     @Column(name = "totp_last_step")
     private Long totpLastStep;

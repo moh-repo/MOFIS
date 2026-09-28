@@ -88,7 +88,7 @@ class DataRetentionAnonymiseTest {
     }
 
     @Test
-    @DisplayName("PRT-01: without the status-date table (V150 not applied) nobody is a candidate")
+    @DisplayName("PRT-01: without the status-date table (V149 not applied) nobody is a candidate")
     void noTableNoCandidates() {
         when(jdbc.queryForObject(startsWith("SELECT OBJECT_ID"), eq(Integer.class))).thenReturn(null);
         assertThat(job.studentCandidates(LocalDateTime.now())).isEmpty();

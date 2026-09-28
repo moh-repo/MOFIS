@@ -1,5 +1,5 @@
 /*
-    V150 — the student-status date retention measures from, and two portal
+    V149 — the student-status date retention measures from, and two portal
     account columns (system test PRT-01, PRT-04, PRT-07).
 
     1. MOHECORE.STUDENT_STUDY_STATUS_CHANGE (PRT-01)
@@ -51,10 +51,10 @@ BEGIN
         STUDENT_ID              int           NOT NULL CONSTRAINT PK_STUDENT_STUDY_STATUS_CHANGE PRIMARY KEY,
         STUDENT_STUDY_STATUS_ID int           NULL,
         CHANGED_AT              datetime2     NOT NULL,
-        -- TRIGGER: seen changing; ARCHIVE: backfilled from STUDENT_DATA_ARCH; MIGRATION: no evidence, clock started by V150.
+        -- TRIGGER: seen changing; ARCHIVE: backfilled from STUDENT_DATA_ARCH; MIGRATION: no evidence, clock started by V149.
         SOURCE                  nvarchar(20)  NOT NULL
     );
-    PRINT 'V150: MOHECORE.STUDENT_STUDY_STATUS_CHANGE created';
+    PRINT 'V149: MOHECORE.STUDENT_STUDY_STATUS_CHANGE created';
 END
 GO
 
@@ -116,7 +116,7 @@ SELECT c.STUDENT_ID,
        CASE WHEN f.SEEN_AT IS NULL THEN N'MIGRATION' ELSE N'ARCHIVE' END
   FROM cur c
   LEFT JOIN first_same f ON f.STUDENT_ID = c.STUDENT_ID;
-PRINT CONCAT('V150: status dates backfilled: ', @@ROWCOUNT);
+PRINT CONCAT('V149: status dates backfilled: ', @@ROWCOUNT);
 
 EXEC sp_set_session_context @key = N'TenantAll', @value = NULL;
 GO
@@ -124,12 +124,12 @@ GO
 IF COL_LENGTH('STUDENTCORE.student_users', 'locked_until') IS NULL
 BEGIN
     ALTER TABLE STUDENTCORE.student_users ADD locked_until datetime2 NULL;
-    PRINT 'V150: student_users.locked_until added';
+    PRINT 'V149: student_users.locked_until added';
 END
 GO
 IF COL_LENGTH('STUDENTCORE.student_users', 'totp_last_step') IS NULL
 BEGIN
     ALTER TABLE STUDENTCORE.student_users ADD totp_last_step bigint NULL;
-    PRINT 'V150: student_users.totp_last_step added';
+    PRINT 'V149: student_users.totp_last_step added';
 END
 GO

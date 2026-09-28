@@ -54,7 +54,7 @@ import java.util.Map;
  *       from disk. The student id, country, programme and finance rows stay,
  *       so the totals reports keep adding up.
  *       <p>PRT-01: "for more than N years" is measured from the date the
- *       status was set ({@code MOHECORE.STUDENT_STUDY_STATUS_CHANGE}, V150),
+ *       status was set ({@code MOHECORE.STUDENT_STUDY_STATUS_CHANGE}, V149),
  *       not from {@code STUDENT_MIDATE}, the date the record was entered. A
  *       student with no recorded date, or whose recorded status is not the
  *       current one, is never a candidate: deletion cannot be undone, so no
@@ -195,7 +195,7 @@ public class DataRetentionJob {
         return new ClassResult("staff-sessions", rule, candidates, deleted, null);
     }
 
-    /** Where V150 records when each student's study status was last set. */
+    /** Where V149 records when each student's study status was last set. */
     static final String STATUS_CHANGE_TABLE = "MOHECORE.STUDENT_STUDY_STATUS_CHANGE";
 
     /**
@@ -203,11 +203,11 @@ public class DataRetentionJob {
      *
      * <p>PRT-01: the date is when the status was set, from {@value #STATUS_CHANGE_TABLE}
      * (kept by a trigger on STUDENT_DATA, backfilled conservatively from the quarterly
-     * archive; see V150). It used to be {@code STUDENT_MIDATE}, the date the record was
+     * archive; see V149). It used to be {@code STUDENT_MIDATE}, the date the record was
      * entered, so a student who joined eight years ago and withdrew yesterday was
      * anonymised — files deleted — on the next apply. The join requires the recorded
      * status to be the current one; a student with no row, or a row that disagrees, is
-     * left out. Without the table (V150 not applied) nobody is a candidate.
+     * left out. Without the table (V149 not applied) nobody is a candidate.
      *
      * <p>Deleted students are included on purpose (FIX-PLAN P5-11): a delete is a soft delete,
      * so their personal data is still in the table, and retention exists to anonymise it by
@@ -217,7 +217,7 @@ public class DataRetentionJob {
         if (terminalStatuses.isEmpty()) return List.of();
         Integer table = jdbc.queryForObject("SELECT OBJECT_ID(N'" + STATUS_CHANGE_TABLE + "', N'U')", Integer.class);
         if (table == null) {
-            log.warn("Data retention: {} is missing (V150 not applied); no student is a candidate", STATUS_CHANGE_TABLE);
+            log.warn("Data retention: {} is missing (V149 not applied); no student is a candidate", STATUS_CHANGE_TABLE);
             return List.of();
         }
         String marks = String.join(",", java.util.Collections.nCopies(terminalStatuses.size(), "?"));

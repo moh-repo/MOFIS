@@ -40,7 +40,7 @@ class DataRetentionJobTest {
 
     /**
      * PRT-01: {@code entered} is STUDENT_MIDATE; {@code withdrawnAt} is when the status was
-     * set, which V150's trigger records as "now" on the insert and the test then backdates.
+     * set, which V149's trigger records as "now" on the insert and the test then backdates.
      */
     private int withdrawnStudent(String name, LocalDateTime entered, LocalDateTime withdrawnAt) {
         LocalDateTime modified = entered;
