@@ -42,6 +42,15 @@ import java.util.zip.GZIPOutputStream;
  * count and the archive file), so an operator can see that the record shrank
  * and by how much.
  *
+ * <p>PRT-08: what goes into the archive is redacted with {@link AuditValueRedactor}, the
+ * rule the audit screen applies: the UMSCORE.Users trigger copies the whole row, so the
+ * trail holds bcrypt hashes, MFA secrets and tokens, and the archive used to carry them
+ * in plain gzip to whoever could read the archive directory. Once a file is complete it
+ * is also encrypted with the document key ({@code FileEncryptionService}, the MENC
+ * header of {@code FileCipher}) and renamed {@code .ndjson.gz.enc}; read it back with
+ * {@code FileEncryptionService.readDecrypted} and gunzip. Without the service (a test
+ * wiring the job by hand) the file stays gzip.
+ *
  * <p>{@code ScheduledTenantScopeAspect} runs the scheduled entry under the
  * system scope; {@code AUDITLOG.AuditTrail} is under RLS (V047) and the job
  * must see every country's rows to age them out.
@@ -62,6 +71,14 @@ public class AuditRetentionJob {
     private final int accessDeniedYears;
     private final Path archiveDir;
     private final int batchSize;
+
+    /** PRT-08: encrypts a finished archive; optional so the job still runs without it. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.dilaw.mohe.service.FileEncryptionService fileEncryption;
+
+    void setFileEncryption(com.dilaw.mohe.service.FileEncryptionService fileEncryption) {
+        this.fileEncryption = fileEncryption;
+    }
 
     public AuditRetentionJob(JdbcTemplate jdbc, ObjectMapper objectMapper, SecurityEventLog securityEventLog,
                              @Value("${mohe.audit.retention.enabled:true}") boolean enabled,
@@ -125,7 +142,8 @@ public class AuditRetentionJob {
                 }
                 List<Object> ids = new ArrayList<>(rows.size());
                 for (Map<String, Object> row : rows) {
-                    out.write(objectMapper.writeValueAsString(plain(row)));
+                    // PRT-08: the audit screen's masking, applied to what leaves the database.
+                    out.write(AuditValueRedactor.redact(objectMapper.writeValueAsString(plain(row))));
                     out.write('\n');
                     ids.add(row.get(rule.idColumn()));
                 }
@@ -140,12 +158,32 @@ public class AuditRetentionJob {
                 try { out.close(); } catch (IOException e) { log.warn("closing {}", file, e); }
             }
         }
+        if (file != null) {
+            file = encrypt(file);
+        }
         if (total > 0) {
             log.info("Audit retention: {} row(s) of {} older than {} archived to {} and purged", total, rule.name(), cutoff.toLocalDate(), file);
             securityEventLog.emit("AUDIT_RETENTION_PURGE", null, null, rule.name(), null,
                     total + " rows older than " + cutoff.toLocalDate() + " archived to " + file, null);
         }
         return total;
+    }
+
+    /**
+     * PRT-08: the finished archive under the document key, renamed {@code .enc}. The rows are
+     * already purged, so a failure keeps the (redacted) gzip rather than losing the only copy.
+     */
+    private Path encrypt(Path file) {
+        if (fileEncryption == null) return file;
+        try {
+            fileEncryption.encryptFileInPlace(file);
+            Path encrypted = file.resolveSibling(file.getFileName() + ".enc");
+            Files.move(file, encrypted, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            return encrypted;
+        } catch (IOException | RuntimeException e) {
+            log.error("Audit retention: {} could not be encrypted and is kept as redacted gzip: {}", file, e.getMessage());
+            return file;
+        }
     }
 
     private int deleteByIds(Rule rule, List<Object> ids) {

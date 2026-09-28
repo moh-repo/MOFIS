@@ -69,17 +69,10 @@ public class StudentChangeRequestController {
             return ResponseEntity.badRequest().body(Map.of("error", msg("portal.changeRequest.changesMissing")));
         }
 
-        List<StudentChangeRequestService.FieldChangeInput> changes = rawList.stream()
-                .filter(item -> item instanceof Map)
-                .map(item -> {
-                    @SuppressWarnings("unchecked")
-                    Map<String, String> m = (Map<String, String>) item;
-                    return new StudentChangeRequestService.FieldChangeInput(
-                            m.get("fieldName"),
-                            m.get("fieldLabel"),
-                            m.get("newValue")
-                    );
-                }).toList();
+        List<StudentChangeRequestService.FieldChangeInput> changes = toChanges(rawList);
+        if (changes == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", msg("portal.changeRequest.badShape")));
+        }
 
         try {
             List<StudentChangeRequest> created = changeRequestService.submitRequest(studentId, studentUserId, changes);
@@ -92,6 +85,35 @@ public class StudentChangeRequestController {
             return ResponseEntity.status(ex.getStatusCode())
                     .body(Map.of("error", ex.getReason() != null ? ex.getReason() : msg("portal.changeRequest.submitFailed")));
         }
+    }
+
+    /**
+     * PRT-12: the changes as the service takes them, or null when the body is not a list
+     * of objects with scalar values. The values were cast to {@code Map<String, String>}
+     * unchecked, so {@code "newValue": 5} got as far as the service and failed there with
+     * a ClassCastException: a 500 for the client's mistake. A number or a boolean is now
+     * read as its text (a lookup id is a number in JSON); an object or a list is refused
+     * with a 400, and so is an entry that is not an object at all (it used to be dropped
+     * without a word).
+     */
+    static List<StudentChangeRequestService.FieldChangeInput> toChanges(List<?> rawList) {
+        List<StudentChangeRequestService.FieldChangeInput> changes = new java.util.ArrayList<>();
+        for (Object item : rawList) {
+            if (!(item instanceof Map<?, ?> m)) return null;
+            Object name = m.get("fieldName");
+            Object label = m.get("fieldLabel");
+            Object value = m.get("newValue");
+            if (!isScalar(name) || !isScalar(label) || !isScalar(value)) return null;
+            changes.add(new StudentChangeRequestService.FieldChangeInput(
+                    name == null ? null : String.valueOf(name),
+                    label == null ? null : String.valueOf(label),
+                    value == null ? null : String.valueOf(value)));
+        }
+        return changes;
+    }
+
+    private static boolean isScalar(Object value) {
+        return value == null || value instanceof String || value instanceof Number || value instanceof Boolean;
     }
 
     /** DELETE /api/v1/student-portal/change-requests/{id} — cancel a PENDING request */

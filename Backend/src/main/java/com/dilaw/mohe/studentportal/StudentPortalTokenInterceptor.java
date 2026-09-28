@@ -11,8 +11,13 @@ import org.springframework.web.servlet.HandlerInterceptor;
 /**
  * Validates X-Student-Portal-Token on every student-portal protected request.
  * Resolves token against STUDENTCORE.student_sessions (StudentUserAuthService).
- * Falls back to the legacy MOHECORE.StudentPortalSession for existing sessions
- * that were issued before the STUDENTCORE migration.
+ *
+ * <p>PRT-10: there is no fallback to the legacy MOHECORE.StudentPortalSession any
+ * more. Those tokens were checked against their own table only, so they survived a
+ * logout, a password change and the account being deactivated or deleted, and they
+ * carried no student-user id (the change-request endpoints refused them, everything
+ * else served them). Their sessions were issued before the STUDENTCORE migration and
+ * are at most seven days long; a client still holding one signs in again.
  *
  * <p>Also publishes the request's tenant scope. TenantContextFilter runs before
  * the DispatcherServlet and so before this interceptor; finding no UMS
@@ -34,9 +39,6 @@ public class StudentPortalTokenInterceptor implements HandlerInterceptor {
 
     @Autowired
     private StudentUserAuthService studentUserAuthService;
-
-    @Autowired
-    private StudentPortalAuthService legacyAuthService;
 
     @Autowired
     private StudentPortalTenantScope tenantScope;
@@ -67,18 +69,6 @@ public class StudentPortalTokenInterceptor implements HandlerInterceptor {
             request.setAttribute(ATTR_STUDENT_USER_ID, resolved.get().studentUserId());
             // Pinned on the session at login (V036) — no lookup, no elevation.
             TenantContext.set(tenantScope.of(resolved.get().studyCountryInId()));
-            return true;
-        }
-
-        // Fall back to legacy MOHECORE sessions (for clients not yet re-logged-in)
-        var legacyStudentId = TenantContext.runAsSystem(
-                () -> legacyAuthService.resolveStudentIdFromToken(token));
-        if (legacyStudentId.isPresent()) {
-            request.setAttribute(ATTR_STUDENT_ID, legacyStudentId.get());
-            // The legacy session table has no country column, so this path still
-            // derives it. It exists only for tokens issued before the STUDENTCORE
-            // migration and disappears as those expire.
-            applyTenantScope(legacyStudentId.get());
             return true;
         }
 
@@ -149,10 +139,6 @@ public class StudentPortalTokenInterceptor implements HandlerInterceptor {
         } catch (RuntimeException e) {
             return english;
         }
-    }
-
-    private void applyTenantScope(Integer studentId) {
-        TenantContext.set(tenantScope.forStudent(studentId));
     }
 
     private void addCorsHeaders(HttpServletResponse response, String requestOrigin) {

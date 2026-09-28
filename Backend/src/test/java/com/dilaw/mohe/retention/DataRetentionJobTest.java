@@ -35,6 +35,15 @@ class DataRetentionJobTest {
      * identifying fields, status, country and modified date set for the test.
      */
     private int withdrawnStudent(String name, LocalDateTime modified) {
+        return withdrawnStudent(name, modified, modified);
+    }
+
+    /**
+     * PRT-01: {@code entered} is STUDENT_MIDATE; {@code withdrawnAt} is when the status was
+     * set, which V150's trigger records as "now" on the insert and the test then backdates.
+     */
+    private int withdrawnStudent(String name, LocalDateTime entered, LocalDateTime withdrawnAt) {
+        LocalDateTime modified = entered;
         return TenantContext.runAsSystem(() -> {
             Integer withdrawn = jdbc.queryForObject(
                     "SELECT STUDENT_STUDY_STATUS_ID FROM MOHECORE.STUDENT_STUDY_STATUS WHERE CODE = 'WITHDRAWN'", Integer.class);
@@ -62,6 +71,8 @@ class DataRetentionJobTest {
             jdbc.update("INSERT INTO MOHECORE.STUDENT_DATA (" + targets + ") SELECT " + sources
                     + " FROM MOHECORE.STUDENT_DATA WHERE STUDENT_ID = ?", template);
             Integer id = jdbc.queryForObject("SELECT MAX(STUDENT_ID) FROM MOHECORE.STUDENT_DATA WHERE STUDENT_NAME = ?", Integer.class, name);
+            jdbc.update("UPDATE MOHECORE.STUDENT_STUDY_STATUS_CHANGE SET CHANGED_AT = ? WHERE STUDENT_ID = ?",
+                    java.sql.Timestamp.valueOf(withdrawnAt), id);
             // The parent table may be empty on dev: take the first row of whatever the relationship key references.
             List<Map<String, Object>> ref = jdbc.queryForList("""
                     SELECT OBJECT_SCHEMA_NAME(fk.referenced_object_id) + '.' + OBJECT_NAME(fk.referenced_object_id) AS t,
@@ -106,6 +117,23 @@ class DataRetentionJobTest {
                 .containsExactly("portal-sessions", "staff-sessions", "otps", "student-records", "audit");
         assertThat(report.totalAffected()).isZero();
         assertThat(student(old).get("STUDENT_NAME")).isEqualTo(name);
+    }
+
+    @Test
+    @DisplayName("PRT-01: joined eight years ago, withdrew yesterday: not a candidate")
+    void measuredFromTheStatusDate() {
+        int recentlyWithdrawn = withdrawnStudent("S12 withdrew yesterday " + System.nanoTime(),
+                LocalDateTime.now().minusYears(8), LocalDateTime.now().minusDays(1));
+        int longWithdrawn = withdrawnStudent("S12 withdrew long ago " + System.nanoTime(),
+                LocalDateTime.now().minusYears(9), LocalDateTime.now().minusYears(8));
+
+        List<Integer> candidates = job.preview(LocalDateTime.now()).studentIds();
+        assertThat(candidates).contains(longWithdrawn).doesNotContain(recentlyWithdrawn);
+
+        // A student with no recorded status date is never a candidate.
+        TenantContext.runAsSystem(() -> jdbc.update(
+                "DELETE FROM MOHECORE.STUDENT_STUDY_STATUS_CHANGE WHERE STUDENT_ID = ?", longWithdrawn));
+        assertThat(job.preview(LocalDateTime.now()).studentIds()).doesNotContain(longWithdrawn);
     }
 
     @Test

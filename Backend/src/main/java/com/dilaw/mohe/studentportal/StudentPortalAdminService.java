@@ -97,7 +97,11 @@ public class StudentPortalAdminService {
     public StudentUser updateStatus(Integer id, String status) {
         StudentUser u = requireUser(id);
         u.setStatus(status);
-        if (PortalAccountStatus.ACTIVE.equals(status)) u.setFailedLoginAttempts(0);
+        if (PortalAccountStatus.ACTIVE.equals(status)) {
+            // PRT-04: returning an account to ACTIVE opens the timed password lock too.
+            u.setFailedLoginAttempts(0);
+            u.setLockedUntil(null);
+        }
         u.setUpdatedAt(Instant.now());
         StudentUser saved = userRepository.save(u);
         if (!PortalAccountStatus.ACTIVE.equals(status)) {
@@ -121,6 +125,7 @@ public class StudentPortalAdminService {
         u.setPasswordChangedAt(null);
         u.setUpdatedAt(Instant.now());
         u.setFailedLoginAttempts(0);
+        u.setLockedUntil(null); // PRT-04
         if (PortalAccountStatus.LOCKED.equals(u.getStatus())) u.setStatus(PortalAccountStatus.ACTIVE);
         userRepository.save(u);
         sessionRepository.deleteByStudentUserId(u.getStudentUserId());

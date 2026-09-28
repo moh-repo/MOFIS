@@ -28,7 +28,6 @@ class StudentPortalTokenInterceptorTest {
     private static final String CONFIGURED = "http://localhost:4200, https://portal.mohe.gov.ye";
 
     @Mock private StudentUserAuthService studentUserAuthService;
-    @Mock private StudentPortalAuthService legacyAuthService;
     @Mock private StudentPortalTenantScope tenantScope;
     @InjectMocks private StudentPortalTokenInterceptor interceptor;
 
@@ -72,5 +71,26 @@ class StudentPortalTokenInterceptorTest {
         assertThat(proceed).isFalse();
         assertThat(response.getStatus()).isEqualTo(401);
         assertThat(response.getHeader("Access-Control-Allow-Origin")).isEqualTo("http://localhost:4200");
+    }
+
+    @Test
+    @DisplayName("PRT-10: a token with no STUDENTCORE session is a 401; no legacy MOHECORE session is consulted")
+    void legacyTokenIsRefused() throws Exception {
+        ReflectionTestUtils.setField(interceptor, "allowedOrigins", CONFIGURED);
+        org.mockito.Mockito.when(studentUserAuthService.resolveFromToken("legacy-token"))
+                .thenReturn(java.util.Optional.empty());
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/mohe/api/v1/student-portal/me");
+        request.addHeader(StudentPortalTokenInterceptor.HEADER_TOKEN, "legacy-token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        boolean proceed = interceptor.preHandle(request, response, new Object());
+
+        assertThat(proceed).isFalse();
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(request.getAttribute(StudentPortalTokenInterceptor.ATTR_STUDENT_ID)).isNull();
+        assertThat(java.util.Arrays.stream(StudentPortalTokenInterceptor.class.getDeclaredFields())
+                .map(java.lang.reflect.Field::getType))
+                .as("the interceptor no longer holds the legacy auth service")
+                .doesNotContain((Class) StudentPortalAuthService.class);
     }
 }

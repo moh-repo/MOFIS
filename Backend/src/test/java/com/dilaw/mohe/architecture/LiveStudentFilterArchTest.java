@@ -52,7 +52,9 @@ class LiveStudentFilterArchTest {
     /** File name -> a text in the statement that marks the allowed occurrence, and why. */
     private static final Map<String, List<Allowed>> ALLOWED = Map.of(
             "DataRetentionJob.java", List.of(new Allowed("JOIN MOHECORE.STUDENT_STUDY_STATUS s ON s.STUDENT_STUDY_STATUS_ID = d.STUDENT_STUDY_STATUS_ID",
-                    "the retention job anonymises by age, deleted students included on purpose (see studentCandidates)")),
+                    "the retention job anonymises by age, deleted students included on purpose (see studentCandidates)"),
+                    new Allowed("SELECT PICTURE_PATH FROM MOHECORE.STUDENT_DATA WHERE STUDENT_ID = ?",
+                            "PRT-02: the photo of a student being anonymised, deleted or not, is removed with the rest")),
             "PaymentBatchService.java", List.of(new Allowed("SELECT STUDENT_ID, STUDENT_NAME FROM MOHECORE.STUDENT_DATA WHERE STUDENT_ID IN",
                     "names the students on an existing batch's lines; a line paid to a student deleted "
                             + "since then keeps its name")));
