@@ -1,0 +1,52 @@
+# ZAP automation plan for scripts/zap_local.ps1 (desktop ZAP, no Docker).
+# zap_local.ps1 rewrites the TARGET and OUT values, the report names (-anonymous ->
+# -<pass>), inserts a replacer job before passiveScan-config for the authenticated
+# pass, and an alertFilter job from rules.tsv before the first report job.
+env:
+  contexts:
+    - name: mohe
+      urls:
+        - "${TARGET}"
+  parameters:
+    failOnError: true
+    progressToStdout: true
+  vars:
+    TARGET: "http://localhost:8082/mohe"
+    OUT: "zap-out"
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      maxAlertsPerRule: 10
+      scanOnlyInScope: true
+
+  # Every operation of the API, from the springdoc description (dev/staging only;
+  # prod disables /v3/api-docs).
+  - type: openapi
+    parameters:
+      apiUrl: "${TARGET}/v3/api-docs"
+      targetUrl: "${TARGET}"
+      context: mohe
+
+  - type: spider
+    parameters:
+      context: mohe
+      maxDuration: 5
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 10
+
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: "${OUT}"
+      reportFile: report-anonymous.html
+      reportTitle: "MOHE ZAP baseline (anonymous)"
+
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: "${OUT}"
+      reportFile: report-anonymous.json
+      reportTitle: "MOHE ZAP baseline (anonymous)"

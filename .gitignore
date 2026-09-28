@@ -38,10 +38,10 @@ __pycache__/
 Thumbs.db
 desktop.ini
 
-# Agent and tool directories (local only)
+# Agent and tool directories (local only). .zap/ is NOT here: it holds the ZAP rules
+# and gate that ci.yml and scripts/zap_*.ps1 read (BLD-02).
 .claude/
 .gemini/
-.zap/
 
 # QA evidence and test artifacts
 qa-evidence/

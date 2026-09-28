@@ -1,0 +1,6 @@
+# ZAP baseline rule configuration, read by zap-baseline.py -c (ci.yml, scripts/zap_baseline.ps1)
+# and turned into alertFilter rules by scripts/zap_local.ps1.
+# Format: <pluginId><TAB><IGNORE|WARN|FAIL><TAB><rule name and the reason>.
+# Every IGNORE needs a reason; the list starts empty (BLD-02: the previous file was never committed).
+# Example:
+# 10049	IGNORE	Non-storable content - API responses are Cache-Control: no-store on purpose

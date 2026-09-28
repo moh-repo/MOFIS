@@ -257,6 +257,14 @@
 					     and JIT arenas. The suite needs well under 2 GB. Run tests on a JDK 21
 					     toolchain — the crashed JVM was 23; the build targets 21. -->
 					<argLine>@{argLine} -Xmx2g -XX:MaxMetaspaceSize=512m -Dnet.bytebuddy.experimental=true</argLine>
+					<!-- ENV-01: file names are encoded with the OS locale (sun.jnu.encoding), which the
+					     JVM reads from the environment at startup and cannot be changed afterwards.
+					     Under a POSIX/C locale every Arabic file name throws InvalidPathException, so
+					     the forked test JVM always gets a UTF-8 locale whatever the shell has. -->
+					<environmentVariables>
+						<LANG>C.UTF-8</LANG>
+						<LC_ALL>C.UTF-8</LC_ALL>
+					</environmentVariables>
 					<systemPropertyVariables>
 						<!-- application.properties sets no default profile on purpose; the tests
 						     run against the local dev database. -->
@@ -355,6 +363,11 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
 					<mainClass>com.dilaw.mohe.MoheApplication</mainClass>
+					<!-- ENV-01: same UTF-8 locale as the surefire fork, for `mvnw spring-boot:run`. -->
+					<environmentVariables>
+						<LANG>C.UTF-8</LANG>
+						<LC_ALL>C.UTF-8</LC_ALL>
+					</environmentVariables>
 					<systemPropertyVariables>
 						<!-- `mvn spring-boot:run` is a local-development command, so it gets the same
 						     treatment as the surefire tests: application.properties sets no default
