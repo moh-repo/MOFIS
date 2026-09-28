@@ -1,0 +1,583 @@
+<p-toast></p-toast>
+
+<div class="grid" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="col-12">
+    <div class="card">
+      <!-- Header. The title and subtitle were a bare h5 and p with no icon and
+           no row; every other page leads its heading with one. Nothing sits
+           opposite it here, so the block is the row's only child. -->
+      <div class="flex align-items-center mb-4 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3 flex-1">
+          <i class="pi pi-pencil text-primary" style="font-size: 2.5rem"></i>
+          <div>
+            <h2 class="m-0 text-primary">{{ 'STUDENT_CHANGE_REQUESTS.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0">{{ 'STUDENT_CHANGE_REQUESTS.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!--
+        Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+        A wrapping flex row before, with each control carrying its own width
+        (160px / 200px / 130px) and the buttons as a fourth item in the same
+        row. The icons moved from p-input-icon-right to -left as well: they
+        were the only ones in the app on the trailing edge, and rtl.css mirrors
+        whichever class it is handed, so left is correct in both directions.
+      -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-3">
+          <div class="filter-bar__field" [class.filter-bar__field--active]="selectedStatus">
+            <label for="scrStatus">{{ 'STUDENT_CHANGE_REQUESTS.STATUS_FILTER' | translate }}</label>
+            <p-select inputId="scrStatus" [options]="statusOptions" [(ngModel)]="selectedStatus"
+              optionLabel="label" optionValue="value"
+              (onChange)="onSearch()">
+            </p-select>
+          </div>
+
+          <div class="filter-bar__field" [class.filter-bar__field--active]="searchStudentName">
+            <label for="scrName">{{ 'STUDENT_CHANGE_REQUESTS.SEARCH_BY_NAME' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="scrName" pInputText
+                [(ngModel)]="searchStudentName"
+                [placeholder]="'STUDENT_CHANGE_REQUESTS.SEARCH_PLACEHOLDER_NAME' | translate"
+                (keyup.enter)="onSearch()" />
+            </span>
+          </div>
+
+          <div class="filter-bar__field" [class.filter-bar__field--active]="searchStudentId">
+            <label for="scrId">{{ 'STUDENT_CHANGE_REQUESTS.SEARCH_BY_ID' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-hashtag"></i>
+              <input id="scrId" pInputText
+                [(ngModel)]="searchStudentId"
+                [placeholder]="'STUDENT_CHANGE_REQUESTS.SEARCH_PLACEHOLDER_ID' | translate"
+                (keyup.enter)="onSearch()" />
+            </span>
+          </div>
+        </div>
+
+        <div class="filter-bar__actions">
+          <button pButton pRipple icon="pi pi-search"
+            class="p-button-search"
+            [label]="'COMMON.SEARCH' | translate"
+            (click)="onSearch()" [loading]="loading">
+          </button>
+          <!-- Review R2a: every requests page pairs بحث with إعادة تعيين. This
+               was "تحديث" and left the status filter set. -->
+          <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+            [label]="'COMMON.RESET' | translate"
+            [disabled]="!hasFilters" (click)="resetFilters()">
+          </button>
+        </div>
+      </div>
+
+      <p-table [value]="requests"
+        [lazy]="true"
+        (onLazyLoad)="onLazyLoad($event)"
+        [totalRecords]="totalRecords"
+        [loading]="loading"
+        [paginator]="true"
+        [rows]="rows"
+        [(first)]="first"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="{{ 'COMMON.SHOWING' | translate }} {first} {{ 'COMMON.TO' | translate }} {last} {{ 'COMMON.OF' | translate }} {totalRecords}"
+        [sortField]="sortField"
+        [sortOrder]="sortOrder"
+        styleClass="p-datatable-sm p-datatable-gridlines"
+        responsiveLayout="scroll">
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="requestId" style="width:80px">
+              {{ 'STUDENT_CHANGE_REQUESTS.ID' | translate }}
+              <p-sortIcon field="requestId"></p-sortIcon>
+            </th>
+            <th pSortableColumn="studentId" style="width:90px">
+              {{ 'STUDENTS.STUDENT_ID' | translate }}
+              <p-sortIcon field="studentId"></p-sortIcon>
+            </th>
+            <th>{{ 'STUDENT_PORTAL.NAME' | translate }}</th>
+            <th pSortableColumn="submissionId">{{ 'STUDENT_CHANGE_REQUESTS.SUBMISSION' | translate }} <p-sortIcon field="submissionId"></p-sortIcon></th>
+            <th pSortableColumn="fieldName">{{ 'STUDENT_CHANGE_REQUESTS.FIELD' | translate }} <p-sortIcon field="fieldName"></p-sortIcon></th>
+            <th>{{ 'STUDENT_CHANGE_REQUESTS.OLD_VALUE' | translate }}</th>
+            <th>{{ 'STUDENT_CHANGE_REQUESTS.NEW_VALUE' | translate }}</th>
+            <th pSortableColumn="status" style="width:120px">
+              {{ 'STUDENT_CHANGE_REQUESTS.STATUS' | translate }}
+              <p-sortIcon field="status"></p-sortIcon>
+            </th>
+            <th pSortableColumn="createdAt">
+              {{ 'STUDENT_CHANGE_REQUESTS.DATE' | translate }}
+              <p-sortIcon field="createdAt"></p-sortIcon>
+            </th>
+            <th>{{ 'STUDENT_CHANGE_REQUESTS.REVIEWED_BY' | translate }}</th>
+            <th style="width:200px">{{ 'LOOKUP_TABLES.ACTIONS' | translate }}</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-req>
+          <tr>
+            <td>{{ req.requestId }}</td>
+            <td>{{ req.studentId }}</td>
+            <td>{{ req.studentName || '—' }}</td>
+            <td><code class="text-xs surface-100 p-1 border-round">{{ req.submissionId }}</code></td>
+            <td>
+              <span class="font-semibold">{{ fieldLabel(req) }}</span>
+            </td>
+            <td class="text-500"><bdi [attr.dir]="valueDir(req)">{{ shownValue(req, req.oldValue) || '—' }}</bdi></td>
+            <td class="font-semibold text-primary"><bdi [attr.dir]="valueDir(req)">{{ shownValue(req, req.newValue) }}</bdi></td>
+            <td>
+              <p-tag [value]="statusLabel(req.status)" [severity]="req.status | codeSeverity:'change-request-status'"></p-tag>
+            </td>
+            <td class="text-sm text-500">{{ req.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+            <td class="text-sm">
+              @if (req.reviewedByName || req.reviewedAt) {
+                @if (req.reviewedByName) {
+                  <div class="font-semibold">{{ req.reviewedByName }}</div>
+                }
+                @if (req.reviewedAt) {
+                  <div class="text-500 text-xs">{{ req.reviewedAt | date:'dd/MM/yy HH:mm' }}</div>
+                }
+              } @else {
+                <span class="text-500">—</span>
+              }
+            </td>
+            <td>
+              <div class="flex gap-1 flex-wrap align-items-center">
+                <button pButton pRipple
+                  icon="pi pi-eye"
+                  class="p-button-secondary p-button-sm p-button-outlined"
+                  [pTooltip]="'COMMON.VIEW' | translate"
+                  tooltipPosition="top"
+                  (click)="openView(req)">
+                </button>
+                @if (req.status === 'PENDING') {
+                  <button pButton pRipple
+                    icon="pi pi-check"
+                    class="p-button-success p-button-sm p-button-outlined"
+                    [pTooltip]="'STUDENT_CHANGE_REQUESTS.APPROVE' | translate"
+                    tooltipPosition="top"
+                    (click)="openReview(req, 'approve')">
+                  </button>
+                  <button pButton pRipple
+                    icon="pi pi-times"
+                    class="p-button-danger p-button-sm p-button-outlined"
+                    [pTooltip]="'STUDENT_CHANGE_REQUESTS.REJECT' | translate"
+                    tooltipPosition="top"
+                    (click)="openReview(req, 'reject')">
+                  </button>
+                  <button pButton pRipple
+                    icon="pi pi-pencil"
+                    class="p-button-warning p-button-sm p-button-outlined"
+                    [pTooltip]="'STUDENT_CHANGE_REQUESTS.MODIFY_APPROVE' | translate"
+                    tooltipPosition="top"
+                    [disabled]="req.valuesMasked"
+                    (click)="openReview(req, 'modify')">
+                  </button>
+                }
+              </div>
+              @if (req.status !== 'PENDING') {
+                <div class="text-sm text-500">
+                  @if (req.rejectionReason) {
+                    <span>{{ req.rejectionReason }}</span>
+                  }
+                  @if (req.employeeComment && !req.rejectionReason) {
+                    <span>{{ req.employeeComment }}</span>
+                  }
+                  @if (req.status === 'MODIFIED' && req.appliedValue) {
+                    <span>
+                      → {{ shownValue(req, req.appliedValue) }}
+                    </span>
+                  }
+                </div>
+              }
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr><td colspan="11" class="text-center text-500 py-4">{{ 'STUDENT_CHANGE_REQUESTS.NO_REQUESTS' | translate }}</td></tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ REVIEW ═══════════════════════════
+
+     Approve, reject or modify-and-approve one request. Layout (styles: .dv-*
+     in assets/layout/styles/_detail-dialog.scss, the vocabulary every record's
+     Add/Edit dialog shares):
+
+       hero     → request id, field, student; status and submitted chips,
+                  coloured for the decision being made
+       notice   → what confirming will do
+       columns  → The change (field, current, requested) | Student context
+       section  → the decision's own field: value to apply, reason, comment
+       footer   → submitted date; cancel, confirm
+-->
+<p-dialog [(visible)]="showReviewDialog"
+  [style]="{width: '880px', maxWidth: '96vw'}"
+  [header]="reviewTitleKey | translate"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  styleClass="dv-dialog"
+  [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+  <ng-template pTemplate="content">
+    @if (selectedRequest; as req) {
+      <div class="dv-form">
+
+        <!-- Hero -->
+        <div [class]="'dv-hero ' + reviewHeroClass">
+          <div class="dv-hero__badge">
+            <span class="dv-hero__badge-prefix">#</span>{{ req.requestId }}
+          </div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ fieldLabel(req) }}</div>
+            <div class="dv-hero__title">{{ req.studentName || (('STUDENTS.STUDENT_ID' | translate) + ' ' + req.studentId) }}</div>
+            <div class="dv-hero__subtitle">
+              {{ 'STUDENTS.STUDENT_ID' | translate }}: {{ req.studentId }}
+              · {{ 'STUDENT_CHANGE_REQUESTS.SUBMISSION' | translate }}: {{ req.submissionId }}
+            </div>
+            <div class="dv-hero__meta">
+              <p-tag [value]="statusLabel(req.status)" [severity]="req.status | codeSeverity:'change-request-status'" [rounded]="true"></p-tag>
+              <span class="dv-chip">
+                <i class="pi pi-calendar"></i>
+                {{ 'STUDENT_CHANGE_REQUESTS.DATE' | translate }}: {{ req.createdAt | date:'mediumDate' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- What confirming will do -->
+        <div [class]="'dv-notice ' + reviewNoticeClass">
+          <i [class]="'pi ' + reviewNoticeIcon"></i>
+          <span>{{ reviewHintKey | translate }}</span>
+        </div>
+
+        <div class="dv-columns">
+          <!-- The change -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-pencil"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_CHANGE_REQUESTS.THE_CHANGE' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_CHANGE_REQUESTS.FIELD' | translate }}</dt>
+                <dd>{{ fieldLabel(req) }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_CHANGE_REQUESTS.OLD_VALUE' | translate }}</dt>
+                <dd class="dv-dl__muted"><bdi [attr.dir]="valueDir(req)">{{ shownValue(req, req.oldValue) || '—' }}</bdi></dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_CHANGE_REQUESTS.REQUESTED' | translate }}</dt>
+                <dd class="dv-dl__blue"><bdi [attr.dir]="valueDir(req)">{{ shownValue(req, req.newValue) || '—' }}</bdi></dd>
+              </div>
+            </dl>
+            @if (req.valuesMasked) {
+              <div class="dv-notice dv-notice--muted mt-3">
+                <i class="pi pi-eye-slash"></i>
+                <span>{{ 'STUDENT_CHANGE_REQUESTS.VALUES_HIDDEN_HINT' | translate }}</span>
+              </div>
+            }
+          </section>
+
+          <!-- Student context -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-user"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_CHANGE_REQUESTS.STUDENT_CONTEXT' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              @for (row of dialogStudentInfo; track row.label) {
+                <div class="dv-dl__row">
+                  <dt>{{ row.label }}</dt>
+                  <dd>{{ row.value }}</dd>
+                </div>
+              }
+            </dl>
+          </section>
+        </div>
+
+        <!-- The decision -->
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span [class]="'dv-section__icon ' + reviewSectionIconClass"><i [class]="'pi ' + reviewNoticeIcon"></i></span>
+            <div class="dv-section__title">{{ reviewTitleKey | translate }}</div>
+          </header>
+          <div class="dv-fields">
+            @if (reviewMode === 'modify') {
+              <div class="dv-field dv-field--full">
+                <label for="scrApply" class="dv-label">
+                  {{ 'STUDENT_CHANGE_REQUESTS.APPLY_VALUE' | translate }}
+                  <span class="dv-required">*</span>
+                </label>
+                @if (dialogFieldIsLookup) {
+                  <p-select inputId="scrApply" [options]="dialogFieldOptions" [(ngModel)]="modifiedValue"
+                    optionLabel="label" optionValue="value" [filter]="true" [showClear]="false"
+                    appendTo="body" class="w-full"></p-select>
+                } @else if (dialogFieldIsDate) {
+                  <!-- A date field gets a picker, so the value applied is always a date (review R2b). -->
+                  <p-datepicker inputId="scrApply" [(ngModel)]="modifiedDate" dateFormat="yy-mm-dd" appendTo="body"
+                    [showIcon]="true" class="w-full" [invalid]="reviewSubmitted && !modifiedDate"></p-datepicker>
+                } @else {
+                  <input id="scrApply" pInputText [(ngModel)]="modifiedValue" class="w-full" [attr.dir]="valueDir(req)"
+                    [class.ng-invalid]="reviewSubmitted && reviewInvalid" [class.ng-dirty]="reviewSubmitted && reviewInvalid" />
+                }
+                @if (reviewSubmitted && reviewInvalid) {
+                  <small class="dv-error">
+                    <i class="pi pi-exclamation-circle"></i>
+                    {{ 'STUDENT_CHANGE_REQUESTS.APPLY_VALUE_REQUIRED' | translate }}
+                  </small>
+                }
+              </div>
+            }
+            @if (reviewMode === 'reject') {
+              <div class="dv-field dv-field--full">
+                <!-- Required (review R2c): the student is shown it. The server refuses a blank one too. -->
+                <label for="scrReason" class="dv-label">
+                  {{ 'STUDENT_CHANGE_REQUESTS.REJECTION_REASON' | translate }}
+                  <span class="dv-required">*</span>
+                </label>
+                <textarea id="scrReason" pTextarea [(ngModel)]="rejectionReason" [rows]="3" class="w-full"
+                  [class.ng-invalid]="reviewSubmitted && reviewInvalid" [class.ng-dirty]="reviewSubmitted && reviewInvalid"></textarea>
+                @if (reviewSubmitted && reviewInvalid) {
+                  <small class="dv-error">
+                    <i class="pi pi-exclamation-circle"></i>
+                    {{ 'STUDENT_CHANGE_REQUESTS.REJECTION_REASON_REQUIRED' | translate }}
+                  </small>
+                }
+              </div>
+            }
+            @if (reviewMode === 'approve' || reviewMode === 'modify') {
+              <div class="dv-field dv-field--full">
+                <label for="scrComment" class="dv-label">{{ 'STUDENT_CHANGE_REQUESTS.EMPLOYEE_COMMENT' | translate }}</label>
+                <textarea id="scrComment" pTextarea [(ngModel)]="employeeComment" [rows]="2" class="w-full"></textarea>
+              </div>
+            }
+          </div>
+        </section>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint">
+        @if (selectedRequest; as req) {
+          <i class="pi pi-clock"></i>
+          <span>{{ 'STUDENT_CHANGE_REQUESTS.DATE' | translate }}: {{ req.createdAt | date:'short' }}</span>
+        }
+      </div>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" [label]="'COMMON.CANCEL' | translate" icon="pi pi-times"
+          class="p-button-text p-button-secondary" (click)="showReviewDialog = false"></button>
+        <button pButton pRipple type="button" [label]="'COMMON.CONFIRM' | translate"
+          [icon]="reviewMode === 'reject' ? 'pi pi-times' : 'pi pi-check'"
+          [class]="reviewMode === 'reject' ? 'p-button-danger' : 'p-button-success'"
+          [loading]="reviewLoading"
+          (click)="submitReview()">
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ═══════════════════════════ VIEW ═══════════════════════════
+
+     One request, read-only. Same vocabulary as the review above:
+
+       hero     → request id, field, student; status, submitted and reviewer
+                  chips, coloured by status
+       kpis     → status / submitted / reviewed
+       columns  → The change (field, current, requested, applied) | Student
+       notice   → pending: awaiting review
+       section  → the decision: reviewer, dates, reason or comment
+       footer   → close; approve / reject / modify while pending
+-->
+<p-dialog [(visible)]="showViewDialog"
+  [style]="{width: '880px', maxWidth: '96vw'}"
+  [header]="'STUDENT_CHANGE_REQUESTS.REQUEST_DETAILS' | translate"
+  [modal]="true" [maximizable]="true" [draggable]="false" [resizable]="false"
+  styleClass="dv-dialog"
+  [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+  <ng-template pTemplate="content">
+    @if (viewedRequest; as req) {
+      <div class="dv-view">
+
+        <!-- Hero -->
+        <div [class]="'dv-hero ' + heroClassFor(req.status)">
+          <div class="dv-hero__badge">
+            <span class="dv-hero__badge-prefix">#</span>{{ req.requestId }}
+          </div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ fieldLabel(req) }}</div>
+            <div class="dv-hero__title">{{ req.studentName || (('STUDENTS.STUDENT_ID' | translate) + ' ' + req.studentId) }}</div>
+            <div class="dv-hero__subtitle">
+              {{ 'STUDENTS.STUDENT_ID' | translate }}: {{ req.studentId }}
+              · {{ 'STUDENT_CHANGE_REQUESTS.SUBMISSION' | translate }}: {{ req.submissionId }}
+            </div>
+            <div class="dv-hero__meta">
+              <p-tag [value]="statusLabel(req.status)" [severity]="req.status | codeSeverity:'change-request-status'" [rounded]="true"></p-tag>
+              <span class="dv-chip">
+                <i class="pi pi-calendar"></i>
+                {{ 'STUDENT_CHANGE_REQUESTS.DATE' | translate }}: {{ req.createdAt | date:'mediumDate' }}
+              </span>
+              @if (req.reviewedByName) {
+                <span class="dv-chip dv-chip--blue">
+                  <i class="pi pi-user-edit"></i>
+                  {{ 'STUDENT_CHANGE_REQUESTS.REVIEWED_BY' | translate }}: {{ req.reviewedByName }}
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="dv-kpis dv-kpis--cols-3">
+          <div [class]="statusKpiClass(req.status)">
+            <span class="dv-kpi__icon"><i class="pi pi-flag"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_CHANGE_REQUESTS.STATUS' | translate }}</div>
+              <div class="dv-kpi__value">{{ statusLabel(req.status) }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--blue">
+            <span class="dv-kpi__icon"><i class="pi pi-calendar"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_CHANGE_REQUESTS.DATE' | translate }}</div>
+              <div class="dv-kpi__value">{{ (req.createdAt | date:'mediumDate') || '—' }}</div>
+            </div>
+          </div>
+          <div [class]="'dv-kpi ' + (req.reviewedAt ? 'dv-kpi--green' : 'dv-kpi--gray')">
+            <span class="dv-kpi__icon"><i class="pi pi-check-circle"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_CHANGE_REQUESTS.REVIEWED_AT' | translate }}</div>
+              <div class="dv-kpi__value">{{ (req.reviewedAt | date:'mediumDate') || '—' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dv-columns">
+          <!-- The change -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-pencil"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_CHANGE_REQUESTS.THE_CHANGE' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_CHANGE_REQUESTS.FIELD' | translate }}</dt>
+                <dd>{{ fieldLabel(req) }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_CHANGE_REQUESTS.OLD_VALUE' | translate }}</dt>
+                <dd class="dv-dl__muted"><bdi [attr.dir]="valueDir(req)">{{ shownValue(req, req.oldValue) || '—' }}</bdi></dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_CHANGE_REQUESTS.REQUESTED' | translate }}</dt>
+                <dd class="dv-dl__blue"><bdi [attr.dir]="valueDir(req)">{{ shownValue(req, req.newValue) || '—' }}</bdi></dd>
+              </div>
+              @if (req.status === 'MODIFIED') {
+                <div class="dv-dl__row">
+                  <dt>{{ 'STUDENT_CHANGE_REQUESTS.APPLIED_VALUE' | translate }}</dt>
+                  <dd class="dv-dl__green">{{ shownValue(req, req.appliedValue) || '—' }}</dd>
+                </div>
+              }
+            </dl>
+            @if (req.valuesMasked) {
+              <div class="dv-notice dv-notice--muted mt-3">
+                <i class="pi pi-eye-slash"></i>
+                <span>{{ 'STUDENT_CHANGE_REQUESTS.VALUES_HIDDEN_HINT' | translate }}</span>
+              </div>
+            }
+          </section>
+
+          <!-- Student context -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-user"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_CHANGE_REQUESTS.STUDENT_CONTEXT' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              @for (row of viewStudentInfo; track row.label) {
+                <div class="dv-dl__row">
+                  <dt>{{ row.label }}</dt>
+                  <dd>{{ row.value }}</dd>
+                </div>
+              }
+            </dl>
+          </section>
+        </div>
+
+        <!-- The decision -->
+        @if (req.status === 'PENDING') {
+          <div class="dv-notice dv-notice--warn">
+            <i class="pi pi-hourglass"></i>
+            <span>{{ 'STUDENT_CHANGE_REQUESTS.PENDING_HINT' | translate }}</span>
+          </div>
+        } @else {
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-history"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_CHANGE_REQUESTS.DECISION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_CHANGE_REQUESTS.REVIEWED_BY' | translate }}</dt>
+                <dd [class.dv-dl__muted]="!req.reviewedByName">{{ req.reviewedByName || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_CHANGE_REQUESTS.REVIEWED_AT' | translate }}</dt>
+                <dd [class.dv-dl__muted]="!req.reviewedAt">{{ (req.reviewedAt | date:'medium') || '—' }}</dd>
+              </div>
+              @if (req.appliedAt) {
+                <div class="dv-dl__row">
+                  <dt>{{ 'STUDENT_CHANGE_REQUESTS.APPLIED_AT' | translate }}</dt>
+                  <dd>{{ req.appliedAt | date:'medium' }}</dd>
+                </div>
+              }
+              @if (req.rejectionReason) {
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'STUDENT_CHANGE_REQUESTS.REJECTION_REASON' | translate }}</dt>
+                  <dd><p class="dv-notes font-normal">{{ req.rejectionReason }}</p></dd>
+                </div>
+              }
+              @if (req.employeeComment) {
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'STUDENT_CHANGE_REQUESTS.EMPLOYEE_COMMENT' | translate }}</dt>
+                  <dd><p class="dv-notes font-normal">{{ req.employeeComment }}</p></dd>
+                </div>
+              }
+            </dl>
+          </section>
+        }
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint">
+        @if (viewedRequest?.reviewedAt; as reviewedAt) {
+          <i class="pi pi-clock"></i>
+          <span>{{ 'STUDENT_CHANGE_REQUESTS.REVIEWED_AT' | translate }}: {{ reviewedAt | date:'short' }}</span>
+        }
+      </div>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" [label]="'COMMON.CLOSE' | translate" icon="pi pi-times"
+          class="p-button-text p-button-secondary" (click)="showViewDialog = false"></button>
+        @if (viewedRequest?.status === 'PENDING') {
+          <button pButton pRipple type="button" [label]="'STUDENT_CHANGE_REQUESTS.APPROVE' | translate" icon="pi pi-check"
+            class="p-button-outlined p-button-success" (click)="reviewFromView('approve')"></button>
+          <button pButton pRipple type="button" [label]="'STUDENT_CHANGE_REQUESTS.REJECT' | translate" icon="pi pi-times"
+            class="p-button-outlined p-button-danger" (click)="reviewFromView('reject')"></button>
+          <button pButton pRipple type="button" [label]="'STUDENT_CHANGE_REQUESTS.MODIFY_APPROVE' | translate" icon="pi pi-pencil"
+            class="p-button-outlined p-button-warning" [disabled]="viewedRequest?.valuesMasked" (click)="reviewFromView('modify')"></button>
+        }
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>

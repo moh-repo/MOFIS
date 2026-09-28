@@ -1,0 +1,311 @@
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>
+
+<div class="grid">
+  <div class="col-12">
+    <div class="card">
+      <!-- Header Section. `flex-1` on the icon-and-title block, not
+           `justify-content-between`: under `direction: rtl` a flex row already
+           runs right to left, and the global rule in styles.scss reverses every
+           `.flex.justify-content-between` again, which put the heading back on
+           the left and the buttons on the right in Arabic. See
+           src/app/demo/components/page-headings.spec.ts. -->
+      <div class="flex align-items-center mb-4">
+        <div class="flex align-items-center gap-3 flex-1">
+          <i class="pi pi-building text-primary" style="font-size: 2.5rem"></i>
+          <div>
+            <h2 class="m-0 text-primary">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button pButton pRipple type="button"
+            icon="pi pi-plus"
+            class="p-button-success"
+            [attr.aria-label]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK.ADD' | translate"
+            [label]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK.ADD' | translate"
+          (click)="openCreateDialog()" *hasPermission="'SETTINGS.EDIT'"></button>
+          <button pButton pRipple type="button"
+            icon="pi pi-refresh"
+            class="p-button-outlined"
+            [attr.aria-label]="'COMMON.REFRESH' | translate"
+            [label]="'COMMON.REFRESH' | translate"
+            (click)="loadBanks()"
+          [loading]="loading"></button>
+        </div>
+      </div>
+
+      <!-- Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+           The list is held whole, so the table narrows itself. -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-3">
+          <div class="filter-bar__field filter-bar__field--wide" [class.filter-bar__field--active]="filterSearch">
+            <label for="fbSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="fbSearch" pInputText type="text" [(ngModel)]="filterSearch"
+                (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+                [placeholder]="'COMMON.SEARCH' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterCountry !== null">
+            <label for="fbCountry">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.TABLE.COUNTRY_ID' | translate }}</label>
+            <p-select appendTo="body" inputId="fbCountry" [options]="studyCountries" [(ngModel)]="filterCountry"
+              optionLabel="studyCountryInName" optionValue="id" [filter]="studyCountries.length > 8"
+              [showClear]="true" [placeholder]="'COMMON.ALL' | translate"
+              (onChange)="dt.filter(filterCountry, 'studyCountryInId', 'equals')"></p-select>
+          </div>
+        </div>
+        <div class="filter-bar__actions">
+          <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+            [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters(dt)"></button>
+          <span class="filter-bar__hint filter-bar__actions-spacer">{{ 'COMMON.TOTAL' | translate }}: {{ (dt.filteredValue || banks).length }}</span>
+        </div>
+      </div>
+
+      <!-- Data Table -->
+      <p-table #dt
+        [value]="banks"
+        [loading]="loading"
+        [paginator]="true"
+        [rows]="10"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="{{ 'COMMON.TABLE.SHOWING' | translate }} {first} {{ 'COMMON.TABLE.TO' | translate }} {last} {{ 'COMMON.TABLE.OF' | translate }} {totalRecords} {{ 'COMMON.TABLE.ENTRIES' | translate }}"
+        styleClass="p-datatable-gridlines p-datatable-striped"
+        responsiveLayout="scroll"
+        dataKey="id"
+        [globalFilterFields]="['id', 'studyFinanceBankeName']">
+
+
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="id" style="min-width: 8rem">
+              {{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.TABLE.ID' | translate }}
+              <p-sortIcon field="id"></p-sortIcon>
+            </th>
+            <th pSortableColumn="studyFinanceBankeName" style="min-width: 20rem">
+              {{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.TABLE.NAME' | translate }}
+              <p-sortIcon field="studyFinanceBankeName"></p-sortIcon>
+            </th>
+            <th style="min-width: 15rem">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.TABLE.COUNTRY_ID' | translate }}</th>
+            <th pSortableColumn="studyFinanceBankMidate" style="min-width: 12rem">
+              {{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.TABLE.MIDATE' | translate }}
+              <p-sortIcon field="studyFinanceBankMidate"></p-sortIcon>
+            </th>
+            <th style="min-width: 12rem" class="text-center">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.TABLE.ACTIONS' | translate }}</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-bank>
+          <tr>
+            <td>
+              <span class="text-primary font-bold">{{ bank.id }}</span>
+            </td>
+            <td>
+              <div class="flex align-items-center gap-2">
+                <i class="pi pi-building text-500"></i>
+                <span class="font-medium">{{ bank.studyFinanceBankeName }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="text-700">{{ getCountryName(bank.studyCountryInId) }}</span>
+            </td>
+            <td>
+              <span class="text-700">{{ bank.studyFinanceBankMidate | date:'dd/MM/yyyy' }}</span>
+            </td>
+            <td class="text-center">
+              <div class="flex justify-content-center gap-2">
+                <button pButton pRipple type="button"
+                  icon="pi pi-eye"
+                  class="p-button-rounded p-button-text p-button-info"
+                  [pTooltip]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK.VIEW' | translate"
+                  tooltipPosition="top"
+                (click)="openViewDialog(bank)" *hasPermission="'SETTINGS.VIEW'"></button>
+                <button pButton pRipple type="button"
+                  icon="pi pi-pencil"
+                  class="p-button-rounded p-button-text p-button-warning"
+                  [pTooltip]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK.EDIT' | translate"
+                  tooltipPosition="top"
+                (click)="openEditDialog(bank)" *hasPermission="'SETTINGS.EDIT'"></button>
+                <button pButton pRipple type="button"
+                  icon="pi pi-trash"
+                  class="p-button-rounded p-button-text p-button-danger"
+                  [pTooltip]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK.DELETE' | translate"
+                  tooltipPosition="top"
+                (click)="confirmDelete(bank)" *hasPermission="'SETTINGS.EDIT'"></button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="5" class="text-center py-6">
+              <div class="flex flex-column align-items-center gap-3">
+                <i class="pi pi-inbox text-400" style="font-size: 3rem"></i>
+                <h5 class="m-0 text-600">{{ (hasFilters ? 'COMMON.NO_MATCH' : 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.EMPTY.TITLE') | translate }}</h5>
+                <p class="m-0 text-500">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.EMPTY.DESCRIPTION' | translate }}</p>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Dialog -->
+<p-dialog
+  [(visible)]="formDialogVisible"
+  [modal]="true"
+  [style]="{ width: '650px', maxWidth: '95vw' }"
+  [header]="dialogTitle"
+  [draggable]="false"
+  [dismissableMask]="false"
+  styleClass="dv-dialog"
+  (onHide)="hideFormDialog()">
+
+  <ng-template pTemplate="content">
+    <form [formGroup]="bankForm" class="dv-form" autocomplete="off">
+      <div class="dv-hero" [class.dv-hero--new]="dialogMode !== 'edit'">
+        <div class="dv-hero__badge">
+          @if (dialogMode === 'edit') { {{ bankForm.get('id')?.value }} } @else { <i class="pi pi-plus"></i> }
+        </div>
+        <div class="dv-hero__body">
+          <div class="dv-hero__eyebrow">{{ dialogTitle }}</div>
+          <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!bankForm.get('studyFinanceBankeName')?.value">
+            {{ bankForm.get('studyFinanceBankeName')?.value || ('SYSTEM_ADMIN.STUDY_FINANCE_BANK.FORM.NAME' | translate) }}
+          </div>
+        </div>
+      </div>
+
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+          <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+        </header>
+        <div class="dv-fields">
+          <div class="dv-field dv-field--full">
+            <label for="studyFinanceBankeName" class="dv-label">
+              {{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.FORM.NAME' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <input id="studyFinanceBankeName" pInputText formControlName="studyFinanceBankeName" class="w-full" />
+            @if (bankForm.get('studyFinanceBankeName')?.invalid && bankForm.get('studyFinanceBankeName')?.touched) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'COMMON.REQUIRED_FIELD' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="dv-field">
+            <label for="studyCountryInId" class="dv-label">
+              {{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.FORM.COUNTRY_ID' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <p-select appendTo="body" id="studyCountryInId"
+              formControlName="studyCountryInId"
+              [options]="studyCountries"
+              optionLabel="studyCountryInName"
+              optionValue="id"
+              [filter]="true"
+              filterBy="studyCountryInName"
+              [placeholder]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK.FORM.SELECT_COUNTRY' | translate"
+              [showClear]="true"
+            class="w-full"></p-select>
+            @if (bankForm.get('studyCountryInId')?.invalid && bankForm.get('studyCountryInId')?.touched) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'COMMON.REQUIRED_FIELD' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="dv-field">
+            <label for="studyFinanceBankeNameEn" class="dv-label">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.FORM.NAME_EN' | translate }}</label>
+            <input id="studyFinanceBankeNameEn" pInputText formControlName="studyFinanceBankeNameEn" class="w-full" dir="ltr" />
+          </div>
+        </div>
+      </section>
+    </form>
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <small class="dv-footer__hint"><span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+      <div class="dv-footer__actions">
+      <button pButton pRipple type="button"
+        class="p-button-text p-button-secondary"
+        [label]="'COMMON.CANCEL' | translate"
+        icon="pi pi-times"
+      (click)="hideFormDialog()"></button>
+      <button pButton pRipple type="button"
+        class="p-button-primary"
+        [label]="'COMMON.SAVE' | translate"
+        icon="pi pi-check"
+        (click)="saveBank()"
+      [loading]="loading"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- View Dialog -->
+<p-dialog
+  [(visible)]="viewDialogVisible"
+  [modal]="true"
+  [style]="{ width: '600px', maxWidth: '95vw' }"
+  [header]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK.VIEW' | translate"
+  [draggable]="false"
+  styleClass="dv-dialog"
+  (onHide)="selectedBank = null">
+
+  <ng-template pTemplate="content">
+    @if (selectedBank; as bank) {
+      <div class="dv-view">
+        <div class="dv-hero">
+          <div class="dv-hero__badge">{{ bank.id }}</div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.FORM.NAME' | translate }}</div>
+            <div class="dv-hero__title">{{ bank.studyFinanceBankeName }}</div>
+            <div class="dv-hero__meta">
+              <span class="dv-chip"><i class="pi pi-globe"></i> {{ getCountryName(bank.studyCountryInId) }}</span>
+            </div>
+          </div>
+        </div>
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+            <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+          </header>
+          <dl class="dv-dl">
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.FORM.ID' | translate }}</dt><dd>{{ bank.id }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.FORM.NAME' | translate }}</dt><dd>{{ bank.studyFinanceBankeName }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.FORM.COUNTRY_ID' | translate }}</dt><dd>{{ getCountryName(bank.studyCountryInId) }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK.FORM.MIDATE' | translate }}</dt><dd>{{ bank.studyFinanceBankMidate | date:'dd/MM/yyyy' }}</dd></div>
+          </dl>
+        </section>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint"></div>
+      <div class="dv-footer__actions">
+      <button pButton pRipple type="button"
+        class="p-button-text p-button-secondary"
+        [label]="'COMMON.CLOSE' | translate"
+        icon="pi pi-times"
+      (click)="viewDialogVisible = false"></button>
+      <button pButton pRipple type="button"
+        class="p-button-primary"
+        [label]="'COMMON.EDIT' | translate"
+        icon="pi pi-pencil"
+      (click)="editFromView()"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,314 @@
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>
+
+<div class="grid">
+  <div class="col-12">
+    <div class="card">
+      <!-- Header Section. `flex-1` on the icon-and-title block, not
+           `justify-content-between`: under `direction: rtl` a flex row already
+           runs right to left, and the global rule in styles.scss reverses every
+           `.flex.justify-content-between` again, which put the heading back on
+           the left and the buttons on the right in Arabic. See
+           src/app/demo/components/page-headings.spec.ts. -->
+      <div class="flex align-items-center mb-4">
+        <div class="flex align-items-center gap-3 flex-1">
+          <i class="pi pi-file text-primary" style="font-size: 2.5rem"></i>
+          <div>
+            <h2 class="m-0 text-primary">{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0">{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button pButton pRipple type="button"
+            icon="pi pi-plus"
+            class="p-button-success"
+            [attr.aria-label]="'SYSTEM_ADMIN.DOCUMENT_TYPES.ADD' | translate"
+            [label]="'SYSTEM_ADMIN.DOCUMENT_TYPES.ADD' | translate"
+          (click)="openCreateDialog()" *hasPermission="'SETTINGS.EDIT'"></button>
+          <button pButton pRipple type="button"
+            icon="pi pi-refresh"
+            class="p-button-outlined"
+            [attr.aria-label]="'COMMON.REFRESH' | translate"
+            [label]="'COMMON.REFRESH' | translate"
+            (click)="loadDocumentTypes()"
+          [loading]="loading"></button>
+        </div>
+      </div>
+
+      <!-- Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+           The list is held whole, so the table narrows itself. -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-3">
+          <div class="filter-bar__field filter-bar__field--wide" [class.filter-bar__field--active]="filterSearch">
+            <label for="dtSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="dtSearch" pInputText type="text" [(ngModel)]="filterSearch"
+                (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+                [placeholder]="'COMMON.SEARCH' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterActive !== null">
+            <label for="dtActive">{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.TABLE.IS_ACTIVE' | translate }}</label>
+            <p-select inputId="dtActive" [options]="activeOptions" [(ngModel)]="filterActive"
+              optionLabel="label" optionValue="value"
+              (onChange)="dt.filter(filterActive, 'isActive', 'equals')"></p-select>
+          </div>
+        </div>
+        <div class="filter-bar__actions">
+          <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+            [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters(dt)"></button>
+          <span class="filter-bar__hint filter-bar__actions-spacer">{{ 'COMMON.TOTAL' | translate }}: {{ (dt.filteredValue || documentTypes).length }}</span>
+        </div>
+      </div>
+
+      <!-- Data Table -->
+      <p-table #dt
+        [value]="documentTypes"
+        [loading]="loading"
+        [paginator]="true"
+        [rows]="10"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="{{ 'COMMON.TABLE.SHOWING' | translate }} {first} {{ 'COMMON.TABLE.TO' | translate }} {last} {{ 'COMMON.TABLE.OF' | translate }} {totalRecords} {{ 'COMMON.TABLE.ENTRIES' | translate }}"
+        styleClass="p-datatable-gridlines p-datatable-striped"
+        responsiveLayout="scroll"
+        dataKey="documentTypeId"
+        [globalFilterFields]="['documentTypeId', 'documentTypeName', 'documentTypeDescription']">
+
+
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="documentTypeId">
+              {{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.TABLE.ID' | translate }}
+              <p-sortIcon field="documentTypeId"></p-sortIcon>
+            </th>
+            <th pSortableColumn="documentTypeName">
+              {{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.TABLE.NAME' | translate }}
+              <p-sortIcon field="documentTypeName"></p-sortIcon>
+            </th>
+            <th>{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.TABLE.DESCRIPTION' | translate }}</th>
+            <th pSortableColumn="sortOrder" class="text-center">
+              {{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.TABLE.SORT_ORDER' | translate }}
+              <p-sortIcon field="sortOrder"></p-sortIcon>
+            </th>
+            <th pSortableColumn="isActive" class="text-center">
+              {{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.TABLE.IS_ACTIVE' | translate }}
+              <p-sortIcon field="isActive"></p-sortIcon>
+            </th>
+            <th class="text-center">{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.TABLE.ACTIONS' | translate }}</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-type>
+          <tr>
+            <td>
+              <span class="text-primary font-bold">{{ type.documentTypeId }}</span>
+            </td>
+            <td>
+              <div class="flex align-items-center gap-2">
+                <i class="pi pi-file-o text-500"></i>
+                <span class="font-medium">{{ type.documentTypeName }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="text-700">{{ type.documentTypeDescription || '-' }}</span>
+            </td>
+            <td class="text-center">
+              <span class="font-semibold">{{ type.sortOrder }}</span>
+            </td>
+            <td class="text-center">
+              <p-tag [value]="type.isActive ? ('COMMON.YES' | translate) : ('COMMON.NO' | translate)"
+                [severity]="type.isActive ? 'success' : 'danger'"
+              [rounded]="true"></p-tag>
+            </td>
+            <td class="text-center">
+              <div class="flex justify-content-center gap-2">
+                <button pButton pRipple type="button"
+                  icon="pi pi-eye"
+                  class="p-button-rounded p-button-text p-button-info"
+                  [pTooltip]="'SYSTEM_ADMIN.DOCUMENT_TYPES.VIEW' | translate"
+                  tooltipPosition="top"
+                (click)="openViewDialog(type)" *hasPermission="'SETTINGS.VIEW'"></button>
+                <button pButton pRipple type="button"
+                  icon="pi pi-pencil"
+                  class="p-button-rounded p-button-text p-button-warning"
+                  [pTooltip]="'SYSTEM_ADMIN.DOCUMENT_TYPES.EDIT' | translate"
+                  tooltipPosition="top"
+                (click)="openEditDialog(type)" *hasPermission="'SETTINGS.EDIT'"></button>
+                <button pButton pRipple type="button"
+                  icon="pi pi-trash"
+                  class="p-button-rounded p-button-text p-button-danger"
+                  [pTooltip]="'SYSTEM_ADMIN.DOCUMENT_TYPES.DELETE' | translate"
+                  tooltipPosition="top"
+                (click)="confirmDelete(type)" *hasPermission="'SETTINGS.EDIT'"></button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="6" class="text-center py-6">
+              <div class="flex flex-column align-items-center gap-3">
+                <i class="pi pi-inbox text-400" style="font-size: 3rem"></i>
+                <h5 class="m-0 text-600">{{ (hasFilters ? 'COMMON.NO_MATCH' : 'SYSTEM_ADMIN.DOCUMENT_TYPES.EMPTY.TITLE') | translate }}</h5>
+                <p class="m-0 text-500">{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.EMPTY.DESCRIPTION' | translate }}</p>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Dialog -->
+<p-dialog
+  [(visible)]="formDialogVisible"
+  [modal]="true"
+  [style]="{ width: '650px', maxWidth: '95vw' }"
+  [header]="dialogTitle"
+  [draggable]="false"
+  [dismissableMask]="false"
+  styleClass="dv-dialog"
+  (onHide)="hideFormDialog()">
+
+  <ng-template pTemplate="content">
+    <form [formGroup]="documentTypeForm" class="dv-form" autocomplete="off">
+      <div class="dv-hero" [class.dv-hero--new]="dialogMode !== 'edit'">
+        <div class="dv-hero__badge">
+          @if (dialogMode === 'edit') { {{ documentTypeForm.get('documentTypeId')?.value }} } @else { <i class="pi pi-plus"></i> }
+        </div>
+        <div class="dv-hero__body">
+          <div class="dv-hero__eyebrow">{{ dialogTitle }}</div>
+          <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!documentTypeForm.get('documentTypeName')?.value">
+            {{ documentTypeForm.get('documentTypeName')?.value || ('SYSTEM_ADMIN.DOCUMENT_TYPES.FORM.NAME' | translate) }}
+          </div>
+        </div>
+      </div>
+
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+          <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+        </header>
+        <div class="dv-fields">
+          <div class="dv-field dv-field--full">
+            <label for="documentTypeName" class="dv-label">
+              {{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.FORM.NAME' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <input id="documentTypeName" pInputText formControlName="documentTypeName" class="w-full" />
+            @if (documentTypeForm.get('documentTypeName')?.invalid && documentTypeForm.get('documentTypeName')?.touched) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'COMMON.REQUIRED_FIELD' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="dv-field dv-field--full">
+            <label for="documentTypeDescription" class="dv-label">{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.FORM.DESCRIPTION' | translate }}</label>
+            <textarea id="documentTypeDescription" pTextarea formControlName="documentTypeDescription" rows="4" class="w-full"></textarea>
+          </div>
+
+          <div class="dv-field">
+            <label for="sortOrder" class="dv-label">{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.FORM.SORT_ORDER' | translate }}</label>
+            <p-inputnumber id="sortOrder" formControlName="sortOrder" [min]="0" [useGrouping]="false" class="w-full"></p-inputnumber>
+          </div>
+
+          <div class="dv-field">
+            <label class="dv-label">{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.FORM.IS_ACTIVE' | translate }}</label>
+            <div class="flex align-items-center">
+              <p-toggleswitch formControlName="isActive" inputId="isActive"></p-toggleswitch>
+              <label for="isActive" class="mx-3 text-600">
+                {{ documentTypeForm.get('isActive')?.value ? ('COMMON.ACTIVE' | translate) : ('COMMON.INACTIVE' | translate) }}
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+    </form>
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <small class="dv-footer__hint"><span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+      <div class="dv-footer__actions">
+      <button pButton pRipple type="button"
+        class="p-button-text p-button-secondary"
+        [label]="'COMMON.CANCEL' | translate"
+        icon="pi pi-times"
+      (click)="hideFormDialog()"></button>
+      <button pButton pRipple type="button"
+        class="p-button-primary"
+        [label]="'COMMON.SAVE' | translate"
+        icon="pi pi-check"
+        (click)="saveDocumentType()"
+      [loading]="loading"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- View Dialog -->
+<p-dialog
+  [(visible)]="viewDialogVisible"
+  [modal]="true"
+  [style]="{ width: '600px', maxWidth: '95vw' }"
+  [header]="'SYSTEM_ADMIN.DOCUMENT_TYPES.VIEW' | translate"
+  [draggable]="false"
+  styleClass="dv-dialog"
+  (onHide)="selectedDocumentType = null">
+
+  <ng-template pTemplate="content">
+    @if (selectedDocumentType; as doc) {
+      <div class="dv-view">
+        <div class="dv-hero">
+          <div class="dv-hero__badge">{{ doc.documentTypeId }}</div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.FORM.NAME' | translate }}</div>
+            <div class="dv-hero__title">{{ doc.documentTypeName }}</div>
+            <div class="dv-hero__meta">
+              <p-tag [rounded]="true" [severity]="doc.isActive ? 'success' : 'danger'" [value]="(doc.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate"></p-tag>
+            </div>
+          </div>
+        </div>
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+            <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+          </header>
+          <dl class="dv-dl">
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.FORM.ID' | translate }}</dt><dd>{{ doc.documentTypeId }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.FORM.NAME' | translate }}</dt><dd>{{ doc.documentTypeName }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.FORM.DESCRIPTION' | translate }}</dt><dd>{{ doc.documentTypeDescription || '-' }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.FORM.SORT_ORDER' | translate }}</dt><dd>{{ doc.sortOrder }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.DOCUMENT_TYPES.FORM.IS_ACTIVE' | translate }}</dt><dd><p-tag [value]="doc.isActive ? ('COMMON.YES' | translate) : ('COMMON.NO' | translate)"
+                [severity]="doc.isActive ? 'success' : 'danger'"
+              [rounded]="true"></p-tag></dd></div>
+          </dl>
+        </section>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint"></div>
+      <div class="dv-footer__actions">
+      <button pButton pRipple type="button"
+        class="p-button-text p-button-secondary"
+        [label]="'COMMON.CLOSE' | translate"
+        icon="pi pi-times"
+      (click)="viewDialogVisible = false"></button>
+      <button pButton pRipple type="button"
+        class="p-button-primary"
+        [label]="'COMMON.EDIT' | translate"
+        icon="pi pi-pencil"
+      (click)="editFromView()"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>

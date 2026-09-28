@@ -1,0 +1,310 @@
+<div class="login-container" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <!-- Background Elements -->
+  <div class="background-elements">
+    <div class="bg-circle" style="top: 10%; left: 10%;"></div>
+    <div class="bg-circle" style="top: 20%; right: 10%;"></div>
+    <div class="bg-circle" style="bottom: 20%; left: 20%;"></div>
+    <div class="bg-circle" style="bottom: 10%; right: 20%;"></div>
+  </div>
+
+  <div class="login-wrapper">
+    <!-- Header -->
+    <div class="login-header">
+      <div class="logo-section">
+        <img [src]="logoUrl" alt="Logo" class="logo" (error)="onLogoError()">
+      </div>
+      <div class="welcome-title">{{ 'AUTH.WELCOME_BACK' | translate }}</div>
+      <div class="welcome-subtitle">{{ 'AUTH.SIGN_IN_TO_ACCOUNT' | translate }}</div>
+    </div>
+
+    <!-- Screen / Context selectors: Language and Country -->
+    <div class="login-selectors">
+      <div class="selector-group">
+        <label class="selector-label"><i class="pi pi-globe"></i> {{ 'AUTH.LANGUAGE' | translate }}</label>
+        <div class="language-buttons">
+          @for (lang of translationService.getAvailableLanguages(); track lang) {
+            <button type="button"
+              class="lang-btn" [class.active]="translationService.getCurrentLanguage() === lang.code"
+              (click)="switchLanguage(lang.code)" [title]="lang.name">
+              <span class="lang-flag">{{ lang.code === 'ar' ? '🇸🇦' : '🇬🇧' }}</span>
+              <span>{{ lang.name }}</span>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="selector-group">
+        <label class="selector-label"><i class="pi pi-map-marker"></i> {{ 'AUTH.COUNTRY' | translate }}</label>
+        <p-select [options]="studyCountries" [(ngModel)]="selectedCountryId" [ngModelOptions]="{standalone: true}"
+          optionLabel="studyCountryInName" optionValue="id"
+          [placeholder]="'AUTH.SELECT_COUNTRY' | translate"
+          (onChange)="onCountryChange()" styleClass="login-country-dropdown" [showClear]="true"
+          [disabled]="studyCountries.length === 0">
+        </p-select>
+      </div>
+    </div>
+
+    <!-- Login Form -->
+    <div class="login-form-container" [class.shake]="shakeAnimation">
+      @if (mfaStep !== 'none') {
+        <!-- O-16: the second factor. The password has been accepted; nothing is
+             signed in until a code is, or the account enrols. -->
+        <div class="login-form mfa-panel" role="region" [attr.aria-label]="'AUTH.MFA.TITLE' | translate">
+          @if (mfaStep === 'verify') {
+            <h3 class="mfa-title"><i class="pi pi-shield"></i> {{ 'AUTH.MFA.TITLE' | translate }}</h3>
+            <p class="mfa-hint">{{ 'AUTH.MFA.VERIFY_HINT' | translate }}</p>
+            <div class="form-group">
+              <label for="mfaCode" class="form-label"><i class="pi pi-key"></i> {{ 'AUTH.MFA.CODE' | translate }}</label>
+              <input id="mfaCode" type="text" pInputText class="w-full" inputmode="numeric" autocomplete="one-time-code"
+                [placeholder]="'AUTH.MFA.CODE_PLACEHOLDER' | translate" [(ngModel)]="mfaCode"
+                (keyup.enter)="submitMfaCode()" [disabled]="mfaBusy">
+              <small class="mfa-hint">{{ 'AUTH.MFA.USE_RECOVERY' | translate }}</small>
+            </div>
+            <div class="submit-section">
+              <button pButton pRipple type="button" class="login-button" icon="pi pi-check"
+                [label]="'AUTH.MFA.VERIFY_BUTTON' | translate" [loading]="mfaBusy" [disabled]="mfaBusy || !mfaCode"
+                (click)="submitMfaCode()"></button>
+            </div>
+          }
+          @if (mfaStep === 'enrol') {
+            <h3 class="mfa-title"><i class="pi pi-shield"></i> {{ 'AUTH.MFA.ENROL_TITLE' | translate }}</h3>
+            <p class="mfa-hint">{{ 'AUTH.MFA.ENROL_INTRO' | translate }}</p>
+            @if (mfaEnrolment) {
+              <div class="mfa-qr">
+                <img [src]="mfaEnrolment.qrPng" width="220" height="220" [alt]="'AUTH.MFA.ENROL_TITLE' | translate">
+                <div class="mfa-secret">
+                  <span>{{ 'AUTH.MFA.SECRET_LABEL' | translate }}</span>
+                  <code>{{ mfaEnrolment.secret }}</code>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="mfaEnrolCode" class="form-label"><i class="pi pi-key"></i> {{ 'AUTH.MFA.CODE' | translate }}</label>
+                <input id="mfaEnrolCode" type="text" pInputText class="w-full" inputmode="numeric" autocomplete="one-time-code"
+                  [placeholder]="'AUTH.MFA.CODE_PLACEHOLDER' | translate" [(ngModel)]="mfaCode"
+                  (keyup.enter)="confirmEnrolment()" [disabled]="mfaBusy">
+              </div>
+              <div class="submit-section">
+                <button pButton pRipple type="button" class="login-button" icon="pi pi-check"
+                  [label]="'AUTH.MFA.CONFIRM_BUTTON' | translate" [loading]="mfaBusy" [disabled]="mfaBusy || !mfaCode"
+                  (click)="confirmEnrolment()"></button>
+              </div>
+            } @else {
+              <div class="mfa-loading"><i class="pi pi-spin pi-spinner"></i></div>
+            }
+          }
+          @if (mfaStep === 'codes') {
+            <h3 class="mfa-title"><i class="pi pi-lock"></i> {{ 'AUTH.MFA.CODES_TITLE' | translate }}</h3>
+            <p class="mfa-hint">{{ 'AUTH.MFA.CODES_INTRO' | translate }}</p>
+            <ul class="mfa-recovery-codes">
+              @for (code of recoveryCodes; track code) {
+                <li><code>{{ code }}</code></li>
+              }
+            </ul>
+            <p class="mfa-hint mfa-warning"><i class="pi pi-exclamation-triangle"></i> {{ 'AUTH.MFA.CODES_WARNING' | translate }}</p>
+            <div class="submit-section mfa-actions">
+              <button pButton pRipple type="button" class="p-button-outlined" icon="pi pi-copy"
+                [label]="'AUTH.MFA.COPY' | translate" (click)="copyRecoveryCodes()"></button>
+              <button pButton pRipple type="button" class="login-button" icon="pi pi-sign-in"
+                [label]="'AUTH.MFA.CONTINUE' | translate" (click)="continueAfterRecoveryCodes()"></button>
+            </div>
+          }
+          @if (mfaStep !== 'codes') {
+            <a class="forgot-password mfa-back" href="#" role="button" (click)="cancelMfa(); $event.preventDefault()">
+              <i class="pi pi-arrow-left"></i> {{ 'AUTH.MFA.BACK' | translate }}
+            </a>
+          }
+        </div>
+      } @else {
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+        <!-- Username Field -->
+        <div class="form-group">
+          <label for="username" class="form-label">
+            <i class="pi pi-user"></i>
+            {{ 'AUTH.USERNAME' | translate }}
+          </label>
+          <input
+            autocomplete="username"
+            id="username"
+            type="text"
+            formControlName="username"
+            pInputText
+            class="form-input"
+            [attr.aria-label]="'AUTH.USERNAME' | translate"
+            [attr.aria-describedby]="submitted && f['username'].errors ? 'username-errors' : null"
+            [ngClass]="{ 'ng-invalid ng-dirty': submitted && f['username'].errors }"
+            [placeholder]="'AUTH.ENTER_USERNAME' | translate"
+            (input)="onUsernameChange()">
+          @if (submitted && f['username'].errors) {
+            <div class="error-message" id="username-errors" role="alert">
+              @if (f['username'].errors['required']) {
+                <div>{{ 'AUTH.USERNAME_REQUIRED' | translate }}</div>
+              }
+              @if (f['username'].errors['minlength']) {
+                <div>{{ 'AUTH.USERNAME_MIN_LENGTH' | translate }}</div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Password Field -->
+        <div class="form-group">
+          <label for="password" class="form-label">
+            <i class="pi pi-lock"></i>
+            {{ 'AUTH.PASSWORD' | translate }}
+          </label>
+          <div class="password-input-container">
+            <input
+              autocomplete="current-password"
+              id="password"
+              [type]="hidePassword ? 'password' : 'text'"
+              formControlName="password"
+              class="form-input"
+              [attr.aria-label]="'AUTH.PASSWORD' | translate"
+              [attr.aria-describedby]="submitted && f['password'].errors ? 'password-errors' : null"
+              [ngClass]="{ 'ng-invalid ng-dirty': submitted && f['password'].errors }"
+              [placeholder]="'AUTH.ENTER_PASSWORD' | translate">
+            <button
+              type="button"
+              class="password-toggle"
+              [attr.aria-label]="'AUTH.TOGGLE_PASSWORD_VISIBILITY' | translate"
+              (click)="hidePassword = !hidePassword">
+              <i [class]="hidePassword ? 'pi pi-eye' : 'pi pi-eye-slash'"></i>
+            </button>
+          </div>
+          @if (submitted && f['password'].errors) {
+            <div class="error-message" id="password-errors" role="alert">
+              @if (f['password'].errors['required']) {
+                <div>{{ 'AUTH.PASSWORD_REQUIRED' | translate }}</div>
+              }
+              @if (f['password'].errors['minlength']) {
+                <div>{{ 'AUTH.PASSWORD_MIN_LENGTH' | translate }}</div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- CAPTCHA Section -->
+        <div class="captcha-section">
+          <label for="captcha" class="form-label">
+            <i class="pi pi-shield"></i>
+            {{ 'AUTH.SECURITY_VERIFICATION' | translate }}
+          </label>
+          <!--
+            The image is drawn by the server and the answer stays there. This
+            used to be a <canvas> filled in by the component, with the expected
+            text in a field beside it — readable in the debugger, and skipped
+            entirely by anything posting straight to the API.
+          -->
+          <div class="captcha-container" role="img" [attr.aria-label]="'AUTH.SECURITY_VERIFICATION' | translate">
+            @if (captchaImageUrl) {
+              <img [src]="captchaImageUrl" class="captcha-image" width="200" height="80"
+                [alt]="'AUTH.SECURITY_VERIFICATION' | translate">
+            } @else {
+              <div class="captcha-image captcha-image--empty">
+                <i class="pi" [ngClass]="captchaLoading ? 'pi-spin pi-spinner' : 'pi-image'"></i>
+              </div>
+            }
+            <button
+              type="button"
+              class="refresh-btn"
+              [attr.aria-label]="'AUTH.REFRESH_CAPTCHA' | translate"
+              (click)="refreshCaptcha()">
+              <i class="pi pi-refresh"></i>
+            </button>
+          </div>
+          <input
+            type="text"
+            id="captcha"
+            class="captcha-input"
+            [(ngModel)]="userCaptchaInput"
+            [ngModelOptions]="{standalone: true}"
+            [placeholder]="'AUTH.ENTER_CODE_ABOVE' | translate"
+            [attr.aria-label]="'AUTH.ENTER_CODE_ABOVE' | translate"
+            style="margin-top: 0.5rem;"
+            required
+            autocomplete="off">
+          @if (submitted && (!userCaptchaInput || userCaptchaInput.trim() === '')) {
+            <div class="error-message">
+              {{ 'AUTH.CAPTCHA_REQUIRED' | translate }}
+            </div>
+          }
+        </div>
+
+        <!--
+          What the last reply from the server said. It leads with the failure —
+          the old banner announced only a number, next to a toast that had
+          already gone, so the screen never actually said the sign-in was
+          refused.
+        -->
+        @if (isLocked) {
+          <div class="attempt-counter">
+            <div class="alert-card alert-card--locked" role="alert">
+              <div class="alert-content">
+                <i class="pi pi-lock"></i>
+                <span>
+                  @if (lockedIndefinitely) {
+                    {{ 'AUTH.LOCKED_UNTIL_ADMIN' | translate }}
+                  } @else {
+                    {{ lockedMinutesMessage }}
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+        } @else if (remainingAttempts > 0 && lastErrorMessage) {
+          <div class="attempt-counter">
+            <div class="alert-card" role="alert">
+              <div class="alert-content">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span>{{ attemptsRemainingMessage }}</span>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- Login Options -->
+        <div class="login-options">
+          <div class="remember-me">
+            <p-checkbox formControlName="remember" [binary]="true"></p-checkbox>
+            <label for="remember">{{ 'AUTH.REMEMBER_ME' | translate }}</label>
+          </div>
+          <a
+            class="forgot-password"
+            href="#"
+            role="button"
+            [attr.aria-label]="'AUTH.FORGOT_PASSWORD' | translate"
+            (click)="showForgotPasswordInfo(); $event.preventDefault()">
+            {{ 'AUTH.FORGOT_PASSWORD' | translate }}
+          </a>
+        </div>
+
+        <!-- Submit Section -->
+        <div class="submit-section">
+          <button
+            pButton
+            pRipple
+            type="submit"
+            class="login-button"
+            [attr.aria-label]="loading ? ('AUTH.SIGNING_IN' | translate) : ('AUTH.SIGN_IN_BUTTON' | translate)"
+            [loading]="loading"
+            [disabled]="loading">
+            @if (!loading) {
+              <i class="pi pi-sign-in"></i>
+            }
+            <span>{{ loading ? ('AUTH.SIGNING_IN' | translate) : ('AUTH.SIGN_IN_BUTTON' | translate) }}</span>
+          </button>
+        </div>
+      </form>
+      }
+    </div>
+
+    <!-- Footer -->
+    <div class="login-footer">
+      <div class="footer-text">
+        <i class="pi pi-shield"></i>
+        {{ 'AUTH.SECURITY_PRIORITY' | translate }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<p-toast></p-toast>

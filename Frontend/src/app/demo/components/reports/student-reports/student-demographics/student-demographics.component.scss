@@ -1,0 +1,85 @@
+// Student Demographics Report Styles
+
+.card {
+  margin-bottom: 1rem;
+}
+
+.surface-card {
+  transition: all 0.3s ease;
+}
+
+.surface-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.text-primary {
+  color: var(--primary-color) !important;
+}
+
+.text-green-500 {
+  color: #10b981 !important;
+}
+
+.text-orange-500 {
+  color: #f59e0b !important;
+}
+
+.text-purple-500 {
+  color: #8b5cf6 !important;
+}
+
+.text-blue-500 {
+  color: #3b82f6 !important;
+}
+
+.text-pink-500 {
+  color: #ec4899 !important;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.bg-gray-200 {
+  background-color: #e5e7eb;
+}
+
+.bg-blue-500 {
+  background-color: #3b82f6;
+}
+
+.bg-pink-500 {
+  background-color: #ec4899;
+}
+
+.h-2 {
+  height: 0.5rem;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+.w-full {
+  width: 100%;
+}
+
+// Print styles
+@media print {
+  .p-button,
+  .p-select,
+  .p-checkbox {
+    display: none !important;
+  }
+  
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+  
+  .surface-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+}

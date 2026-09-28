@@ -1,0 +1,95 @@
+<div class="portal-page fs-page">
+
+  <div class="sp-intro">
+    <p class="sp-intro__text">{{ 'STUDENT_PORTAL.FINANCE_INFO' | translate }}</p>
+  </div>
+
+  <nz-spin [nzSpinning]="loading">
+
+    @if (errorKey) {
+      <nz-alert nzType="error" [nzMessage]="errorKey | translate" nzShowIcon class="fs-alert"></nz-alert>
+    }
+
+    @if (!loading && !errorKey && !finance) {
+      <nz-result
+        nzStatus="info"
+        [nzTitle]="'STUDENT_PORTAL.NO_FINANCE_RECORD' | translate">
+      </nz-result>
+    }
+
+    @if (finance) {
+      <!-- Status banner -->
+      <div class="fs-status-banner" [class.fs-status-banner--received]="statusReceived">
+        <span nz-icon [nzType]="statusReceived ? 'check-circle' : 'clock-circle'" nzTheme="fill" class="fs-status-icon"></span>
+        <div>
+          <p class="fs-status-label">{{ 'STUDENT_PORTAL.STATUS' | translate }}</p>
+          <p class="fs-status-value">{{ statusLabel }}</p>
+        </div>
+      </div>
+      <!-- Finance details grid -->
+      <nz-row [nzGutter]="[16, 16]" class="fs-grid">
+        <nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+          <div class="fs-info-card">
+            <span class="fs-info-icon" nz-icon nzType="idcard" nzTheme="outline"></span>
+            <div>
+              <p class="fs-info-label">{{ 'STUDENT_PORTAL.FINANCE_ID' | translate }}</p>
+              <p class="fs-info-val">{{ finance.studentFinId || '—' }}</p>
+            </div>
+          </div>
+        </nz-col>
+        <nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+          <div class="fs-info-card fs-info-card--blue">
+            <span class="fs-info-icon" nz-icon nzType="dollar" nzTheme="outline"></span>
+            <div>
+              <p class="fs-info-label">{{ 'STUDENT_PORTAL.RECEIVED_AMOUNT' | translate }}</p>
+              <p class="fs-info-val fs-info-val--large">
+                {{ finance.studentFinRecievedAmount != null ? (finance.studentFinRecievedAmount | number:'1.0-2') : '—' }}
+              </p>
+            </div>
+          </div>
+        </nz-col>
+        <nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+          <div class="fs-info-card">
+            <span class="fs-info-icon" nz-icon nzType="calendar" nzTheme="outline"></span>
+            <div>
+              <p class="fs-info-label">{{ 'STUDENT_PORTAL.CHECK_DATE' | translate }}</p>
+              <p class="fs-info-val">{{ finance.studyCheckDate ? (finance.studyCheckDate | localeDate:'mediumDate') : '—' }}</p>
+            </div>
+          </div>
+        </nz-col>
+        <nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+          <div class="fs-info-card">
+            <span class="fs-info-icon" nz-icon nzType="field-time" nzTheme="outline"></span>
+            <div>
+              <p class="fs-info-label">{{ 'STUDENT_PORTAL.RECEIVED_YEAR_MONTH' | translate }}</p>
+              <p class="fs-info-val">{{ finance.studentFinRecievedYear || '—' }} / {{ finance.studentFinRecievedMonth || '—' }}</p>
+            </div>
+          </div>
+        </nz-col>
+        @if (finance.studyCountryInName) {
+          <nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+            <div class="fs-info-card">
+              <span class="fs-info-icon" nz-icon nzType="global" nzTheme="outline"></span>
+              <div>
+                <p class="fs-info-label">{{ 'STUDENT_PORTAL.STUDY_COUNTRY' | translate }}</p>
+                <p class="fs-info-val">{{ finance.studyCountryInName }}</p>
+              </div>
+            </div>
+          </nz-col>
+        }
+        @if (finance.studyGovInName) {
+          <nz-col [nzXs]="24" [nzSm]="12" [nzMd]="8">
+            <div class="fs-info-card">
+              <span class="fs-info-icon" nz-icon nzType="environment" nzTheme="outline"></span>
+              <div>
+                <p class="fs-info-label">{{ 'STUDENT_PORTAL.STUDY_GOVERNMENT' | translate }}</p>
+                <p class="fs-info-val">{{ finance.studyGovInName }}</p>
+              </div>
+            </div>
+          </nz-col>
+        }
+      </nz-row>
+    }
+
+  </nz-spin>
+</div>

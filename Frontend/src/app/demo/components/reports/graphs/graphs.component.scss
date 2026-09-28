@@ -1,0 +1,15 @@
+/* Graphs Component Styles */
+
+.surface-card {
+    transition: all 0.3s ease;
+}
+
+.surface-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+.surface-ground {
+    min-height: 400px;
+}
+

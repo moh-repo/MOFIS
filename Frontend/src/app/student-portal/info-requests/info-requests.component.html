@@ -1,0 +1,211 @@
+<div class="portal-page info-requests-page">
+  <div class="sp-intro">
+    <p class="sp-intro__text">{{ 'STUDENT_PORTAL.PAGE_INFO_REQUESTS_SUB' | translate }}</p>
+  </div>
+
+  <!-- Filtered through the server: the endpoint takes a status, so this narrows
+       the whole list and not just the page on screen. -->
+  <div class="sp-toolbar">
+    <nz-select class="sp-toolbar__filter" [(ngModel)]="statusFilter" nzAllowClear
+      (ngModelChange)="onStatusFilterChange()"
+      [nzPlaceHolder]="'STUDENT_PORTAL.STATUS' | translate">
+      @for (status of statusOptions; track status) {
+        <nz-option [nzValue]="status" [nzLabel]="requestStatusLabel(status)"></nz-option>
+      }
+    </nz-select>
+    <span class="sp-toolbar__count">
+      {{ 'STUDENT_PORTAL.SHOWING_COUNT' | translate:{ shown: requests.length, total: totalElements } }}
+    </span>
+  </div>
+
+  <nz-card>
+    <nz-spin [nzSpinning]="loading">
+      <div class="portal-table-wrapper sp-stack">
+        <nz-table #reqTable [nzData]="requests" [nzShowPagination]="true" [nzFrontPagination]="false"
+          [nzPageIndex]="page + 1" [nzPageSize]="size" [nzTotal]="totalElements" (nzQueryParams)="onQueryParams($event)">
+          <thead>
+            <tr>
+              <th>{{ 'STUDENT_PORTAL.TITLE' | translate }}</th>
+              <th>{{ 'STUDENT_PORTAL.TYPE' | translate }}</th>
+              <th>{{ 'STUDENT_PORTAL.DUE_DATE' | translate }}</th>
+              <th>{{ 'STUDENT_PORTAL.STATUS' | translate }}</th>
+              <th nzWidth="100px">{{ 'STUDENT_PORTAL.ACTIONS' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (req of reqTable.data; track req) {
+              <tr>
+                <td [attr.data-label]="'STUDENT_PORTAL.TITLE' | translate">{{ req.title }}</td>
+                <td [attr.data-label]="'STUDENT_PORTAL.TYPE' | translate"><nz-tag>{{ kindLabel(req.requestType) }}</nz-tag></td>
+                <td [attr.data-label]="'STUDENT_PORTAL.DUE_DATE' | translate">{{ req.dueDate | localeDate:'mediumDate' }}</td>
+                <td [attr.data-label]="'STUDENT_PORTAL.STATUS' | translate">
+                  <nz-tag [nzColor]="getStatusColor(req.status)">{{ requestStatusLabel(req.status) }}</nz-tag>
+                  <!-- A cancelled request is not under review any more, whatever its
+                       review column still says (live QA L9, 24 Sep 2026). -->
+                  @if (req.reviewStatus && req.status !== 'CANCELLED') {
+                    <nz-tag [nzColor]="getReviewColor(req.reviewStatus)" class="review-tag">{{ reviewStatusLabel(req.reviewStatus) }}</nz-tag>
+                  }
+                </td>
+                <td>
+                  <button nz-button nzType="link" nzSize="small" (click)="viewDetail(req)">
+                    <span nz-icon nzType="eye" nzTheme="outline"></span>
+                    {{ 'STUDENT_PORTAL.VIEW' | translate }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+          <ng-template #nzTableNoResult>
+            <div class="sp-state">
+              <span class="sp-state__icon" nz-icon [nzType]="statusFilter ? 'search' : 'form'" nzTheme="outline"></span>
+              <p class="sp-state__title">
+                {{ (statusFilter ? 'STUDENT_PORTAL.NO_MATCHES' : 'STUDENT_PORTAL.NO_INFO_REQUESTS') | translate }}
+              </p>
+              @if (statusFilter) {
+                <button nz-button nzType="link" (click)="statusFilter = null; onStatusFilterChange()">
+                  {{ 'STUDENT_PORTAL.CLEAR_FILTERS' | translate }}
+                </button>
+              }
+            </div>
+          </ng-template>
+        </nz-table>
+      </div>
+    </nz-spin>
+  </nz-card>
+</div>
+
+<!-- Detail modal. The title is shown as text through a template: a string title is
+rendered as markup by the modal (live QA M19). -->
+<ng-template #detailTitle>{{ selected?.title }}</ng-template>
+<nz-modal [(nzVisible)]="showDetailModal" nzWrapClassName="sp-dialog" nzWidth="660px"
+  [nzTitle]="detailTitle" [nzFooter]="detailFooter" (nzOnCancel)="closeDetail()">
+  <ng-container *nzModalContent>
+    @if (selected) {
+      <div class="sp-dlg-summary">
+        <span class="sp-dlg-summary__icon"><span nz-icon nzType="form" nzTheme="outline"></span></span>
+        <div class="sp-dlg-summary__body">
+          <span class="sp-dlg-summary__eyebrow">{{ 'STUDENT_PORTAL.TYPE' | translate }}</span>
+          <span class="sp-dlg-summary__headline">{{ kindLabel(selected.requestType) }}</span>
+          @if (selected.dueDate) {
+            <span class="sp-dlg-summary__meta" [class.sp-dlg-summary__meta--alert]="selected.status === 'OVERDUE'">
+              <span nz-icon nzType="clock-circle" nzTheme="outline"></span>
+              {{ 'STUDENT_PORTAL.DUE_DATE' | translate }}: {{ selected.dueDate | localeDate:'mediumDate' }}
+            </span>
+          }
+        </div>
+        <div class="sp-dlg-summary__status">
+          <nz-tag [nzColor]="getStatusColor(selected.status)">{{ requestStatusLabel(selected.status) }}</nz-tag>
+          <!-- A cancelled request is not under review any more (live QA L9). -->
+          @if (selected.reviewStatus && selected.status !== 'CANCELLED') {
+            <nz-tag [nzColor]="getReviewColor(selected.reviewStatus)" [attr.title]="'STUDENT_PORTAL.REVIEW' | translate">{{ reviewStatusLabel(selected.reviewStatus) }}</nz-tag>
+          }
+        </div>
+      </div>
+
+      @if (selected.description) {
+        <section class="sp-dlg-section">
+          <h4 class="sp-dlg-section__title">
+            <span nz-icon nzType="question-circle" nzTheme="outline"></span>
+            {{ 'STUDENT_PORTAL.WHAT_IS_REQUESTED' | translate }}
+          </h4>
+          <p class="sp-dlg-prose" dir="auto">{{ selected.description }}</p>
+        </section>
+      }
+
+      @if (isApproved()) {
+        <nz-alert class="sp-dlg-alert" nzType="success" [nzMessage]="'STUDENT_PORTAL.APPROVED_LOCK' | translate" nzShowIcon></nz-alert>
+      }
+
+      <!-- What was sent last time. The review outcome is the tag in the summary. -->
+      @if (selected.status === 'RESPONDED' && !isApproved()) {
+        <section class="sp-dlg-section">
+          <h4 class="sp-dlg-section__title">
+            <span nz-icon nzType="message" nzTheme="outline"></span>
+            {{ 'STUDENT_PORTAL.YOUR_RESPONSE' | translate }}
+            @if (selected.responseAt) {
+              <span class="sp-dlg-section__aside">{{ selected.responseAt | localeDate:'medium' }}</span>
+            }
+          </h4>
+          @if (selected.responseText) {
+            <p class="sp-dlg-prose" dir="auto">{{ selected.responseText }}</p>
+          }
+          @if (selected.responseDocumentId) {
+            <div class="sp-dlg-actions">
+              <button nz-button nzSize="small" (click)="downloadResponseDoc()">
+                <span nz-icon nzType="download" nzTheme="outline"></span> {{ 'STUDENT_PORTAL.DOWNLOAD_ATTACHED' | translate }}
+              </button>
+            </div>
+          }
+          @if (selected.rejectionReason) {
+            <nz-alert class="sp-dlg-alert" nzType="warning" [nzMessage]="('STUDENT_PORTAL.REASON' | translate) + ': ' + selected.rejectionReason" nzShowIcon></nz-alert>
+          }
+          @if (selected.reviewStatus === 'REJECTED') {
+            <p class="sp-hint resubmit-hint">{{ 'STUDENT_PORTAL.RESUBMIT_HINT' | translate }}</p>
+          }
+        </section>
+      }
+
+      <!-- The reply form. Its two send buttons are in the footer, beside Close. -->
+      @if (canRespond()) {
+        <section class="sp-dlg-section">
+          <h4 class="sp-dlg-section__title">
+            <span nz-icon nzType="edit" nzTheme="outline"></span>
+            {{ 'STUDENT_PORTAL.SEND_REPLY' | translate }}
+          </h4>
+          <div nz-form nzLayout="vertical">
+            <nz-form-item>
+              <nz-form-label nzFor="info-request-response">{{ 'STUDENT_PORTAL.YOUR_RESPONSE_TEXT' | translate }}</nz-form-label>
+              <nz-form-control>
+                <textarea id="info-request-response" nz-input dir="auto" [(ngModel)]="responseText"
+                  [nzAutosize]="{ minRows: 4, maxRows: 10 }"
+                  [placeholder]="'STUDENT_PORTAL.RESPONSE_PLACEHOLDER' | translate"></textarea>
+              </nz-form-control>
+            </nz-form-item>
+            <nz-form-item>
+              <nz-form-label>{{ 'STUDENT_PORTAL.ATTACH_FILE_OPTIONAL' | translate }}</nz-form-label>
+              <nz-form-control [nzExtra]="'STUDENT_PORTAL.DOCUMENT_FILE_HINT' | translate">
+                <input #responseFileInput type="file" class="sp-dlg-file__input" accept=".pdf,.jpg,.jpeg,.png,.gif"
+                  (change)="onFileSelected($event)" />
+                <div class="sp-dlg-file" [class.sp-dlg-file--chosen]="!!responseFile">
+                  <span class="sp-dlg-file__icon" nz-icon [nzType]="responseFile ? 'file-done' : 'upload'" nzTheme="outline"></span>
+                  @if (responseFile) {
+                    <span class="sp-dlg-file__name">{{ responseFile.name }}</span>
+                    <span class="sp-dlg-file__size">{{ (responseFile.size / 1024 | number:'1.0-0') }} KB</span>
+                    <button nz-button nzType="link" nzDanger nzSize="small"
+                      (click)="responseFile = null; responseFileInput.value = ''">
+                      {{ 'COMMON.REMOVE' | translate }}
+                    </button>
+                  } @else {
+                    <span class="sp-dlg-file__name">{{ 'STUDENT_PORTAL.ATTACH_FILE_OPTIONAL' | translate }}</span>
+                    <button nz-button nzSize="small" (click)="responseFileInput.click()">
+                      {{ 'STUDENT_PORTAL.CHOOSE_FILE' | translate }}
+                    </button>
+                  }
+                </div>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <p class="sp-hint">{{ 'STUDENT_PORTAL.SUBMIT_DATA_HINT' | translate }}</p>
+        </section>
+      }
+
+      <!-- Outside the form: a failed download is reported here too. -->
+      @if (submitErrorKey || submitError) {
+        <nz-alert class="sp-dlg-alert" nzType="error"
+          [nzMessage]="submitErrorKey ? (submitErrorKey | translate) : submitError" nzShowIcon></nz-alert>
+      }
+    }
+  </ng-container>
+</nz-modal>
+<ng-template #detailFooter>
+  <button nz-button (click)="closeDetail()">{{ 'STUDENT_PORTAL.CLOSE' | translate }}</button>
+  @if (canRespond()) {
+    <button nz-button (click)="submitResponse(false)" [nzLoading]="submitting">
+      {{ 'STUDENT_PORTAL.SUBMIT_RESPONSE_ONLY' | translate }}
+    </button>
+    <button nz-button nzType="primary" (click)="submitResponse(true)" [nzLoading]="submitting">
+      <span nz-icon nzType="upload" nzTheme="outline"></span>
+      {{ 'STUDENT_PORTAL.SUBMIT_RESPONSE_AND_DATA' | translate }}
+    </button>
+  }
+</ng-template>

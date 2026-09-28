@@ -1,0 +1,335 @@
+<p-toast></p-toast>
+<p-confirmdialog [style]="{ width: '28rem' }"></p-confirmdialog>
+<div class="grid">
+  <div class="col-12">
+    <div class="card">
+      <!-- Header Section. `flex-1` on the icon-and-title block, not
+           `justify-content-between`: under `direction: rtl` a flex row already
+           runs right to left, and the global rule in styles.scss reverses every
+           `.flex.justify-content-between` again, which put the heading back on
+           the left and the buttons on the right in Arabic. See
+           src/app/demo/components/page-headings.spec.ts. -->
+      <div class="flex align-items-center mb-4 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3 flex-1">
+          <i class="pi pi-users text-primary" style="font-size: 2.5rem"></i>
+          <div>
+            <h2 class="m-0 text-primary">{{ 'STUDENT_ADMIN.GROUPS.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0">{{ 'STUDENT_ADMIN.GROUPS.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-success"
+            [attr.aria-label]="'STUDENT_ADMIN.GROUPS.NEW_GROUP' | translate"
+            [label]="'STUDENT_ADMIN.GROUPS.NEW_GROUP' | translate" (click)="openNew()"></button>
+          <button pButton pRipple type="button" icon="pi pi-refresh" class="p-button-outlined"
+            [attr.aria-label]="'COMMON.REFRESH' | translate"
+            [label]="'COMMON.REFRESH' | translate" (click)="load()" [loading]="loading"></button>
+        </div>
+      </div>
+
+      <!-- Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+           The list is small and held whole, so the table narrows itself. -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-3">
+          <div class="filter-bar__field filter-bar__field--wide" [class.filter-bar__field--active]="filterSearch">
+            <label for="sgSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="sgSearch" pInputText type="text" [(ngModel)]="filterSearch"
+                (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+                [placeholder]="'STUDENT_ADMIN.GROUPS.SEARCH_PLACEHOLDER' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterActive !== null">
+            <label for="sgActive">{{ 'STUDENT_ADMIN.GROUPS.ACTIVE' | translate }}</label>
+            <p-select inputId="sgActive" [options]="activeOptions" [(ngModel)]="filterActive"
+              optionLabel="label" optionValue="value"
+              (onChange)="dt.filter(filterActive, 'isActive', 'equals')"></p-select>
+          </div>
+        </div>
+        <div class="filter-bar__actions">
+          <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+            [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters(dt)"></button>
+          <span class="filter-bar__hint filter-bar__actions-spacer">
+            {{ 'COMMON.TOTAL' | translate }}: {{ (dt.filteredValue || groups).length }}
+          </span>
+        </div>
+      </div>
+
+      <p-table #dt [value]="groups" [loading]="loading" dataKey="groupId"
+        [globalFilterFields]="['groupName', 'groupNameAr', 'description']"
+        [paginator]="groups.length > 10" [rows]="10" [rowsPerPageOptions]="[10, 20, 50]"
+        styleClass="p-datatable-sm p-datatable-gridlines" responsiveLayout="scroll">
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="groupId" style="width:70px">{{ 'COMMON.ID' | translate }} <p-sortIcon field="groupId"></p-sortIcon></th>
+            <th pSortableColumn="groupName">{{ 'STUDENT_ADMIN.GROUPS.GROUP_NAME' | translate }} <p-sortIcon field="groupName"></p-sortIcon></th>
+            <th pSortableColumn="groupNameAr">{{ 'STUDENT_ADMIN.GROUPS.GROUP_NAME_AR' | translate }} <p-sortIcon field="groupNameAr"></p-sortIcon></th>
+            <th>{{ 'STUDENT_ADMIN.GROUPS.DESCRIPTION' | translate }}</th>
+            <th pSortableColumn="isActive" style="width:90px">{{ 'STUDENT_ADMIN.GROUPS.ACTIVE' | translate }} <p-sortIcon field="isActive"></p-sortIcon></th>
+            <th style="width:90px">{{ 'STUDENT_ADMIN.GROUPS.SYSTEM' | translate }}</th>
+            <th style="width:200px">{{ 'COMMON.ACTIONS' | translate }}</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-g>
+          <tr>
+            <td>{{ g.groupId }}</td>
+            <td class="font-semibold">{{ g.groupName }}</td>
+            <td>{{ g.groupNameAr }}</td>
+            <td class="text-500 text-sm">{{ g.description }}</td>
+            <td><p-tag [value]="(g.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate" [severity]="g.isActive ? 'success' : 'warning'"></p-tag></td>
+            <td>@if (g.isSystem) {
+              <p-tag [value]="'STUDENT_ADMIN.GROUPS.SYSTEM' | translate" severity="info"></p-tag>
+            }</td>
+            <td>
+              <div class="flex gap-1">
+                <button pButton pRipple icon="pi pi-eye" class="p-button-info p-button-sm p-button-outlined"
+                  [pTooltip]="'STUDENT_ADMIN.GROUPS.VIEW_GROUP' | translate" tooltipPosition="top"
+                (click)="openView(g)"></button>
+                <button pButton pRipple icon="pi pi-key" class="p-button-secondary p-button-sm p-button-outlined"
+                  [pTooltip]="'STUDENT_ADMIN.GROUPS.MANAGE_ROLES' | translate" tooltipPosition="top"
+                (click)="openManageRoles(g)"></button>
+                @if (!g.isSystem) {
+                  <button pButton pRipple icon="pi pi-pencil" class="p-button-warning p-button-sm p-button-outlined"
+                    [pTooltip]="'COMMON.EDIT' | translate" tooltipPosition="top"
+                  (click)="openEdit(g)"></button>
+                }
+                @if (!g.isSystem) {
+                  <button pButton pRipple icon="pi pi-trash" class="p-button-danger p-button-sm p-button-outlined"
+                    [pTooltip]="'COMMON.DELETE' | translate" tooltipPosition="top"
+                  (click)="deleteGroup(g)"></button>
+                }
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="7" class="text-center text-500 py-4">
+              {{ (hasFilters ? 'COMMON.NO_MATCH' : 'STUDENT_ADMIN.NO_RECORDS') | translate }}
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Dialog. Shared vocabulary: assets/layout/styles/_detail-dialog.scss. -->
+<p-dialog [(visible)]="showDialog"
+  [header]="(editMode ? 'COMMON.EDIT' : 'STUDENT_ADMIN.GROUPS.NEW_GROUP') | translate"
+  [modal]="true" [style]="{ width: '640px', maxWidth: '96vw' }" [draggable]="false"
+  [dismissableMask]="false" styleClass="dv-dialog"
+  (onHide)="submitted = false">
+  <ng-template pTemplate="content">
+    <div class="dv-hero" [class.dv-hero--new]="!editMode">
+      <div class="dv-hero__badge">
+        @if (editMode) { {{ form.groupId }} } @else { <i class="pi pi-plus"></i> }
+      </div>
+      <div class="dv-hero__body">
+        <div class="dv-hero__eyebrow">{{ (editMode ? 'COMMON.EDIT' : 'STUDENT_ADMIN.GROUPS.NEW_GROUP') | translate }}</div>
+        <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!form.groupName">
+          {{ form.groupName || ('STUDENT_ADMIN.GROUPS.GROUP_NAME' | translate) }}
+        </div>
+        <div class="dv-hero__meta">
+          @if (form.groupNameAr) { <span class="dv-chip">{{ form.groupNameAr }}</span> }
+          <p-tag [rounded]="true" [severity]="form.isActive ? 'success' : 'warning'"
+            [value]="(form.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate"></p-tag>
+        </div>
+      </div>
+    </div>
+
+    <section class="dv-section">
+      <header class="dv-section__head">
+        <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+        <div>
+          <div class="dv-section__title">{{ 'UMS.FORM.SECTION_IDENTITY' | translate }}</div>
+        </div>
+      </header>
+      <div class="dv-fields">
+        <div class="dv-field">
+          <label for="sgName" class="dv-label">
+            {{ 'STUDENT_ADMIN.GROUPS.GROUP_NAME' | translate }} <span class="dv-required">*</span>
+          </label>
+          <input id="sgName" pInputText [(ngModel)]="form.groupName" class="w-full" />
+          @if (submitted && !form.groupName?.trim()) {
+            <small class="dv-error"><i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+          }
+        </div>
+        <div class="dv-field">
+          <label for="sgNameAr" class="dv-label">{{ 'STUDENT_ADMIN.GROUPS.GROUP_NAME_AR' | translate }}</label>
+          <input id="sgNameAr" pInputText [(ngModel)]="form.groupNameAr" class="w-full" dir="rtl" />
+        </div>
+        <div class="dv-field dv-field--full">
+          <label for="sgDesc" class="dv-label">{{ 'STUDENT_ADMIN.GROUPS.DESCRIPTION' | translate }}</label>
+          <textarea id="sgDesc" pTextarea [(ngModel)]="form.description" [rows]="3" class="w-full"></textarea>
+        </div>
+        <div class="dv-field dv-field--full">
+          <label for="sgIsActive" class="dv-label">{{ 'STUDENT_ADMIN.GROUPS.ACTIVE' | translate }}</label>
+          <p-toggleswitch inputId="sgIsActive" [(ngModel)]="form.isActive"></p-toggleswitch>
+        </div>
+      </div>
+    </section>
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <small class="dv-footer__hint">
+        <span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+      </small>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" class="p-button-text p-button-secondary"
+          [label]="'COMMON.CANCEL' | translate" icon="pi pi-times" [disabled]="saving" (click)="showDialog = false"></button>
+        <button pButton pRipple type="button"
+          [label]="'COMMON.SAVE' | translate" icon="pi pi-check" [loading]="saving" (click)="save()"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- View Dialog: the group and the roles it carries -->
+<p-dialog [(visible)]="showViewDialog"
+  [header]="'STUDENT_ADMIN.GROUPS.VIEW_GROUP' | translate"
+  [modal]="true" [style]="{ width: '720px', maxWidth: '96vw' }" [draggable]="false"
+  styleClass="dv-dialog">
+  <ng-template pTemplate="content">
+    @if (selectedGroup; as g) {
+      <div class="dv-view">
+        <div class="dv-hero" [class.dv-hero--muted]="!g.isActive">
+          <div class="dv-hero__badge">{{ g.groupId }}</div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'STUDENT_ADMIN.GROUPS.GROUP_NAME' | translate }}</div>
+            <div class="dv-hero__title">{{ g.groupName }}</div>
+            <div class="dv-hero__meta">
+              @if (g.groupNameAr) { <span class="dv-chip">{{ g.groupNameAr }}</span> }
+              <p-tag [rounded]="true" [severity]="g.isActive ? 'success' : 'warning'"
+                [value]="(g.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate"></p-tag>
+              @if (g.isSystem) {
+                <p-tag [rounded]="true" severity="info" icon="pi pi-lock" [value]="'STUDENT_ADMIN.GROUPS.SYSTEM' | translate"></p-tag>
+              }
+            </div>
+          </div>
+        </div>
+
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+            <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+          </header>
+          <dl class="dv-dl">
+            <div class="dv-dl__row"><dt>{{ 'COMMON.ID' | translate }}</dt><dd>{{ g.groupId }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.GROUPS.GROUP_NAME' | translate }}</dt><dd>{{ g.groupName }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.GROUPS.GROUP_NAME_AR' | translate }}</dt><dd>{{ g.groupNameAr || '—' }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.GROUPS.DESCRIPTION' | translate }}</dt><dd>{{ g.description || '—' }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-key"></i></span>
+            <div>
+              <div class="dv-section__title">{{ 'STUDENT_ADMIN.GROUPS.VIEW_ROLES' | translate }}</div>
+              <div class="dv-section__hint">{{ 'COMMON.TOTAL' | translate }}: {{ groupRoles.length }}</div>
+            </div>
+          </header>
+          @if (rolesLoading) {
+            <div class="text-center py-3"><i class="pi pi-spin pi-spinner text-2xl text-primary"></i></div>
+          } @else if (groupRoles.length === 0) {
+            <div class="dv-notice dv-notice--muted">
+              <i class="pi pi-info-circle"></i>
+              <span>{{ 'STUDENT_ADMIN.NO_RECORDS' | translate }}</span>
+            </div>
+          } @else {
+            <div class="flex flex-wrap gap-2">
+              @for (r of groupRoles; track r.roleId) {
+                <p-tag [rounded]="true" severity="secondary" icon="pi pi-key" [value]="roleName(r)"></p-tag>
+              }
+            </div>
+          }
+        </section>
+      </div>
+    }
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint">
+        <button pButton pRipple type="button" class="p-button-text"
+          [label]="'STUDENT_ADMIN.GROUPS.MANAGE_ROLES' | translate" icon="pi pi-key" (click)="manageFromView()"></button>
+      </div>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" class="p-button-text p-button-secondary"
+          [label]="'COMMON.CLOSE' | translate" icon="pi pi-times" (click)="showViewDialog = false"></button>
+        @if (selectedGroup && !selectedGroup.isSystem) {
+          <button pButton pRipple type="button"
+            [label]="'COMMON.EDIT' | translate" icon="pi pi-pencil" (click)="editFromView()"></button>
+        }
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- Manage Roles Dialog -->
+<p-dialog [(visible)]="showRolesDialog"
+  [header]="'STUDENT_ADMIN.GROUPS.MANAGE_ROLES' | translate"
+  [modal]="true" [style]="{ width: '560px', maxWidth: '96vw' }" [draggable]="false"
+  styleClass="dv-dialog">
+  <ng-template pTemplate="content">
+    @if (selectedGroup; as g) {
+      <div class="dv-hero">
+        <div class="dv-hero__badge">{{ g.groupId }}</div>
+        <div class="dv-hero__body">
+          <div class="dv-hero__eyebrow">{{ 'STUDENT_ADMIN.GROUPS.GROUP_NAME' | translate }}</div>
+          <div class="dv-hero__title">{{ g.groupName }}</div>
+          <div class="dv-hero__meta">
+            <span class="dv-chip"><i class="pi pi-key"></i> {{ groupRoles.length }}</span>
+          </div>
+        </div>
+      </div>
+    }
+
+    <section class="dv-section">
+      <header class="dv-section__head">
+        <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-key"></i></span>
+        <div class="dv-section__title">{{ 'STUDENT_ADMIN.GROUPS.MANAGE_ROLES' | translate }}</div>
+      </header>
+      <!-- Review M11: a filter over the list, and removal is an explicit button
+               rather than a click on the "assigned" tag. -->
+          <span class="p-input-icon-left w-full mb-2 block">
+            <i class="pi pi-search"></i>
+            <input id="sgRoleFilter" pInputText type="text" class="w-full" [(ngModel)]="roleFilter"
+              [placeholder]="'COMMON.SEARCH_PLACEHOLDER' | translate" />
+          </span>
+      @if (filteredRoles.length === 0) {
+            <div class="text-center text-500 py-3">{{ 'COMMON.NO_MATCH' | translate }}</div>
+          }
+      @for (r of filteredRoles; track r.roleId) {
+        <!-- `flex-1` on the name block, not `justify-content-between`: the
+             same double mirror as the page header, one row at a time. -->
+        <div class="flex align-items-center gap-2 py-2 border-bottom-1 surface-border">
+          <div class="flex-1">
+            <span class="font-semibold">{{ r.roleName }}</span>
+            @if (r.roleNameAr) {
+              <span class="text-500 text-sm mx-2">{{ r.roleNameAr }}</span>
+            }
+          </div>
+          @if (hasRole(r.roleId)) {
+            <p-tag [value]="'COMMON.ASSIGNED' | translate" severity="success" icon="pi pi-check"></p-tag>
+            <button pButton pRipple type="button" icon="pi pi-times" class="p-button-sm p-button-outlined p-button-danger"
+              [label]="'COMMON.REMOVE' | translate" (click)="toggleRole(r.roleId)"></button>
+          } @else {
+            <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-sm p-button-outlined"
+              [label]="'COMMON.ADD' | translate" (click)="toggleRole(r.roleId)"></button>
+          }
+        </div>
+      }
+    </section>
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint"></div>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" class="p-button-text p-button-secondary"
+          [label]="'COMMON.CLOSE' | translate" icon="pi pi-times" (click)="showRolesDialog = false"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,41 @@
+<!-- Order matches the reading order of the task: look at it, keep it, print it,
+     take the data away. `gap` rather than margins, so the bar mirrors in Arabic. -->
+<div class="report-actions">
+  <p-button
+    [label]="'REPORTS.REPORT_SUBPAGES.PREVIEW_SERVER_PDF' | translate"
+    icon="pi pi-eye"
+    [disabled]="disabled"
+    (onClick)="preview()"
+    styleClass="p-button-outlined">
+  </p-button>
+
+  <p-button
+    [label]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_SERVER_PDF' | translate"
+    icon="pi pi-download"
+    [disabled]="disabled"
+    (onClick)="download()"
+    styleClass="p-button-outlined">
+  </p-button>
+
+  <!-- Filled and coloured on purpose. It used to be `secondary`, which Aura
+       paints on a near-white surface; combined with the global white-label rule
+       for filled buttons the Print button was invisible on every report page. -->
+  <p-button
+    [label]="'REPORTS.REPORT_SUBPAGES.PRINT' | translate"
+    icon="pi pi-print"
+    severity="info"
+    [disabled]="disabled"
+    (onClick)="print()"
+    styleClass="report-actions__print">
+  </p-button>
+
+  @if (showExcel) {
+    <p-button
+      [label]="'REPORTS.REPORT_SUBPAGES.EXPORT_EXCEL' | translate"
+      icon="pi pi-file-excel"
+      [disabled]="disabled"
+      (onClick)="exportExcel()"
+      styleClass="p-button-success">
+    </p-button>
+  }
+</div>

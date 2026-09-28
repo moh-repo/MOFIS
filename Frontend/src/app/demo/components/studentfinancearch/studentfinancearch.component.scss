@@ -1,0 +1,417 @@
+// ── List page ─────────────────────────────────────────────────────────────────
+
+.sfa-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--surface-200);
+    background: var(--surface-0);
+}
+
+.sfa-header__left {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+}
+
+.sfa-header__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--indigo-600, #4f46e5);
+    font-size: 1.15rem;
+}
+
+.sfa-header__title {
+    margin: 0;
+    font-size: 1.12rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.sfa-header__count {
+    font-size: 0.82rem;
+    color: var(--text-color-secondary);
+}
+
+.sfa-header__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sfa-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 3.5rem 1rem;
+    color: var(--text-color-secondary);
+    font-size: 0.9rem;
+}
+
+.sfa-row {
+    cursor: pointer;
+}
+
+.sfa-student {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+// Initial instead of a repeated user glyph — it distinguishes rows at a glance where an
+// identical icon on every line does not.
+.sfa-student__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--indigo-600, #4f46e5);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.sfa-amount {
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--green-600, #059669);
+
+    // Wafar is a deduction and net is the figure that matters, so neither should read as
+    // another green "received" amount beside it. Matches the finance list.
+    &--wafar { color: var(--yellow-700, #a16207); }
+    &--net   { color: var(--indigo-600, #4f46e5); }
+}
+
+// ── Shared section layout (dialogs) ───────────────────────────────────────────
+
+.sfa-view-grid,
+.sfa-edit-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+}
+
+.sfa-section {
+    background: var(--surface-0);
+    border: 1px solid var(--surface-200);
+    border-radius: 12px;
+    padding: 1.15rem 1.25rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.sfa-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-bottom: 0.7rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--surface-200);
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 0.95rem;
+
+    // Tinted rounded tile rather than a bare glyph, so the eye can find section starts
+    // while scrolling a long form.
+    i {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        flex-shrink: 0;
+        background: rgba(99, 102, 241, 0.12);
+        color: var(--indigo-600, #4f46e5);
+        font-size: 0.9rem;
+    }
+}
+
+// ── View — read-only field display ────────────────────────────────────────────
+
+// Field grid inside the dialogs. Named apart from .sfa-row, which is the list's table row —
+// one class cannot be both a CSS grid and a table row.
+.sfa-row-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1rem 1.5rem;
+}
+
+.sfa-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.sfa-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.sfa-value {
+    font-size: 0.93rem;
+    color: var(--text-color);
+    font-weight: 500;
+    min-height: 1.4rem;
+    overflow-wrap: anywhere;
+
+    &.sfa-multiline {
+        white-space: pre-wrap;
+        line-height: 1.5;
+    }
+}
+
+.sfa-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 2.5rem 1rem;
+    color: var(--text-color-secondary);
+    text-align: center;
+
+    i     { font-size: 2.4rem; opacity: 0.3; }
+    span  { font-size: 0.95rem; font-weight: 600; }
+    small { font-size: 0.82rem; opacity: 0.8; }
+}
+
+// ── Edit — form fields ────────────────────────────────────────────────────────
+
+.sfa-form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 1rem 1.25rem;
+
+    &--2col {
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+}
+
+.sfa-form-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+
+    label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 0.4rem;
+    }
+
+    // Every control stretches to its column; PrimeNG wrappers need this explicitly or the
+    // dropdown and inputnumber sit at their intrinsic width and the grid looks ragged.
+    input.p-inputtext,
+    textarea,
+    .p-select,
+    .p-inputnumber,
+    .p-inputnumber input,
+    .p-datepicker,
+    .p-datepicker input {
+        width: 100%;
+    }
+}
+
+// Logical, not margin-left: this screen renders RTL in Arabic and the asterisk has to sit
+// after the label in both directions.
+.sfa-required {
+    color: var(--red-500);
+    margin-inline-start: 2px;
+}
+
+// Secondary note under a control or section header — e.g. the "2026 Q2" echo under a raw
+// YYYYQ input, or the read-only notice above the archived financial records.
+.sfa-hint {
+    display: block;
+    margin-top: 0.3rem;
+    font-size: 0.78rem;
+    color: var(--text-color-secondary);
+}
+
+.sfa-section-header + .sfa-hint {
+    margin-top: -0.6rem;
+    margin-bottom: 0.9rem;
+}
+
+// ── Dialog header avatar ──────────────────────────────────────────────────────
+
+.sfa-dialog-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+// ── PrimeNG overrides ─────────────────────────────────────────────────────────
+
+:host ::ng-deep {
+    /*
+     * Headers wrap. nowrap here was what forced the table wider than a laptop screen: every
+     * label had to fit on one line, so "Total Received" and "Archive Date" each reserved
+     * their full single-line width. Letting them break over two lines is what buys the
+     * columns back, and bottom alignment keeps one- and two-line headers on a shared
+     * baseline instead of floating at different heights.
+     */
+    .p-datatable .p-datatable-thead > tr > th {
+        background: var(--surface-50);
+        padding: 0.5rem 0.6rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1.25;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        color: var(--text-color-secondary);
+        white-space: normal;
+        overflow-wrap: break-word;
+        vertical-align: bottom;
+    }
+
+    // Compact rows: a full page of 10 has to clear a ~700px laptop viewport alongside the
+    // header band and the paginator, without the page itself scrolling.
+    .p-datatable .p-datatable-tbody > tr > td {
+        padding: 0.35rem 0.6rem;
+        font-size: 0.86rem;
+    }
+
+    // The row action buttons are the tallest thing in a row; unpadded they set the height.
+    .p-datatable .p-datatable-tbody > tr > td .p-button.p-button-rounded {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .p-paginator {
+        border: none;
+        border-top: 1px solid var(--surface-200);
+        background: transparent;
+        padding: 0.35rem 0.75rem;
+    }
+}
+
+/*
+ * Trims the wrapper chrome so the card starts near the top of the viewport. The default
+ * .grid/.col-12/.card stack contributes roughly 3rem of padding and margin that the list
+ * does not need and that pushes the paginator below the fold.
+ */
+.sfa-page {
+    margin: 0;
+
+    > .col-12 {
+        padding: 0.5rem;
+    }
+
+    .card {
+        margin-bottom: 0;
+    }
+}
+
+::ng-deep .sfa-view-dialog,
+::ng-deep .sfa-edit-dialog {
+    .p-dialog-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-600));
+        color: white;
+        border-bottom: none;
+        padding: 1rem 1.5rem;
+
+        .p-dialog-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+        }
+
+        // The view dialog's header template names its subtitle line with this
+        // class. It carried PrimeFlex text-500, which is grey on this gradient.
+        .sfa-dialog-header__sub {
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        // PrimeNG 21 renders close and maximise as secondary text buttons (the v17
+        // .p-dialog-header-icon class is gone), and styles.scss paints every
+        // .p-button.p-button-text.p-button-secondary grey, so on this gradient the
+        // two icons all but vanished. The last selector outranks that rule.
+        .p-dialog-close-button,
+        .p-dialog-maximize-button,
+        .p-dialog-header-actions .p-button.p-button-text.p-button-secondary {
+            color: white;
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.15);
+                color: white;
+            }
+        }
+    }
+
+    /*
+     * The dialog body is the one place a bounded scroll belongs: it keeps the header and the
+     * Save/Cancel footer on screen for a form this long, instead of the modal growing past
+     * the viewport. The nested tables inside it scroll with the body rather than carrying
+     * their own scrollbars.
+     */
+    .p-dialog-content {
+        padding: 0;
+        background: var(--surface-50);
+        max-height: calc(90vh - 8.5rem);
+        overflow-y: auto;
+    }
+
+    .p-dialog-footer {
+        border-top: 1px solid var(--surface-200);
+        background: var(--surface-0);
+        padding: 0.85rem 1.5rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+}
+
+// ── Responsive ────────────────────────────────────────────────────────────────
+
+@media (max-width: 768px) {
+    .sfa-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .sfa-header__actions {
+        justify-content: stretch;
+    }
+
+    .sfa-row-grid,
+    .sfa-form-row,
+    .sfa-form-row.sfa-form-row--2col {
+        grid-template-columns: 1fr;
+    }
+
+    .sfa-view-grid,
+    .sfa-edit-grid {
+        padding: 0.75rem;
+    }
+
+    .sfa-section {
+        padding: 0.9rem 1rem;
+    }
+}

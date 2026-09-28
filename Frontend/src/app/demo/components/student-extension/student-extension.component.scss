@@ -1,0 +1,618 @@
+:host {
+    display: block;
+    padding: 1rem;
+}
+
+// Card Styles
+.student-extension-card,
+.table-card {
+    margin-bottom: 1.5rem;
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+
+        .card-heading {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+
+            .card-heading__icon {
+                font-size: 2.5rem;
+                color: var(--primary-color);
+                line-height: 1;
+            }
+            .title {
+                margin: 0 0 0.5rem 0;
+                font-size: 1.75rem;
+                font-weight: 600;
+                color: var(--primary-color);
+            }
+
+            .subtitle {
+                margin: 0;
+                color: var(--text-color-secondary);
+                font-size: 1rem;
+            }
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+    }
+}
+
+/*
+ * Filters.
+ *
+ * Grouped onto their own surface so the row reads as controls rather than as
+ * the top of the table, and laid out on declared columns instead of the pixel
+ * widths each control used to carry.
+ */
+.ext-filters {
+    margin-bottom: 1.5rem;
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 14px;
+    background: var(--surface-50, var(--surface-ground));
+
+    &__grid {
+        display: grid;
+        gap: 0.9rem 1rem;
+        grid-template-columns: 1fr;
+
+        @media (min-width: 640px) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        /* Six tracks, so the student picker can take two of them and the row
+           still divides evenly — five equal columns would give the widest
+           field the same room as the status dropdown. */
+        @media (min-width: 1200px) {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+    }
+
+    &__field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        min-width: 0;
+
+        label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            color: var(--text-color-secondary);
+        }
+
+        /* A filter that is narrowing the list says so. */
+        &--active > label {
+            color: var(--primary-color);
+        }
+
+        &--wide {
+            @media (min-width: 1200px) {
+                grid-column: span 2;
+            }
+        }
+
+        /* Every control fills the column it was given, whatever it is. */
+        .p-inputtext,
+        .p-select,
+        .p-input-icon-left {
+            width: 100%;
+        }
+    }
+
+    &__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding-top: 0.9rem;
+        border-top: 1px solid var(--surface-border);
+    }
+}
+
+/*
+ * Summary cards — structure is shared (assets/layout/styles/_summary-cards.scss);
+ * only the palette is local, because the colours are tied to what the five
+ * figures mean on this page.
+ */
+.summary-card {
+    &.total {
+        --summary-accent: #667eea;
+        .summary-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
+    }
+
+    &.approved {
+        --summary-accent: #22c55e;
+        .summary-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    }
+
+    &.pending {
+        --summary-accent: #f59e0b;
+        .summary-icon { background: linear-gradient(135deg, #f59e0b, #eab308); }
+    }
+
+    &.rejected {
+        --summary-accent: #ef4444;
+        .summary-icon { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    }
+
+    &.average {
+        --summary-accent: #8b5cf6;
+        .summary-icon { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+    }
+}
+
+// Table Styles
+::ng-deep {
+    .p-datatable {
+        .student-info {
+            .student-name {
+                font-weight: 600;
+                margin-bottom: 0.25rem;
+                color: var(--primary-color);
+            }
+
+            .text-muted {
+                color: var(--text-color-secondary);
+                font-size: 0.875rem;
+            }
+        }
+
+        .decision-number {
+            font-weight: 500;
+            color: var(--text-color);
+            margin-bottom: 0.25rem;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 0.25rem;
+            justify-content: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-color-secondary);
+
+            p {
+                margin-top: 1rem;
+                font-size: 1.1rem;
+            }
+        }
+    }
+}
+
+// Compact Dialog Styles
+::ng-deep .extension-dialog-compact {
+    .p-dialog-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-600));
+        color: white;
+        border-bottom: none;
+        padding: 1rem 1.5rem;
+        
+        .p-dialog-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        // PrimeNG 21 renders close and maximise as secondary text buttons (the v17
+        // .p-dialog-header-icon class is gone), and styles.scss paints every
+        // .p-button.p-button-text.p-button-secondary grey, so on this gradient the
+        // two icons all but vanished. The last selector outranks that rule.
+        .p-dialog-close-button,
+        .p-dialog-maximize-button,
+        .p-dialog-header-actions .p-button.p-button-text.p-button-secondary {
+            color: white;
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.15);
+                color: white;
+            }
+        }
+    }
+
+    .p-dialog-content {
+        padding: 0;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: var(--surface-50);
+    }
+
+    .compact-form-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .form-section {
+        background: white;
+        border-bottom: 1px solid var(--surface-200);
+        padding: 1rem 1.5rem;
+        
+        &:last-child {
+            border-bottom: none;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            font-weight: 600;
+            font-size: 1rem;
+
+            i {
+                font-size: 1.1rem;
+            }
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+        }
+
+        .form-col {
+            display: flex;
+            flex-direction: column;
+
+            &.full-width {
+                grid-column: 1 / -1;
+            }
+
+            label {
+                display: block;
+                margin-bottom: 0.4rem;
+                font-weight: 600;
+                font-size: 0.9rem;
+                color: var(--text-color);
+
+                .required {
+                    color: var(--red-500);
+                    margin-inline-start: 2px;
+                }
+            }
+
+            .p-error {
+                color: var(--red-500);
+                font-size: 0.8rem;
+                margin-top: 0.25rem;
+            }
+
+            // Stretch every control to fill its column so the grid reads as tidy, aligned rows.
+            .p-inputtext,
+            .p-select,
+            .p-datepicker,
+            .p-inputnumber,
+            textarea {
+                font-size: 0.9rem;
+                width: 100%;
+            }
+
+            // Controls that wrap an input PLUS button(s) (calendar trigger, number
+            // spinners) must lay out as a flex row and let the input flex — forcing the
+            // inner input to 100% pushes the button outside the box and breaks in RTL.
+            .p-datepicker,
+            .p-inputnumber {
+                display: flex;
+            }
+
+            .p-datepicker > .p-inputtext,
+            .p-inputnumber > .p-inputnumber-input {
+                flex: 1 1 auto;
+                width: 1%;
+                min-width: 0;
+            }
+
+            // Horizontal quarters spinner: [-] [ number ] [+]. Keep the buttons a fixed
+            // square and centre the value so it reads the same in RTL and LTR.
+            .p-inputnumber.p-inputnumber-buttons-horizontal {
+                align-items: stretch;
+
+                .p-inputnumber-button {
+                    flex: 0 0 2.5rem;
+                    width: 2.5rem;
+                }
+
+                .p-inputnumber-input {
+                    text-align: center;
+                    // Reset any browser rounding the flanking buttons already provide.
+                    border-radius: 0;
+                }
+            }
+
+            textarea {
+                resize: vertical;
+                min-height: 60px;
+            }
+        }
+    }
+
+    .dialog-footer-compact {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        padding: 1rem 1.5rem;
+        background: var(--surface-100);
+        border-top: 1px solid var(--surface-200);
+        position: sticky;
+        bottom: 0;
+        z-index: 1;
+    }
+}
+
+// Legacy Dialog Styles (keeping for compatibility)
+::ng-deep .extension-dialog {
+    .p-dialog-header {
+        background: var(--primary-color);
+        color: white;
+        border-bottom: none;
+    }
+
+    .p-dialog-content {
+        padding: 1.5rem;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .section-title {
+        font-weight: 600;
+        color: var(--primary-color);
+        font-size: 1rem;
+    }
+
+    .p-field {
+        margin-bottom: 1.25rem;
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .required {
+            color: var(--red-500);
+        }
+
+        .p-error {
+            color: var(--red-500);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: block;
+        }
+    }
+
+    .dialog-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--surface-border);
+    }
+}
+
+// Sidebar Styles
+::ng-deep .extension-sidebar {
+    .p-drawer-header {
+        background: var(--primary-color);
+        color: white;
+        border-bottom: none;
+
+        .sidebar-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .p-drawer-close-button {
+            color: white;
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+    }
+
+    .p-drawer-content {
+        padding: 1rem;
+        background: var(--surface-50);
+    }
+
+    .extension-details {
+        .p-card {
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+
+            .detail-card-header {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.75rem 1rem;
+                background: var(--surface-100);
+                border-bottom: 2px solid var(--primary-color);
+                font-weight: 600;
+                color: var(--primary-color);
+
+                i {
+                    font-size: 1.1rem;
+                }
+            }
+
+            .detail-row {
+                display: flex;
+                align-items: flex-start;
+                padding: 0.75rem 0;
+                border-bottom: 1px solid var(--surface-border);
+
+                &:last-child {
+                    border-bottom: none;
+                }
+
+                &.full-width {
+                    flex-direction: column;
+
+                    .detail-label {
+                        margin-bottom: 0.5rem;
+                    }
+
+                    .detail-value {
+                        width: 100%;
+                        white-space: pre-wrap;
+
+                        p {
+                            margin: 0;
+                            line-height: 1.6;
+                        }
+                    }
+                }
+
+                .detail-label {
+                    font-weight: 600;
+                    color: var(--text-color-secondary);
+                    min-width: 140px;
+                    font-size: 0.9rem;
+                }
+
+                .detail-value {
+                    flex: 1;
+                    color: var(--text-color);
+                    word-break: break-word;
+
+                    .text-muted {
+                        color: var(--text-color-secondary);
+                        font-size: 0.875rem;
+                    }
+                }
+            }
+        }
+
+        .timeline-item {
+            .timeline-label {
+                font-weight: 600;
+                color: var(--text-color);
+                margin-bottom: 0.25rem;
+            }
+
+            .timeline-value {
+                color: var(--text-color-secondary);
+                font-size: 0.9rem;
+            }
+        }
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-color-secondary);
+
+        p {
+            margin-top: 1rem;
+            font-size: 1.1rem;
+        }
+    }
+}
+
+// Responsive Styles
+@media (max-width: 768px) {
+    :host {
+        padding: 0.5rem;
+    }
+
+    .student-extension-card,
+    .table-card {
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+
+            .card-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+    }
+
+    /* Only the gap here: the column counts are declared with the component,
+       and re-introducing auto-fit at this width would undo them. */
+    .summary-cards {
+        gap: 0.75rem;
+    }
+
+    .ext-filters {
+        padding: 0.9rem;
+
+        &__actions {
+            flex-direction: column;
+            align-items: stretch;
+
+            ::ng-deep .p-button {
+                width: 100%;
+            }
+        }
+    }
+
+    ::ng-deep .extension-dialog,
+    ::ng-deep .extension-dialog-compact {
+        width: 95vw !important;
+        
+        .form-row {
+            grid-template-columns: 1fr !important;
+            gap: 0.75rem;
+        }
+        
+        .form-section {
+            padding: 0.75rem 1rem;
+        }
+        
+        .dialog-footer-compact {
+            flex-direction: column;
+            
+            .p-button {
+                width: 100%;
+            }
+        }
+    }
+
+    ::ng-deep .extension-sidebar {
+        width: 100% !important;
+    }
+}
+
+// Print Styles
+@media print {
+    :host {
+        padding: 0;
+    }
+
+    .card-actions,
+    .table-actions {
+        display: none !important;
+    }
+
+    .table-card {
+        box-shadow: none;
+    }
+}
+

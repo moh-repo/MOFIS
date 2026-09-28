@@ -1,0 +1,609 @@
+// ─── Shared token ────────────────────────────────────────────────────────────
+$sidebar-bg: #1b2a47;
+$sidebar-text: rgba(255, 255, 255, 0.55);
+$sidebar-text-active: #ffffff;
+$sidebar-accent: #4a9eff;
+$sidebar-done: rgba(255, 255, 255, 0.80);
+$sidebar-line: rgba(255, 255, 255, 0.12);
+$sidebar-indicator-size: 30px;
+$sidebar-width: 230px;
+
+// The component element sits between the scroll container and .sa-wizard; keeping it a
+// block box gives the sticky bars a clean containing-block chain up to that scroller.
+:host {
+  display: block;
+}
+
+// ─── Required star ───────────────────────────────────────────────────────────
+.required-star {
+  color: #e24c4c;
+  margin-inline-start: 2px;
+  font-weight: bold;
+  font-size: 0.9em;
+}
+
+// ─── Field hint (info icon with tooltip next to a label) ─────────────────────
+.sa-field-hint {
+  margin-inline-start: 4px;
+  font-size: 0.85em;
+  color: var(--text-color-secondary);
+  cursor: help;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WIZARD ROOT  — top-stepper layout (column)
+// ═══════════════════════════════════════════════════════════════════════════════
+.sa-wizard {
+  display: flex;
+  flex-direction: column;
+  min-height: 580px;
+  border-radius: 12px;
+  overflow: visible;
+  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.10);
+  background: var(--surface-card);
+
+  /**
+   * Offset the sticky stepper parks at. The routed page scrolls under the app's fixed
+   * .layout-topbar (5rem tall), so the bar has to stop below it; inside the modal there
+   * is no topbar and the dialog body is the scrollport, so 0 is correct there.
+   */
+  --sa-sticky-top: 0px;
+
+  /**
+   * No height cap and no overflow clipping anywhere between the sticky bars and the
+   * element that actually scrolls. `overflow: hidden` on an ancestor makes THAT box the
+   * sticky scrollport, and because it never scrolls itself the bars stop sticking and
+   * simply scroll away with the page — which is exactly what capping the height here
+   * used to cause. The page (or the dialog body) is the single scroll container, and
+   * .sa-sidebar / .sa-nav stay pinned to its top and bottom edges.
+   */
+  &:not(.sa-wizard--embedded) {
+    --sa-sticky-top: 5rem;
+  }
+
+  &--embedded {
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 0;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TOP STEPPER BAR
+// ═══════════════════════════════════════════════════════════════════════════════
+.sa-sidebar {
+  width: 100%;
+  flex-shrink: 0;
+  background: $sidebar-bg;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: sticky;
+  top: var(--sa-sticky-top);
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  // The root no longer clips, so the bars round their own outer corners to match it.
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
+.sa-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  border-inline-end: 1px solid $sidebar-line;
+  flex-shrink: 0;
+  white-space: nowrap;
+  align-self: stretch;
+}
+
+.sa-sidebar__brand-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.sa-sidebar__brand-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: $sidebar-text-active;
+  line-height: 1.3;
+}
+
+// ─── Steps nav: horizontal row ───────────────────────────────────────────────
+.sa-sidebar__steps {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex: 1;
+  padding: 0.4rem 0.75rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.sa-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.3rem;
+  min-width: 54px;
+  text-align: center;
+  border-radius: 8px;
+  transition: background 0.2s;
+
+  // Set while editing (goToStep in the component): the step is a target and reads as one.
+  &--pickable {
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.07);
+
+      .sa-step__label { color: $sidebar-text-active; }
+    }
+    &:focus-visible {
+      outline: 2px solid $sidebar-accent;
+      outline-offset: -2px;
+    }
+  }
+
+  &--active .sa-step__label {
+    color: $sidebar-text-active;
+    font-weight: 600;
+  }
+  &--done .sa-step__label {
+    color: $sidebar-done;
+  }
+}
+
+// ─── Track: dot + horizontal connector line ───────────────────────────────────
+.sa-step__track {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+}
+
+.sa-step__dot {
+  width: $sidebar-indicator-size;
+  height: $sidebar-indicator-size;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.10);
+  color: $sidebar-text;
+  font-size: 0.78rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.25s, color 0.25s, box-shadow 0.25s, transform 0.2s;
+
+  &--active {
+    background: $sidebar-accent;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(74, 158, 255, 0.30);
+    transform: scale(1.12);
+    animation: dot-pulse 2s ease-in-out infinite;
+  }
+
+  &--done {
+    background: rgba(255, 255, 255, 0.85);
+    color: $sidebar-bg;
+    transform: scale(1);
+  }
+}
+
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(74, 158, 255, 0.30); }
+  50%       { box-shadow: 0 0 0 7px rgba(74, 158, 255, 0.12); }
+}
+
+.sa-step__line {
+  flex: 1;
+  height: 2px;
+  background: $sidebar-line;
+  border-radius: 1px;
+  transition: background 0.2s;
+
+  &--done {
+    background: rgba(255, 255, 255, 0.35);
+  }
+}
+
+.sa-step__label {
+  font-size: 0.72rem;
+  color: $sidebar-text;
+  line-height: 1.3;
+  transition: color 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+// ─── Sidebar footer / progress ── hidden in top-stepper layout ───────────────
+.sa-sidebar__footer { display: none; }
+.sa-sidebar__progress { display: none; }
+.sa-sidebar__progress-fill { display: none; }
+.sa-sidebar__progress-text { display: none; }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN PANEL
+// ═══════════════════════════════════════════════════════════════════════════════
+.sa-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-ground);
+  // Must stay unclipped — see .sa-wizard: any overflow value other than visible here
+  // would capture .sa-sidebar / .sa-nav and stop them sticking to the real scrollport.
+  overflow: visible;
+}
+
+.sa-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 300px;
+}
+
+// ─── Step header ─────────────────────────────────────────────────────────────
+.sa-step-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.5rem;
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--surface-border);
+  flex-shrink: 0;
+}
+
+.sa-step-header__icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  background: rgba(74, 158, 255, 0.10);
+  color: #4a9eff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+
+.sa-step-header__text {
+  flex: 1;
+  min-width: 0;
+
+  h4 {
+    margin: 0 0 0.1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-color);
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.80rem;
+    color: var(--text-color-secondary);
+  }
+}
+
+.sa-step-header__counter {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-color-secondary);
+  background: var(--surface-100);
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+// ─── Photo strip (edit mode, step 1) ─────────────────────────────────────────
+.sa-photo-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--surface-50);
+  border-bottom: 1px solid var(--surface-border);
+  flex-shrink: 0;
+}
+
+.sa-photo-strip__thumb {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--surface-border);
+  background: var(--surface-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sa-photo-strip__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sa-photo-strip__placeholder {
+  font-size: 1.4rem;
+  color: var(--text-color-secondary);
+}
+
+// ─── Form area ───────────────────────────────────────────────────────────────
+.sa-form {
+  flex: 1;
+  // Grows with its content and lets the page scroll, rather than scrolling internally:
+  // a nested scroller here is what left the pinned bars attached to a box that never moved.
+  overflow: visible;
+  padding: 1.25rem 1.5rem;
+}
+
+// ─── Section ─────────────────────────────────────────────────────────────────
+.sa-section {
+  background: var(--surface-card);
+  border-radius: 8px;
+  border: 1px solid var(--surface-border);
+  padding: 1.1rem 1.25rem 0.75rem;
+  margin-bottom: 1rem;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.sa-section__header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.sa-section__icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: #4a9eff;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+
+  &--green    { background: #10b981; }
+  &--purple   { background: #6366f1; }
+  &--amber    { background: #f59e0b; }
+  &--red      { background: #ef4444; }
+  &--teal     { background: #14b8a6; }
+  &--rose     { background: #f43f5e; }
+  &--indigo   { background: #6366f1; }
+}
+
+.sa-section__title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+// ─── Quarter (year + quarter) composite input ─────────────────────────────────
+.sa-quarter__label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 500;
+}
+
+.sa-quarter {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+
+  &__year {
+    flex: 0 0 42%;
+  }
+
+  &__q {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  // Make the PrimeNG components fill their flex cell regardless of LTR/RTL.
+  ::ng-deep .p-inputnumber,
+  ::ng-deep .p-select {
+    width: 100%;
+  }
+
+  ::ng-deep .p-inputnumber .p-inputnumber-input {
+    width: 100%;
+  }
+}
+
+.sa-quarter__hint {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-color-secondary);
+
+  b {
+    color: var(--primary-color);
+    font-weight: 600;
+  }
+}
+
+// ─── Upload info banner ───────────────────────────────────────────────────────
+.sa-upload-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  background: #eff6ff;
+  border-inline-start: 3px solid #4a9eff;
+  border-radius: 0 6px 6px 0;
+  color: #1e3a5f;
+  font-size: 0.83rem;
+
+  .pi {
+    margin-top: 1px;
+    color: #4a9eff;
+    flex-shrink: 0;
+  }
+}
+
+// ─── Navigation footer ───────────────────────────────────────────────────────
+// Pinned action bar: sibling of the scrolling .sa-form, so it never moves with the
+// form content. sticky + bottom:0 keeps it parked at the foot of the panel even when
+// a step is short enough to leave spare vertical space.
+.sa-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--surface-card);
+  border-top: 1px solid var(--surface-border);
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+}
+
+.sa-nav__progress-bar {
+  height: 3px;
+  background: var(--surface-border);
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.sa-nav__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a9eff, #6366f1);
+  border-radius: 0;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sa-nav__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.5rem;
+}
+
+.sa-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+
+// ─── Picture upload (kept for fileUpload content) ─────────────────────────────
+.existing-picture-container {
+  .existing-picture-label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.88rem;
+  }
+
+  .picture-preview-container {
+    position: relative;
+    display: inline-block;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+    border: 2px solid var(--surface-border);
+
+    .existing-picture {
+      width: 180px;
+      height: 180px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .picture-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+
+      .remove-picture-btn {
+        background: rgba(220, 53, 69, 0.9);
+        border: none;
+        color: white;
+      }
+    }
+
+    &:hover .picture-overlay { opacity: 1; }
+  }
+}
+
+.new-picture-label {
+  font-weight: 600;
+  color: #28a745;
+  font-size: 0.88rem;
+}
+
+.new-picture-preview {
+  border-radius: 8px;
+  border: 2px solid #28a745;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+}
+
+.picture-placeholder {
+  width: 180px;
+  height: 180px;
+  background: var(--surface-100);
+  border: 2px dashed var(--surface-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-color-secondary);
+  text-align: center;
+
+  i { font-size: 2rem; margin-bottom: 0.5rem; }
+  .placeholder-text { font-size: 0.88rem; font-weight: 500; }
+  .placeholder-subtext { font-size: 0.78rem; margin-top: 0.25rem; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RESPONSIVE
+// ═══════════════════════════════════════════════════════════════════════════════
+@media (max-width: 860px) {
+
+  .sa-wizard { border-radius: 8px; }
+  .sa-form { padding: 1rem; }
+  .sa-step-header { padding: 0.85rem 1rem; }
+  .sa-nav { padding: 0.75rem 1rem; }
+}
+
+@media (max-width: 560px) {
+  .sa-sidebar__brand-label { display: none; }
+  .sa-nav__actions { gap: 0.35rem; }
+}

@@ -1,0 +1,8 @@
+:host ::ng-deep {
+    .card-header {
+        padding: 1.5rem;
+        background-color: var(--surface-50);
+        border-bottom: 1px solid var(--surface-border);
+    }
+}
+

@@ -1,0 +1,331 @@
+<div class="code-lists-page" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <p-toast></p-toast>
+
+  <div class="card mb-3">
+    <!-- `flex-1` on the icon-and-title block, not `justify-content-between`:
+         see page-headings.spec.ts. The list picker stays here: it chooses
+         which list is on the page, it does not narrow it — the bar below does. -->
+    <div class="flex align-items-center gap-3 flex-wrap">
+      <div class="flex align-items-center gap-3 flex-1">
+        <i class="pi pi-list text-primary" style="font-size: 2rem"></i>
+        <div>
+          <h3 class="m-0 text-primary">{{ 'SETTINGS.CODE_LISTS.TITLE' | translate }}</h3>
+          <p class="text-600 mt-1 mb-0">{{ 'SETTINGS.CODE_LISTS.DESCRIPTION' | translate }}</p>
+        </div>
+      </div>
+      <div class="flex align-items-center gap-2 flex-wrap">
+        <label for="codeListPicker" class="font-semibold">{{ 'SETTINGS.CODE_LISTS.LIST' | translate }}</label>
+        <!-- Grouped by the part of the system that uses the list: sixty-odd slugs
+             in one flat list told the reader nothing. See code-list-catalog.ts. -->
+        <p-select inputId="codeListPicker" [options]="groupedLists" [group]="true"
+                  optionLabel="title" optionValue="name" optionGroupLabel="label" optionGroupChildren="items"
+                  [ngModel]="selectedList" (ngModelChange)="selectList($event)"
+                  [filter]="true" filterBy="search" [loading]="listsLoading"
+                  [placeholder]="'SETTINGS.CODE_LISTS.PICKER_PLACEHOLDER' | translate"
+                  styleClass="w-22rem" appendTo="body">
+          <ng-template pTemplate="group" let-group>
+            <span class="font-semibold">{{ group.label }}</span>
+          </ng-template>
+          <ng-template pTemplate="item" let-option>
+            <div class="cl-option">
+              <!-- The list's name, not its slug or table: the filter still matches
+                   both, for an administrator who knows them (QA B14, I18N-003). -->
+              <span class="cl-option__title">{{ option.title }}</span>
+              @if (!option.editable) {
+                <i class="pi pi-lock cl-option__lock" [pTooltip]="'SETTINGS.CODE_LISTS.READ_ONLY_BADGE' | translate"></i>
+              }
+            </div>
+          </ng-template>
+          <ng-template pTemplate="selectedItem" let-option>
+            <span class="cl-option__title">{{ option.title }}</span>
+          </ng-template>
+        </p-select>
+        <button pButton type="button" class="p-button-text p-button-sm" icon="pi pi-question-circle"
+                [label]="'SETTINGS.CODE_LISTS.HOW_TO_SHOW' | translate"
+                [attr.aria-expanded]="helpVisible" (click)="helpVisible = !helpVisible"></button>
+        @if (editable) {
+          <button pButton type="button" icon="pi pi-plus" [label]="'COMMON.ADD' | translate" (click)="openAdd()"></button>
+        }
+      </div>
+    </div>
+
+    @if (helpVisible) {
+      <!-- What a code list is and what switching a row off actually does: the
+           questions this screen used to leave to guesswork. -->
+      <div class="cl-help mt-3">
+        <div class="cl-help__title"><i class="pi pi-question-circle mx-2"></i>{{ 'SETTINGS.CODE_LISTS.HOW_TO_TITLE' | translate }}</div>
+        <ul class="cl-help__list">
+          <li>{{ 'SETTINGS.CODE_LISTS.HOW_TO_1' | translate }}</li>
+          <li>{{ 'SETTINGS.CODE_LISTS.HOW_TO_2' | translate }}</li>
+          <li>{{ 'SETTINGS.CODE_LISTS.HOW_TO_3' | translate }}</li>
+          <li>{{ 'SETTINGS.CODE_LISTS.HOW_TO_4' | translate }}</li>
+          <li>{{ 'SETTINGS.CODE_LISTS.HOW_TO_5' | translate }}</li>
+          <li>{{ 'SETTINGS.CODE_LISTS.HOW_TO_6' | translate }}</li>
+        </ul>
+      </div>
+    }
+
+    @if (selected) {
+      <!-- What the selected list is, what it drives, where its rows come from. -->
+      <div class="cl-about mt-3">
+        <div class="cl-about__head">
+          <span class="cl-about__title">{{ selected.title }}</span>
+          @if (selected.editable) {
+            <p-tag severity="success" [value]="'SETTINGS.CODE_LISTS.EDITABLE_HERE' | translate"></p-tag>
+          } @else {
+            <p-tag severity="secondary" icon="pi pi-lock" [value]="'SETTINGS.CODE_LISTS.READ_ONLY_BADGE' | translate"></p-tag>
+          }
+          @if (rows.length) {
+            <span class="cl-about__stat">{{ 'SETTINGS.CODE_LISTS.COUNT_ROWS' | translate }}: {{ rows.length }}</span>
+            @if (systemCount) {
+              <span class="cl-about__stat"><i class="pi pi-lock"></i> {{ 'SETTINGS.CODE_LISTS.COUNT_SYSTEM' | translate }}: {{ systemCount }}</span>
+            }
+            @if (inactiveCount) {
+              <span class="cl-about__stat">{{ 'SETTINGS.CODE_LISTS.COUNT_INACTIVE' | translate }}: {{ inactiveCount }}</span>
+            }
+          }
+        </div>
+        @if (selected.description) {
+          <p class="cl-about__text">{{ selected.description }}</p>
+        }
+        @if (extraColumn) {
+          <div class="cl-about__meta">
+            <span class="cl-about__meta-item">
+              <i class="pi pi-tag"></i>{{ extraColumnLabel }}
+            </span>
+          </div>
+        }
+        @if (!selected.editable) {
+          <p class="text-500 text-sm mt-2 mb-0 code-lists-readonly">
+            <i class="pi pi-lock mx-1"></i>{{ 'SETTINGS.CODE_LISTS.READ_ONLY_LIST' | translate }}
+            @if (selected.screen; as screen) {
+              <a class="cl-about__link mx-2" [routerLink]="screen.route" [queryParams]="screen.queryParams">
+                {{ 'SETTINGS.CODE_LISTS.EDITED_ON' | translate }}:
+                @for (key of screen.labelKeys; track key; let last = $last) {
+                  <span>{{ key | translate }}{{ last ? '' : ' › ' }}</span>
+                }
+                <i class="pi pi-external-link mx-1"></i>
+              </a>
+            } @else {
+              <span class="mx-2">{{ 'SETTINGS.CODE_LISTS.NO_OWNER_SCREEN' | translate }}</span>
+            }
+          </p>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="card">
+    <!-- Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+         The selected list is held whole, so the table narrows itself. -->
+    <div class="filter-bar">
+      <div class="filter-bar__grid filter-bar__grid--cols-3">
+        <div class="filter-bar__field filter-bar__field--wide" [class.filter-bar__field--active]="filterSearch">
+          <label for="clSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+          <span class="p-input-icon-left">
+            <i class="pi pi-search"></i>
+            <input id="clSearch" pInputText type="text" [(ngModel)]="filterSearch"
+              (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+              [placeholder]="'COMMON.SEARCH' | translate" />
+          </span>
+        </div>
+        <div class="filter-bar__field" [class.filter-bar__field--active]="filterActive !== null">
+          <label for="clActiveFilter">{{ 'COMMON.ACTIVE' | translate }}</label>
+          <p-select inputId="clActiveFilter" [options]="activeOptions" [(ngModel)]="filterActive"
+            optionLabel="label" optionValue="value" appendTo="body"
+            (onChange)="dt.filter(filterActive, 'active', 'equals')"></p-select>
+        </div>
+      </div>
+      <div class="filter-bar__actions">
+        <button pButton type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+          [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters(dt)"></button>
+        <span class="filter-bar__hint filter-bar__actions-spacer">{{ 'COMMON.TOTAL' | translate }}: {{ (dt.filteredValue || rows).length }}</span>
+      </div>
+    </div>
+
+    <p-table #dt [value]="rows" [loading]="rowsLoading" dataKey="value" responsiveLayout="scroll" styleClass="p-datatable-sm"
+             [globalFilterFields]="['value', 'labelAr', 'labelEn']">
+      <ng-template pTemplate="header">
+        <tr>
+          <th style="width: 4rem" pSortableColumn="sortOrder">{{ 'SETTINGS.CODE_LISTS.ORDER' | translate }} <p-sortIcon field="sortOrder"></p-sortIcon></th>
+          <th pSortableColumn="value">{{ 'SETTINGS.CODE_LISTS.CODE' | translate }} <p-sortIcon field="value"></p-sortIcon></th>
+          <th pSortableColumn="labelAr">{{ 'SETTINGS.CODE_LISTS.NAME_AR' | translate }} <p-sortIcon field="labelAr"></p-sortIcon></th>
+          <th pSortableColumn="labelEn">{{ 'SETTINGS.CODE_LISTS.NAME_EN' | translate }} <p-sortIcon field="labelEn"></p-sortIcon></th>
+          <th pSortableColumn="uiSeverity">{{ 'SETTINGS.CODE_LISTS.SEVERITY' | translate }} <p-sortIcon field="uiSeverity"></p-sortIcon></th>
+          <th pSortableColumn="icon">{{ 'SETTINGS.CODE_LISTS.ICON' | translate }} <p-sortIcon field="icon"></p-sortIcon></th>
+          @if (extraColumn) {
+            <th [pTooltip]="extraColumn" pSortableColumn="extra">{{ extraColumnLabel }} <p-sortIcon field="extra"></p-sortIcon></th>
+          }
+          <th pSortableColumn="active">{{ 'COMMON.ACTIVE' | translate }} <p-sortIcon field="active"></p-sortIcon></th>
+          @if (editable) {
+            <th style="width: 7rem">{{ 'COMMON.ACTIONS' | translate }}</th>
+          }
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-row>
+        <tr [attr.data-code]="row.value" [class.code-list-row--system]="row.isSystem" [class.text-500]="row.active === false">
+          <td>{{ row.sortOrder }}</td>
+          <td>
+            <code>{{ row.value }}</code>
+            @if (row.isSystem) {
+              <i class="pi pi-lock mx-2 text-500 code-list-row__lock" [pTooltip]="'SETTINGS.CODE_LISTS.SYSTEM_ROW' | translate"></i>
+            }
+          </td>
+          <td dir="rtl">{{ row.labelAr }}</td>
+          <td dir="ltr">{{ row.labelEn }}</td>
+          <td>
+            @if (row.uiSeverity) {
+              <p-tag [value]="label(row)" [severity]="row.uiSeverity"></p-tag>
+            } @else { — }
+          </td>
+          <td>
+            @if (row.icon) {
+              <i class="pi {{ row.icon }} mx-2"></i><small class="text-500">{{ row.icon }}</small>
+            } @else { — }
+          </td>
+          @if (extraColumn) {
+            <td>
+              @if (row.extra && row.extra.startsWith('#')) {
+                <span class="inline-block border-round mx-2" [style.background]="row.extra" style="width: 1rem; height: 1rem; vertical-align: middle"></span>
+              }
+              {{ row.extra || '—' }}
+            </td>
+          }
+          <td>
+            @if (editable) {
+              <p-toggleswitch [ngModel]="row.active !== false" (ngModelChange)="toggleActive(row)" [disabled]="row.isSystem"></p-toggleswitch>
+            } @else {
+              <p-tag [severity]="row.active === false ? 'secondary' : 'success'"
+                     [value]="(row.active === false ? 'COMMON.INACTIVE' : 'COMMON.ACTIVE') | translate"></p-tag>
+            }
+          </td>
+          @if (editable) {
+            <td>
+              <button pButton type="button" icon="pi pi-pencil" class="p-button-text p-button-sm" (click)="openEdit(row)"
+                      [attr.aria-label]="'COMMON.EDIT' | translate" [pTooltip]="'COMMON.EDIT' | translate"></button>
+            </td>
+          }
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td [attr.colspan]="7 + (extraColumn ? 1 : 0) + (editable ? 1 : 0)" class="text-center text-500 py-4">
+            {{ (hasFilters ? 'COMMON.NO_MATCH' : 'COMMON.NO_RECORDS_FOUND') | translate }}
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <!-- Add/Edit Dialog. Shared vocabulary: assets/layout/styles/_detail-dialog.scss. -->
+  <p-dialog [(visible)]="dialogVisible" [modal]="true" [style]="{ width: '40rem', maxWidth: '96vw' }" [draggable]="false"
+            [dismissableMask]="false" styleClass="dv-dialog"
+            [header]="(draft.id == null ? 'SETTINGS.CODE_LISTS.ADD_ROW' : 'SETTINGS.CODE_LISTS.EDIT_ROW') | translate">
+    <ng-template pTemplate="content">
+      <div class="dv-form">
+        <div class="dv-hero" [class.dv-hero--new]="draft.id == null" [class.dv-hero--muted]="draft.isSystem">
+          <div class="dv-hero__badge">
+            @if (draft.id == null) { <i class="pi pi-plus"></i> } @else if (draft.isSystem) { <i class="pi pi-lock"></i> } @else { <i class="pi pi-pencil"></i> }
+          </div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ selectedList }}</div>
+            <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!draft.code">
+              {{ draft.code || ('SETTINGS.CODE_LISTS.CODE' | translate) }}
+            </div>
+            <div class="dv-hero__meta">
+              @if (draft.nameEn) { <span class="dv-chip" dir="ltr">{{ draft.nameEn }}</span> }
+              @if (draft.nameAr) { <span class="dv-chip" dir="rtl">{{ draft.nameAr }}</span> }
+              @if (draft.uiSeverity) { <p-tag [rounded]="true" [value]="draft.uiSeverity" [severity]="draft.uiSeverity"></p-tag> }
+            </div>
+          </div>
+        </div>
+
+        @if (draft.isSystem) {
+          <div class="dv-notice dv-notice--muted">
+            <i class="pi pi-lock"></i>
+            <span>{{ 'SETTINGS.CODE_LISTS.SYSTEM_ROW' | translate }}</span>
+          </div>
+        }
+
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+            <div class="dv-section__title">{{ 'UMS.FORM.SECTION_IDENTITY' | translate }}</div>
+          </header>
+          <div class="dv-fields">
+            <div class="dv-field">
+              <label for="clCode" class="dv-label">{{ 'SETTINGS.CODE_LISTS.CODE' | translate }} <span class="dv-required">*</span></label>
+              <input id="clCode" pInputText [(ngModel)]="draft.code" [disabled]="draft.isSystem || draft.id != null" dir="ltr" class="w-full" />
+              <small class="dv-hint">{{ (draft.id == null ? 'SETTINGS.CODE_LISTS.HINT_CODE' : 'SETTINGS.CODE_LISTS.HINT_CODE_LOCKED') | translate }}</small>
+            </div>
+            <div class="dv-field">
+              <label for="clOrder" class="dv-label">{{ 'SETTINGS.CODE_LISTS.ORDER' | translate }}</label>
+              <p-inputNumber inputId="clOrder" [(ngModel)]="draft.sortOrder" [useGrouping]="false" [showButtons]="true" class="w-full"></p-inputNumber>
+              <small class="dv-hint">{{ 'SETTINGS.CODE_LISTS.HINT_ORDER' | translate }}</small>
+            </div>
+            <div class="dv-field">
+              <label for="clNameAr" class="dv-label">{{ 'SETTINGS.CODE_LISTS.NAME_AR' | translate }} <span class="dv-required">*</span></label>
+              <input id="clNameAr" pInputText [(ngModel)]="draft.nameAr" dir="rtl" class="w-full" />
+            </div>
+            <div class="dv-field">
+              <label for="clNameEn" class="dv-label">{{ 'SETTINGS.CODE_LISTS.NAME_EN' | translate }} <span class="dv-required">*</span></label>
+              <input id="clNameEn" pInputText [(ngModel)]="draft.nameEn" dir="ltr" class="w-full" />
+              <small class="dv-hint">{{ 'SETTINGS.CODE_LISTS.HINT_NAMES' | translate }}</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-palette"></i></span>
+            <div class="dv-section__title">{{ 'UMS.FORM.SECTION_SETTINGS' | translate }}</div>
+          </header>
+          <div class="dv-fields">
+            <div class="dv-field">
+              <label for="clSeverity" class="dv-label">{{ 'SETTINGS.CODE_LISTS.SEVERITY' | translate }}</label>
+              <p-select inputId="clSeverity" [options]="severityOptions" [(ngModel)]="draft.uiSeverity" optionLabel="label" optionValue="value"
+                        [showClear]="true" appendTo="body" [placeholder]="'SETTINGS.CODE_LISTS.NO_SEVERITY' | translate" class="w-full">
+                <ng-template pTemplate="item" let-opt><p-tag [value]="opt.label" [severity]="opt.value"></p-tag></ng-template>
+                <ng-template pTemplate="selectedItem" let-opt><p-tag [value]="opt.label" [severity]="opt.value"></p-tag></ng-template>
+              </p-select>
+              <small class="dv-hint">{{ 'SETTINGS.CODE_LISTS.HINT_SEVERITY' | translate }}</small>
+            </div>
+            <div class="dv-field">
+              <label for="clIcon" class="dv-label">{{ 'SETTINGS.CODE_LISTS.ICON' | translate }}</label>
+              <div class="flex align-items-center gap-2">
+                <input id="clIcon" pInputText [(ngModel)]="draft.icon" placeholder="pi-check" dir="ltr" class="flex-1" />
+                @if (draft.icon) { <i class="pi {{ draft.icon }} text-xl"></i> }
+              </div>
+              <small class="dv-hint">{{ 'SETTINGS.CODE_LISTS.HINT_ICON' | translate }}</small>
+            </div>
+            @if (extraColumn) {
+              <div class="dv-field">
+                <label for="clExtra" class="dv-label">{{ extraColumnLabel }}</label>
+                <input id="clExtra" pInputText [(ngModel)]="draft.extra" dir="ltr" class="w-full" />
+                @if (extraColumnHint) {
+                  <small class="dv-hint">{{ extraColumnHint }}</small>
+                }
+              </div>
+            }
+            <div class="dv-field">
+              <label for="clActive" class="dv-label">{{ 'COMMON.ACTIVE' | translate }}</label>
+              <p-toggleswitch inputId="clActive" [(ngModel)]="draft.active" [disabled]="draft.isSystem"></p-toggleswitch>
+              <small class="dv-hint">{{ 'SETTINGS.CODE_LISTS.HINT_ACTIVE' | translate }}</small>
+            </div>
+          </div>
+        </section>
+      </div>
+    </ng-template>
+    <ng-template pTemplate="footer">
+      <div class="dv-footer">
+        <small class="dv-footer__hint"><span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+        <div class="dv-footer__actions">
+          <button pButton type="button" [label]="'COMMON.CANCEL' | translate" icon="pi pi-times" class="p-button-text p-button-secondary"
+                  (click)="dialogVisible = false" [disabled]="saving"></button>
+          <button pButton type="button" [label]="'COMMON.SAVE' | translate" icon="pi pi-check" (click)="save()"
+                  [disabled]="!draftValid || saving" [loading]="saving"></button>
+        </div>
+      </div>
+    </ng-template>
+  </p-dialog>
+</div>

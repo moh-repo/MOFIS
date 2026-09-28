@@ -1,0 +1,37 @@
+<!-- `[dir]` is the CDK Dir directive, not a bare attribute. It still writes the
+     attribute (so every `[dir="rtl"]` rule in styles.scss keeps matching), and
+     it also provides a live Directionality to everything inside: ng-zorro's
+     cards, tables and inputs mirror from that, and the root Directionality
+     reads document.body.dir once at injection and never again — so with a
+     plain attribute those widgets kept their English layout after a language
+     switch until the next reload. See src/app/layout/live-direction.spec.ts. -->
+<div class="layout-wrapper" [ngClass]="containerClass"
+  [dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <app-topbar></app-topbar>
+  <!-- H3: a page is on its way (chunk download, guards). See AppLayoutComponent.navigating. -->
+  @if (navigating) {
+    <div class="layout-route-progress" role="progressbar" aria-busy="true"
+      [attr.aria-label]="'COMMON.LOADING' | translate"></div>
+  }
+  <!-- Always in the tree, hidden with a class when it has nothing to show.
+       app-menu is what decides `hasVisibleMenuItems`, so removing it here would
+       take its permission subscription with it and the sidebar could never come
+       back — not when permissions finish loading, and not on the next sign-in. -->
+  <div class="layout-sidebar" [class.layout-sidebar-empty]="!hasVisibleMenuItems">
+    <app-sidebar></app-sidebar>
+  </div>
+  <div class="layout-main-container">
+    <div class="layout-main">
+      <!-- Out of the DOM for one turn on a language switch, so the page is
+           built again and re-reads anything the server chose the language of.
+           See AppLayoutComponent.reinitialiseRoute. -->
+      @if (routeAlive) {
+        <router-outlet></router-outlet>
+      }
+    </div>
+    <app-footer></app-footer>
+  </div>
+  <app-config></app-config>
+  <app-report-pdf-modal></app-report-pdf-modal>
+  <div class="layout-mask"></div>
+</div>

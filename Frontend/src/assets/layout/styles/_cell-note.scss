@@ -1,0 +1,24 @@
+/* ── A cell's second line ───────────────────────────────────────────────────
+
+   What a row's main value is qualified by: a report's parent code under its
+   category, the permission that opens it under its route, the token of the
+   session whose id is above it. Each of those had a column of its own, and a
+   column costs every other column on the page — eleven of them left the staff
+   Reports table 81px for Report Name, and ten left student Sessions 50px for the
+   student's name.
+
+   Not scoped to a page. It started under `.ums-admin-page`, the second page that
+   wanted it is a PrimeNG one, and an idiom used on two pages under two table
+   libraries should have one name. */
+
+.cell-note {
+    margin-top: 0.15rem;
+    font-size: 0.78rem;
+    line-height: 1.3;
+    color: var(--text-color-secondary);
+
+    code {
+        font-size: inherit;
+        color: inherit;
+    }
+}

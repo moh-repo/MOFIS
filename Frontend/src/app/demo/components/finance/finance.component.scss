@@ -1,0 +1,94 @@
+@use './finance-shared' as fin;
+
+// ─── Header bar with inline filters ──────────────────────────────────────────
+
+.fin-header {
+    @include fin.fin-header-bar;
+}
+
+.fin-header__left {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.fin-header__icon {
+    @include fin.fin-header-icon;
+}
+
+.fin-header__title {
+    @include fin.fin-header-title;
+}
+
+.fin-header__count {
+    @include fin.fin-header-count;
+}
+
+// Only the actions that change the data; the filters moved to .filter-bar.
+.fin-header__actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+
+    @media (max-width: 640px) {
+        width: 100%;
+
+        > * {
+            flex: 1 1 auto;
+        }
+    }
+}
+
+// ─── Table ───────────────────────────────────────────────────────────────────
+
+.fin-row {
+    cursor: pointer;
+}
+
+.fin-amount {
+    font-weight: 600;
+    color: var(--green-600, #059669);
+    white-space: nowrap;
+}
+
+// Wafar is a deduction and net is the figure that matters, so neither should read as
+// another green "received" amount alongside it. Matches the amber/indigo pairing the
+// view page already uses for its wafar and net stat tiles.
+.fin-amount--wafar {
+    color: var(--yellow-700, #a16207);
+}
+
+.fin-amount--net {
+    color: var(--indigo-600, #4f46e5);
+}
+
+.fin-amount__currency {
+    margin-inline-start: 0.3rem;
+    font-weight: 500;
+    font-size: 0.75rem;
+    color: var(--text-color-secondary);
+}
+
+.fin-empty {
+    @include fin.fin-empty-state;
+}
+
+.fin-empty__title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+}
+
+.fin-empty__hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-color-secondary);
+    opacity: 0.75;
+}
+
+// Keep wide tables inside their own scroll container so the page body never
+// scrolls sideways.
+:host ::ng-deep .p-datatable-table-container {
+    overflow-x: auto;
+}

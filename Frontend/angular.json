@@ -1,0 +1,233 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "projects",
+  "projects": {
+    "mof-is": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
+      },
+      "root": "",
+      "sourceRoot": "src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:application",
+          "options": {
+            "outputPath": "dist/mof-is",
+            "index": "src/index.html",
+            "browser": "src/main.ts",
+            "polyfills": [
+              "zone.js"
+            ],
+            "tsConfig": "tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              "src/favicon.ico",
+              "src/assets",
+              {
+                "glob": "pdfium.wasm",
+                "input": "node_modules/@embedpdf/pdfium/dist",
+                "output": "assets/embedpdf"
+              },
+              {
+                "glob": "security.txt",
+                "input": "src/.well-known",
+                "output": "/.well-known"
+              },
+              "src/robots.txt"
+            ],
+            "styles": [
+              "src/styles.scss",
+              "src/assets/styles/layout-ltr.css",
+              "src/assets/styles/rtl.css",
+              "src/assets/styles/language-selector.css",
+              "src/assets/styles/student-add-rtl.css",
+              "src/assets/styles/layout-rtl.css",
+              {
+                "input": "node_modules/quill/dist/quill.snow.css",
+                "bundleName": "quill-snow",
+                "inject": false
+              },
+              {
+                "input": "node_modules/ag-grid-community/styles/ag-grid.css",
+                "bundleName": "ag-grid",
+                "inject": false
+              },
+              {
+                "input": "node_modules/ag-grid-community/styles/ag-theme-alpine.css",
+                "bundleName": "ag-theme-alpine",
+                "inject": false
+              }
+            ],
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "exceljs",
+              "fflate",
+              "jszip",
+              "quill-delta",
+              "leaflet",
+              "html2canvas"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "2.8mb",
+                  "maximumError": "3.2mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "8kb",
+                  "maximumError": "35kb"
+                }
+              ],
+              "outputHashing": "all",
+              "sourceMap": false,
+              "optimization": true,
+              "namedChunks": false,
+              "extractLicenses": true
+            },
+            "staging": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.staging.ts"
+                }
+              ],
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "2.8mb",
+                  "maximumError": "3.2mb"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "8kb",
+                  "maximumError": "35kb"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "mof-is:build:production"
+            },
+            "staging": {
+              "buildTarget": "mof-is:build:staging"
+            },
+            "development": {
+              "buildTarget": "mof-is:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "extract-i18n": {
+          "builder": "@angular-devkit/build-angular:extract-i18n",
+          "options": {
+            "buildTarget": "mof-is:build"
+          }
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "builderMode": "application",
+            "polyfills": [
+              "zone.js",
+              "zone.js/testing"
+            ],
+            "tsConfig": "tsconfig.spec.json",
+            "karmaConfig": "karma.conf.js",
+            "inlineStyleLanguage": "scss",
+            "assets": [
+              "src/favicon.ico",
+              "src/assets",
+              {
+                "glob": "pdfium.wasm",
+                "input": "node_modules/@embedpdf/pdfium/dist",
+                "output": "assets/embedpdf"
+              },
+              "src/robots.txt"
+            ],
+            "styles": [
+              "src/styles.scss",
+              "src/assets/styles/layout-ltr.css",
+              "src/assets/styles/rtl.css",
+              "src/assets/styles/language-selector.css",
+              "src/assets/styles/student-add-rtl.css",
+              "src/assets/styles/layout-rtl.css",
+              "node_modules/quill/dist/quill.snow.css",
+              "node_modules/ag-grid-community/styles/ag-grid.css",
+              "node_modules/ag-grid-community/styles/ag-theme-alpine.css"
+            ],
+            "scripts": []
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "src/**/*.ts",
+              "src/**/*.html"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "schematics": {
+    "@schematics/angular:component": {
+      "type": "component"
+    },
+    "@schematics/angular:directive": {
+      "type": "directive"
+    },
+    "@schematics/angular:service": {
+      "type": "service"
+    },
+    "@schematics/angular:guard": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:interceptor": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:module": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:pipe": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:resolver": {
+      "typeSeparator": "."
+    }
+  },
+  "cli": {
+    "schematicCollections": [
+      "@angular-eslint/schematics"
+    ]
+  }
+}

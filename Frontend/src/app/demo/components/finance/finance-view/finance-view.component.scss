@@ -1,0 +1,260 @@
+@use '../finance-shared' as fin;
+
+// ─── Hero ────────────────────────────────────────────────────────────────────
+
+.fin-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.fin-hero__identity {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.fin-hero__avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+}
+
+.fin-hero__name {
+    margin: 0 0 0.4rem;
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--text-color);
+
+    @media (max-width: 640px) {
+        font-size: 1.2rem;
+    }
+}
+
+.fin-hero__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    font-size: 0.82rem;
+    color: var(--text-color-secondary);
+
+    > span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+}
+
+.fin-hero__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+
+    @media (max-width: 640px) {
+        width: 100%;
+
+        button {
+            flex: 1 1 auto;
+        }
+    }
+}
+
+// ─── Headline figures ────────────────────────────────────────────────────────
+
+.fin-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.fin-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 1rem 1.15rem;
+    border-radius: 12px;
+    border: 1px solid var(--surface-border);
+    border-inline-start-width: 4px;
+    background: var(--surface-card);
+
+    &--green  { border-inline-start-color: #10b981; .fin-stat__value { color: #059669; } }
+    &--amber  { border-inline-start-color: #f59e0b; .fin-stat__value { color: #d97706; } }
+    &--indigo { border-inline-start-color: #4f46e5; .fin-stat__value { color: #4338ca; } }
+    &--cyan   { border-inline-start-color: #06b6d4; .fin-stat__value { color: #0891b2; } }
+}
+
+.fin-stat__label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text-color-secondary);
+}
+
+.fin-stat__value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    line-height: 1.2;
+
+    > small {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-color-secondary);
+        margin-inline-start: 0.25rem;
+    }
+}
+
+// ─── Detail cards ────────────────────────────────────────────────────────────
+
+.fin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.fin-card {
+    @include fin.fin-section-card;
+    margin-bottom: 0;
+
+    &--wide {
+        grid-column: 1 / -1;
+    }
+}
+
+.fin-card__head {
+    @include fin.fin-section-header;
+}
+
+.fin-card__title {
+    @include fin.fin-section-title;
+}
+
+.fin-card__icon {
+    &--green  { @include fin.fin-section-icon(16, 185, 129); }
+    &--amber  { @include fin.fin-section-icon(245, 158, 11); }
+    &--cyan   { @include fin.fin-section-icon(6, 182, 212); }
+    &--orange { @include fin.fin-section-icon(249, 115, 22); }
+    &--purple { @include fin.fin-section-icon(168, 85, 247); }
+    &--indigo { @include fin.fin-section-icon(79, 70, 229); }
+    &--teal   { @include fin.fin-section-icon(20, 184, 166); }
+    &--slate  { @include fin.fin-section-icon(100, 116, 139); }
+}
+
+// ─── Definition list ─────────────────────────────────────────────────────────
+
+.fin-dl {
+    margin: 0;
+    padding-bottom: 0.65rem;
+}
+
+.fin-dl__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px dashed var(--surface-border);
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    dt {
+        flex: 0 0 auto;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--text-color-secondary);
+    }
+
+    dd {
+        margin: 0;
+        text-align: end;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--text-color);
+        overflow-wrap: anywhere;
+    }
+
+    // Long values (check details, notes) read better stacked.
+    &--block {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.3rem;
+
+        dd {
+            text-align: start;
+            font-weight: 500;
+            line-height: 1.55;
+        }
+    }
+}
+
+// ─── Notes ───────────────────────────────────────────────────────────────────
+
+.fin-notes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    padding-bottom: 0.65rem;
+}
+
+.fin-notes__group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.fin-notes__label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+}
+
+.fin-notes__text {
+    margin: 0;
+    padding: 0.75rem 0.9rem;
+    min-height: 4rem;
+    border-radius: 8px;
+    background: var(--surface-ground);
+    border: 1px solid var(--surface-border);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    &--empty {
+        color: var(--text-color-secondary);
+        font-style: italic;
+    }
+}
+
+// ─── States ──────────────────────────────────────────────────────────────────
+
+.fin-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 1rem;
+}
+
+.fin-empty {
+    @include fin.fin-empty-state;
+}
+
+.fin-empty__title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+}

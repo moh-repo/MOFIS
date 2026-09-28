@@ -1,0 +1,11 @@
+/* ============================================================
+   Payment Authorization Report
+
+   The voucher itself is no longer drawn here: it is rendered
+   server-side by the payment-auth-form Jasper template and shown
+   through EmbedPDF, so the A4 form CSS and the browser-print
+   plumbing that used to live in this file are gone. Printing is
+   handled by the PDF viewer.
+   ============================================================ */
+
+.selected-row { background: #e3f2fd !important; }

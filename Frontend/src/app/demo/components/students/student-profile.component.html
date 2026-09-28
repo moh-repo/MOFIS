@@ -1,0 +1,1201 @@
+<p-toast></p-toast>
+
+<!-- Loading -->
+@if (loading) {
+  <div class="student-profile-loading flex flex-column align-items-center justify-content-center gap-3 p-6 border-round-xl"
+    [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"
+    >
+    <p-progressSpinner strokeWidth="3" [attr.aria-label]="'STUDENTS.LOADING' | translate"></p-progressSpinner>
+    <span class="text-600">{{ 'STUDENTS.LOADING' | translate }}</span>
+  </div>
+}
+
+@if (!loading && profile) {
+  <div class="student-profile-page pb-5"
+    [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"
+    >
+    <!-- ═══ Hero ═══ -->
+    <div class="student-profile-hero surface-card shadow-2 border-round-xl mb-4 overflow-hidden">
+      <div class="student-profile-hero__accent"></div>
+      <div class="student-profile-hero__body p-4 md:p-5">
+        <div class="flex flex-column lg:flex-row gap-4 lg:align-items-start lg:justify-content-between">
+          <!-- Identity block -->
+          <div class="flex flex-column sm:flex-row align-items-start sm:align-items-center gap-4 flex-grow-1 min-w-0">
+            <button pButton pRipple type="button"
+              [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+              class="p-button-outlined p-button-sm shrink-0"
+              [label]="'STUDENTS.PROFILE_PAGE.BACK' | translate"
+            (click)="backToList()"></button>
+            <div class="student-profile__identity flex align-items-center gap-4 min-w-0 w-full">
+              <!-- Avatar -->
+              <div class="student-profile__avatar shrink-0" aria-hidden="true">
+                @if (photoUrl) {
+                  <img [src]="photoUrl"
+                    [attr.alt]="studentSnapshot?.['studentName'] || ''"
+                    class="student-profile__avatar-img" loading="lazy" />
+                }
+                @if (!photoUrl) {
+                  <span class="student-profile__avatar-initials">{{ avatarInitials() }}</span>
+                }
+              </div>
+              <!-- Name + pills -->
+              <div class="min-w-0">
+                <h1 class="student-profile__title m-0 text-900">
+                  {{ studentSnapshot?.['studentName'] ?? ('STUDENTS.PROFILE_PAGE.NO_NAME' | translate) }}
+                </h1>
+                <!-- Row 1: IDs + status -->
+                <div class="flex align-items-center flex-wrap gap-2 mt-2">
+                  <span class="student-profile__pill">
+                    {{ 'STUDENTS.STUDENT_ID' | translate }}:&nbsp;<strong>{{ studentId }}</strong>
+                  </span>
+                  <span class="student-profile__pill surface-100">
+                    {{ 'STUDENTS.PASSPORT' | translate }}:&nbsp;<strong>{{ studentSnapshot?.['studentPassportNumber'] ?? '—' }}</strong>
+                  </span>
+                  @if (label(studyStatusOptions, studentSnapshot?.['studentStudyStatusId']) !== '—') {
+                    <p-tag
+                      [severity]="studyStatusSeverity(studentSnapshot?.['studentStudyStatusId'])" [rounded]="true"
+                      [value]="label(studyStatusOptions, studentSnapshot?.['studentStudyStatusId'])">
+                    </p-tag>
+                  }
+                </div>
+                <!-- Row 2: Degree, Major, Gender, Delegation Year -->
+                <div class="flex flex-wrap gap-2 mt-2">
+                  @if (label(degreeOptions, studentSnapshot?.['studentDegreeId']) !== '—') {
+                    <span
+                      class="student-profile__pill surface-50">
+                      <i class="pi pi-graduation-cap mr-1 text-xs text-600"></i>
+                      {{ label(degreeOptions, studentSnapshot?.['studentDegreeId']) }}
+                    </span>
+                  }
+                  @if (label(majorOptions, studentSnapshot?.['studentMajorId']) !== '—') {
+                    <span
+                      class="student-profile__pill surface-50">
+                      <i class="pi pi-book mr-1 text-xs text-600"></i>
+                      {{ label(majorOptions, studentSnapshot?.['studentMajorId']) }}
+                    </span>
+                  }
+                  @if (label(genderOptions, studentSnapshot?.['studentGender']) !== '—') {
+                    <span
+                      class="student-profile__pill surface-50">
+                      {{ label(genderOptions, studentSnapshot?.['studentGender']) }}
+                    </span>
+                  }
+                  @if (studentSnapshot?.['studentDelegationDecisionYear']) {
+                    <span
+                      class="student-profile__pill surface-50">
+                      {{ 'STUDENTS.PROFILE_PAGE.DELEGATION_YEAR' | translate }}:&nbsp;
+                      <strong>{{ studentSnapshot?.['studentDelegationDecisionYear'] }}</strong>
+                    </span>
+                  }
+                  @if (label(agencyTypeOptions, studentSnapshot?.['studentAgencyTypeId']) !== '—') {
+                    <span
+                      class="student-profile__pill surface-50">
+                      {{ label(agencyTypeOptions, studentSnapshot?.['studentAgencyTypeId']) }}
+                    </span>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Actions -->
+          <div class="flex gap-2 flex-shrink-0 mt-2 lg:mt-0">
+            <button pButton pRipple type="button"
+              icon="pi pi-pencil"
+              class="p-button-primary p-button-sm"
+              [label]="'STUDENTS.PROFILE_PAGE.EDIT_STUDENT' | translate"
+            (click)="editStudent()"></button>
+          </div>
+        </div>
+        <!-- Stats strip -->
+        <div class="student-profile-stats-strip mt-4">
+          <div class="student-profile-stats-strip__item">
+            <span class="label">{{ 'STUDENTS.PROFILE_PAGE.ENTITLED_AMOUNT' | translate }}</span>
+            <span class="value">{{ formatAmount(studentSnapshot?.['studentAmount']) }}</span>
+          </div>
+          <div class="student-profile-stats-strip__item">
+            <span class="label">{{ 'STUDENTS.PROFILE_PAGE.FIN_RECEIVED' | translate }}</span>
+            <span class="value text-primary">{{ formatAmount(profile?.['finance']?.studentFinRecievedAmount) }}</span>
+          </div>
+          @if (hintRemaining() >= 0) {
+            <div class="student-profile-stats-strip__item">
+              <span class="label">{{ 'STUDENTS.PROFILE_PAGE.REMAINING' | translate }}</span>
+              <span class="value text-green-500">{{ formatAmount(hintRemaining()) }}</span>
+            </div>
+          }
+          @if (profile?.['progress']; as p) {
+            <div class="student-profile-stats-strip__item">
+              <span class="label">{{ 'STUDENTS.PROFILE_PAGE.PROGRESS_PCT' | translate }}</span>
+              <span class="value">{{ progressNumeric() }}%</span>
+            </div>
+          }
+          <div class="student-profile-stats-strip__item">
+            <span class="label">{{ 'STUDENTS.PROFILE_PAGE.STUDY_YEARS' | translate }}</span>
+            <span class="value">{{ studentSnapshot?.['studentStudyNoOfYears'] ?? '—' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Pending approval notice: the record on screen is not the whole story while
+    an edit is still awaiting a decision. -->
+    @if (pendingApprovals.length) {
+      <div class="student-profile-pending mb-3">
+        <i class="pi pi-clock"></i>
+        <div class="flex-1">
+          <strong>{{ 'APPROVAL.PENDING_NOTICE_TITLE' | translate }}</strong>
+          <div class="text-sm">
+            {{ 'APPROVAL.PENDING_NOTICE_BODY' | translate }}
+            <span class="font-medium">({{ pendingApprovals.length }})</span>
+          </div>
+        </div>
+        <button pButton pRipple type="button" class="p-button-sm p-button-outlined"
+          [label]="'APPROVAL.REVIEW_NOW' | translate"
+        (click)="goToApprovalsTab()"></button>
+      </div>
+    }
+    <!-- ═══ Main tabs ═══ -->
+    <p-card styleClass="student-profile-main-card border-round-xl shadow-2">
+      <!-- class, not styleClass: Tabs has no styleClass input in PrimeNG 21, so
+           it stayed a bare attribute and .student-profile-tabview never reached
+           the DOM — taking the whole tab stylesheet with it. -->
+      <p-tabs [(value)]="activeTabIndex" class="student-profile-tabview">
+        <p-tablist>
+          <p-tab [value]="0">{{ 'STUDENTS.PROFILE_PAGE.TAB_OVERVIEW' | translate }}</p-tab>
+          <p-tab [value]="1">{{ 'STUDENTS.PROFILE_PAGE.TAB_FAMILY' | translate }}</p-tab>
+          <p-tab [value]="2">{{ 'STUDENTS.PROFILE_PAGE.TAB_YEARS' | translate }}</p-tab>
+          <p-tab [value]="3">{{ 'STUDENTS.PROFILE_PAGE.TAB_MONEY' | translate }}</p-tab>
+          <p-tab [value]="4">{{ 'STUDENTS.PROFILE_PAGE.UNI_FEE_TAB' | translate }}</p-tab>
+          <p-tab [value]="5">{{ 'STUDENTS.PROFILE_PAGE.TAB_DELEGATION' | translate }}</p-tab>
+          <p-tab [value]="6">{{ 'STUDENTS.PROFILE_PAGE.TAB_EXTENSIONS' | translate }}</p-tab>
+          <p-tab [value]="7">{{ 'STUDENTS.PROFILE_PAGE.TAB_LOANS_BOOKS' | translate }}</p-tab>
+          <p-tab [value]="8">{{ 'STUDENTS.PROFILE_PAGE.TAB_DEATH' | translate }}</p-tab>
+          <p-tab [value]="9">{{ 'STUDENTS.DOCUMENTS' | translate }}</p-tab>
+          <p-tab [value]="10">{{ 'WAFAR.STUDENT_FEE_PAYMENTS' | translate }}</p-tab>
+          @if (canSeeApprovals) {
+          <p-tab [value]="11">
+            <span class="flex align-items-center gap-2">
+              {{ 'APPROVAL.TAB_APPROVALS' | translate }}
+              @if (pendingApprovals.length) {
+                <p-tag severity="warn"
+                [value]="pendingApprovals.length.toString()"></p-tag>
+              }
+            </span>
+          </p-tab>
+          }
+        </p-tablist>
+        <p-tabpanels>
+          <p-tabpanel [value]="0">
+            <div class="grid">
+              <!-- Personal card -->
+              <div class="col-12 md:col-6 xl:col-3">
+                <p-card styleClass="h-full shadow-1 border-round-lg student-profile-mini-card">
+                  <ng-template pTemplate="header">
+                    <div class="student-profile-card-head">
+                      <i class="pi pi-user student-profile-card-head__icon"></i>
+                      <span>{{ 'STUDENTS.PROFILE_PAGE.PERSONAL_INFO' | translate }}</span>
+                    </div>
+                  </ng-template>
+                  <dl class="profile-dl">
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENTS.PROFILE_PAGE.GENDER' | translate }}</dt>
+                      <dd>{{ label(genderOptions, studentSnapshot?.['studentGender']) }}</dd>
+                    </div>
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENTS.PROFILE_PAGE.BIRTHDATE' | translate }}</dt>
+                      <dd>{{ formatDate(studentSnapshot?.['studentBirthdate']) }}</dd>
+                    </div>
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENTS.PROFILE_PAGE.BIRTH_PLACE' | translate }}</dt>
+                      <dd>{{ label(countryOptions, studentSnapshot?.['studentBirthdatePlace']) }}</dd>
+                    </div>
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENTS.PASSPORT' | translate }}</dt>
+                      <dd>{{ studentSnapshot?.['studentPassportNumber'] ?? '—' }}</dd>
+                    </div>
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENT_ADD.PASSPORT_ISSUE_DATE' | translate }}</dt>
+                      <dd>{{ formatDate(studentSnapshot?.['studentPassportIssueDate']) }}</dd>
+                    </div>
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENT_ADD.PASSPORT_EXPIRE_DATE' | translate }}</dt>
+                      <dd>{{ formatDate(studentSnapshot?.['studentPassportExpireDate']) }}</dd>
+                    </div>
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENT_ADD.STUDENT_COUNTRY' | translate }}</dt>
+                      <dd>{{ label(countryOptions, studentSnapshot?.['studentCountryId'] ?? studentSnapshot?.['studentCountry']?.studentCountryId) }}</dd>
+                    </div>
+                    @if (studentSnapshot?.['studentEmail']) {
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENT_ADD.STUDENT_EMAIL' | translate }}</dt>
+                        <dd>{{ studentSnapshot?.['studentEmail'] }}</dd>
+                      </div>
+                    }
+                    @if (studentSnapshot?.['studentCellphone']) {
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENT_ADD.STUDENT_CELLPHONE' | translate }}</dt>
+                        <dd>{{ studentSnapshot?.['studentCellphone'] }}</dd>
+                      </div>
+                    }
+                    @if (studentSnapshot?.['studentHomeNumber']) {
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENT_ADD.STUDENT_HOME_NUMBER' | translate }}</dt>
+                        <dd>{{ studentSnapshot?.['studentHomeNumber'] }}</dd>
+                      </div>
+                    }
+                    @if (studentSnapshot?.['studentEmergencyContact']) {
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENT_ADD.STUDENT_EMERGENCY_CONTACT' | translate }}</dt>
+                        <dd>{{ studentSnapshot?.['studentEmergencyContact'] }}</dd>
+                      </div>
+                    }
+                  </dl>
+                </p-card>
+              </div>
+              <!-- Academic card -->
+              <div class="col-12 md:col-6 xl:col-3">
+                <p-card styleClass="h-full shadow-1 border-round-lg student-profile-mini-card">
+                  <ng-template pTemplate="header">
+                    <div class="student-profile-card-head">
+                      <i class="pi pi-graduation-cap student-profile-card-head__icon"></i>
+                      <span>{{ 'STUDENTS.PROFILE_PAGE.ACADEMIC_INFO' | translate }}</span>
+                    </div>
+                  </ng-template>
+                  <dl class="profile-dl">
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENT_ADD.STUDENT_DEGREE' | translate }}</dt>
+                      <dd>{{ label(degreeOptions, studentSnapshot?.['studentDegreeId']) }}</dd>
+                    </div>
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENT_ADD.STUDENT_MAJOR' | translate }}</dt>
+                      <dd>{{ label(majorOptions, studentSnapshot?.['studentMajorId']) }}</dd>
+                    </div>
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENTS.PROFILE_PAGE.STUDY_YEARS' | translate }}</dt>
+                      <dd>{{ studentSnapshot?.['studentStudyNoOfYears'] ?? '—' }}</dd>
+                    </div>
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENTS.PROFILE_PAGE.DELEGATION_YEAR' | translate }}</dt>
+                      <dd>{{ studentSnapshot?.['studentDelegationDecisionYear'] ?? '—' }}</dd>
+                    </div>
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENTS.PROFILE_PAGE.DECISION_NO' | translate }}</dt>
+                      <dd>{{ studentSnapshot?.['studentDelegateDecisionNo'] ?? '—' }}</dd>
+                    </div>
+                    @if (studentSnapshot?.['currentQuarter']) {
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENT_ADD.CURRENT_QUARTER' | translate }}</dt>
+                        <dd>{{ quarterLabel(studentSnapshot?.['currentQuarter']) }}</dd>
+                      </div>
+                    }
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENTS.PROFILE_PAGE.AGENCY_TYPE' | translate }}</dt>
+                      <dd>{{ label(agencyTypeOptions, studentSnapshot?.['studentAgencyTypeId']) }}</dd>
+                    </div>
+                    @if (studentSnapshot?.['studentMinistryTypeId']) {
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENTS.PROFILE_PAGE.MINISTRY_TYPE' | translate }}</dt>
+                        <dd>{{ label(ministryTypeOptions, studentSnapshot?.['studentMinistryTypeId']) }}</dd>
+                      </div>
+                    }
+                    @if (studentSnapshot?.['studentUniversityTypeId']) {
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENTS.PROFILE_PAGE.UNIVERSITY_TYPE' | translate }}</dt>
+                        <dd>{{ label(universityTypeOptions, studentSnapshot?.['studentUniversityTypeId']) }}</dd>
+                      </div>
+                    }
+                    <div class="profile-dl__row">
+                      <dt>{{ 'STUDENTS.PROFILE_PAGE.CURRENT_LEVEL' | translate }}</dt>
+                      <dd>{{ label(currentLevelOptions, studentSnapshot?.['studentCurrentLevelId']) }}</dd>
+                    </div>
+                  </dl>
+                </p-card>
+              </div>
+              <!-- Study Progress card -->
+              <div class="col-12 md:col-6 xl:col-3">
+                @if (profile?.['progress']; as p) {
+                  <p-card styleClass="h-full shadow-1 border-round-lg student-profile-mini-card"
+                    >
+                    <ng-template pTemplate="header">
+                      <div class="student-profile-card-head">
+                        <i class="pi pi-chart-line student-profile-card-head__icon"></i>
+                        <span>{{ 'STUDENTS.PROFILE_PAGE.TAB_PROGRESS' | translate }}</span>
+                      </div>
+                    </ng-template>
+                    <dl class="profile-dl">
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENTS.PROFILE_PAGE.CURRENT_YEAR' | translate }}</dt>
+                        <dd>{{ (p | inLanguage:'currentYearLabel') || '—' }}</dd>
+                      </div>
+                      <div class="profile-dl__row profile-dl__row--block">
+                        <dt>{{ 'STUDENTS.PROFILE_PAGE.PROGRESS_PCT' | translate }}</dt>
+                        <dd class="profile-dl__progress">
+                          <p-progressBar [value]="progressNumeric()" [showValue]="true"></p-progressBar>
+                        </dd>
+                      </div>
+                    </dl>
+                  </p-card>
+                } @else {
+                  <div class="surface-50 border-round-lg p-4 text-600 h-full">
+                    {{ 'STUDENTS.NO_RECORD_FOUND' | translate }}
+                  </div>
+                }
+              </div>
+              <!-- Finance snapshot card -->
+              <div class="col-12 md:col-6 xl:col-3">
+                @if (profile?.['finance']; as f) {
+                  <p-card styleClass="h-full shadow-1 border-round-lg student-profile-mini-card"
+                    >
+                    <ng-template pTemplate="header">
+                      <div class="student-profile-card-head">
+                        <i class="pi pi-wallet student-profile-card-head__icon"></i>
+                        <span>{{ 'STUDENTS.PROFILE_PAGE.FINANCE_SNAPSHOT' | translate }}</span>
+                      </div>
+                    </ng-template>
+                    <dl class="profile-dl">
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENTS.PROFILE_PAGE.ENTITLED_AMOUNT' | translate }}</dt>
+                        <dd>{{ formatAmount(studentSnapshot?.['studentAmount']) }}</dd>
+                      </div>
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENTS.PROFILE_PAGE.FIN_RECEIVED' | translate }}</dt>
+                        <dd class="profile-dl__emph">{{ formatAmount(f?.studentFinRecievedAmount) }}</dd>
+                      </div>
+                      @if (profile?.['wafar']; as w) {
+                        <div class="profile-dl__row">
+                          <dt>{{ 'STUDENTS.PROFILE_PAGE.WAFAR_AMOUNT' | translate }}</dt>
+                          <dd class="text-orange-500 font-semibold">{{ formatAmount(w?.studentFinRecievedAmount) }}</dd>
+                        </div>
+                      }
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENTS.PROFILE_PAGE.REMAINING' | translate }}</dt>
+                        <dd class="text-green-500 font-semibold">{{ formatAmount(hintRemaining()) }}</dd>
+                      </div>
+                      <div class="profile-dl__row">
+                        <dt>{{ 'STUDENTS.PROFILE_PAGE.FIN_YEAR' | translate }}</dt>
+                        <dd>{{ f?.studentFinRecievedYear ?? '—' }}</dd>
+                      </div>
+                    </dl>
+                  </p-card>
+                } @else {
+                  <div class="surface-50 border-round-lg p-4 text-600 h-full">
+                    {{ 'STUDENTS.NO_RECORD_FOUND' | translate }}
+                  </div>
+                }
+              </div>
+            </div>
+          </p-tabpanel>
+          <p-tabpanel [value]="1">
+            <p-toolbar styleClass="mb-4 border-none surface-transparent p-0">
+              <ng-template pTemplate="end">
+                <button pButton pRipple type="button" icon="pi pi-save" class="p-button-sm p-button-success"
+                [label]="'COMMON.SAVE' | translate" [loading]="savingFamily" (click)="saveFamily()"></button>
+              </ng-template>
+            </p-toolbar>
+            <div class="mb-4">
+              <div class="flex align-items-center justify-content-between mb-2">
+                <h3 class="m-0 text-900">{{ 'STUDENTS.PROFILE_PAGE.FAMILY_PARENTS' | translate }}</h3>
+                <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-sm p-button-outlined"
+                [label]="'STUDENT_ADD.FAMILY_ADD_PARENT' | translate" (click)="addParentRow()"></button>
+              </div>
+              <p-table [value]="parentEdit" styleClass="p-datatable-sm p-datatable-gridlines">
+                <ng-template pTemplate="header">
+                  <tr>
+                    <th>{{ 'STUDENT_ADD.FAMILY_RELATIONSHIP' | translate }}</th>
+                    <th>{{ 'STUDENT_ADD.FAMILY_PARENT_NAME' | translate }}</th>
+                    <th>{{ 'STUDENT_ADD.FAMILY_NATIONAL_ID' | translate }}</th>
+                    <th>{{ 'STUDENT_ADD.FAMILY_OCCUPATION' | translate }}</th>
+                    <th>{{ 'STUDENT_ADD.FAMILY_PHONE' | translate }}</th>
+                    <th>{{ 'STUDENT_ADD.FAMILY_ADDRESS' | translate }}</th>
+                    <th>{{ 'STUDENT_ADD.FAMILY_IS_ALIVE' | translate }}</th>
+                    <th style="width:4rem"></th>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-row let-i="rowIndex">
+                  <tr>
+                    <td><p-select [options]="familyRelationshipOptions" [(ngModel)]="row.relationshipId" optionLabel="name" optionValue="value" appendTo="body" styleClass="w-full"></p-select></td>
+                    <td><input pInputText [(ngModel)]="row.parentName" class="w-full" /></td>
+                    <td><input pInputText [(ngModel)]="row.nationalId" class="w-full" /></td>
+                    <td><input pInputText [(ngModel)]="row.occupation" class="w-full" /></td>
+                    <td><input pInputText [(ngModel)]="row.phone" class="w-full" /></td>
+                    <td><input pInputText [(ngModel)]="row.address" class="w-full" /></td>
+                    <td class="text-center"><p-toggleswitch [(ngModel)]="row.isAlive"></p-toggleswitch></td>
+                    <td><button pButton pRipple type="button" icon="pi pi-trash" class="p-button-rounded p-button-danger p-button-text" (click)="removeParentRow(i)"
+                    [pTooltip]="'COMMON.DELETE' | translate" [attr.aria-label]="'COMMON.DELETE' | translate"></button></td>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                  <tr><td colspan="8" class="text-center text-600 p-4">{{ 'STUDENT_ADD.FAMILY_NO_PARENTS' | translate }}</td></tr>
+                </ng-template>
+              </p-table>
+            </div>
+            <div>
+              <div class="flex align-items-center justify-content-between mb-2">
+                <h3 class="m-0 text-900">{{ 'STUDENTS.PROFILE_PAGE.FAMILY_RELATIVES' | translate }}</h3>
+                <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-sm p-button-outlined"
+                [label]="'STUDENT_ADD.FAMILY_ADD_RELATIVE' | translate" (click)="addRelativeRow()"></button>
+              </div>
+              <p-table [value]="relativeEdit" styleClass="p-datatable-sm p-datatable-gridlines">
+                <ng-template pTemplate="header">
+                  <tr>
+                    <th>{{ 'STUDENT_ADD.FAMILY_RELATIONSHIP' | translate }}</th>
+                    <th>{{ 'STUDENT_ADD.FAMILY_RELATED_STUDENT' | translate }}</th>
+                    <th>{{ 'STUDENTS.PROFILE_PAGE.RELATIVE_LEVEL' | translate }}</th>
+                    <th>{{ 'STUDENTS.PROFILE_PAGE.RELATIVE_STATUS' | translate }}</th>
+                    <th>{{ 'STUDENT_ADD.NOTE_1' | translate }}</th>
+                    <th style="width:4rem"></th>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-row let-i="rowIndex">
+                  <tr>
+                    <td><p-select [options]="familyRelationshipOptions" [(ngModel)]="row.relationshipId" optionLabel="name" optionValue="value" appendTo="body" styleClass="w-full"></p-select></td>
+                    <td>
+                      <p-autoComplete [(ngModel)]="row.selectedStudent" [suggestions]="relativeSearchResults"
+                        (completeMethod)="searchRelativeStudents($event)"
+                        (onSelect)="onRelativeStudentSelected(row, $event.value)"
+                        (onClear)="onRelativeStudentSelected(row, null)"
+                        optionLabel="studentName" [forceSelection]="true" appendTo="body" styleClass="w-full"
+                        [placeholder]="'STUDENT_ADD.FAMILY_SEARCH_STUDENT' | translate">
+                        <ng-template let-item pTemplate="item"><div>{{ relativeStudentLabel(item) }}</div></ng-template>
+                      </p-autoComplete>
+                    </td>
+                    <td>{{ row.relatedStudentCurrentLevelName || '—' }}</td>
+                    <td>{{ row.relatedStudentStatusName || '—' }}</td>
+                    <td><input pInputText [(ngModel)]="row.notes" class="w-full" /></td>
+                    <td><button pButton pRipple type="button" icon="pi pi-trash" class="p-button-rounded p-button-danger p-button-text" (click)="removeRelativeRow(i)"
+                    [pTooltip]="'COMMON.DELETE' | translate" [attr.aria-label]="'COMMON.DELETE' | translate"></button></td>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                  <tr><td colspan="6" class="text-center text-600 p-4">{{ 'STUDENT_ADD.FAMILY_NO_RELATIVES' | translate }}</td></tr>
+                </ng-template>
+              </p-table>
+            </div>
+          </p-tabpanel>
+          <p-tabpanel [value]="2">
+            <p-toolbar styleClass="mb-4 border-none surface-transparent p-0">
+              <ng-template pTemplate="start">
+                <span class="text-700 font-semibold">{{ 'STUDENTS.PROFILE_PAGE.TAB_YEARS' | translate }}</span>
+              </ng-template>
+              <ng-template pTemplate="end">
+                <div class="flex gap-2">
+                  <button pButton pRipple type="button"
+                    icon="pi pi-plus"
+                    class="p-button-outlined p-button-sm"
+                    [label]="'STUDENTS.PROFILE_PAGE.ADD_YEAR_ROW' | translate"
+                  (click)="addYearRow()"></button>
+                  <button pButton pRipple type="button"
+                    icon="pi pi-save"
+                    class="p-button-primary"
+                    [disabled]="savingYears"
+                    [loading]="savingYears"
+                    [label]="'STUDENTS.PROFILE_PAGE.SAVE_YEARS' | translate"
+                  (click)="saveYears()"></button>
+                </div>
+              </ng-template>
+            </p-toolbar>
+            <p-table [value]="yearEdit"
+              responsiveLayout="scroll"
+              [tableStyle]="{ 'min-width': '54rem' }"
+              styleClass="p-datatable-sm p-datatable-striped student-profile-datatable border-round-lg overflow-hidden">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th class="student-profile-datatable__th-num">{{ 'STUDENTS.PROFILE_PAGE.YEAR_NUM' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.YEAR_ACADEMIC' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.YEAR_STATUS_COL' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.YEAR_PASSED' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.YEAR_GRADE' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.YEAR_NOTES' | translate }}</th>
+                  <th style="width:3.5rem"></th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-row let-i="rowIndex">
+                <tr>
+                  <td class="text-center font-bold text-600">{{ row.yearNumber }}</td>
+                  <td><input type="text" pInputText class="w-full" [(ngModel)]="row.academicYear" /></td>
+                  <td>
+                    <p-select [options]="studyYearStatusOptions" [(ngModel)]="row.studyYearStatusId"
+                      optionLabel="name" optionValue="value" appendTo="body" [showClear]="true"
+                      [filter]="true" filterBy="name" styleClass="w-full"
+                    [placeholder]="'STUDENTS.PROFILE_PAGE.YEAR_STATUS_COL' | translate"></p-select>
+                  </td>
+                  <td class="text-center"><p-toggleswitch [(ngModel)]="row.passed"></p-toggleswitch></td>
+                  <td><input type="text" pInputText class="w-full" [(ngModel)]="row.grade" /></td>
+                  <td><input type="text" pInputText class="w-full" [(ngModel)]="row.notes" /></td>
+                  <td class="text-center">
+                    <button pButton pRipple type="button"
+                      icon="pi pi-trash"
+                      class="p-button-text p-button-danger p-button-sm"
+                    (click)="removeYearRow(i)"
+                    [pTooltip]="'COMMON.DELETE' | translate" [attr.aria-label]="'COMMON.DELETE' | translate"></button>
+                  </td>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="emptymessage">
+                <tr>
+                  <td colspan="7" class="text-center text-600 p-4">{{ 'STUDENTS.PROFILE_PAGE.NO_YEAR_ROWS' | translate }}</td>
+                </tr>
+              </ng-template>
+            </p-table>
+          </p-tabpanel>
+          <p-tabpanel [value]="3">
+            <!-- Payment ledger -->
+            <div class="mb-5">
+              <div class="section-title">
+                <i class="pi pi-money-bill section-title__icon"></i>
+                <h3 class="section-title__text">{{ 'STUDENTS.PROFILE_PAGE.TAB_PAYMENTS' | translate }}</h3>
+              </div>
+              <p-table [value]="financePayments"
+                responsiveLayout="scroll"
+                [tableStyle]="{ 'min-width': '36rem' }"
+                styleClass="p-datatable-sm p-datatable-striped student-profile-datatable border-round-lg overflow-hidden">
+                <ng-template pTemplate="header">
+                  <tr>
+                    <th>{{ 'STUDENTS.ID' | translate }}</th>
+                    <th>{{ 'STUDENTS.PROFILE_PAGE.AMOUNT' | translate }}</th>
+                    <th>{{ 'STUDENTS.PROFILE_PAGE.YEAR_MONTH' | translate }}</th>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-p>
+                  <tr>
+                    <td>{{ p?.paymentId ?? p?.id ?? '—' }}</td>
+                    <td class="font-semibold">{{ formatAmount(p?.studentFinRecievedAmount) }}</td>
+                    <td>{{ p?.studentFinRecievedYearMonth ?? '—' }}</td>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                  <tr><td colspan="3" class="text-center text-600 p-4">{{ 'STUDENTS.NO_RECORD_FOUND' | translate }}</td></tr>
+                </ng-template>
+              </p-table>
+            </div>
+            <!-- Wafar (savings) summary -->
+            @if (profile?.['wafar']; as w) {
+              <div class="mb-5">
+                <div class="section-title">
+                  <i class="pi pi-star section-title__icon"></i>
+                  <h3 class="section-title__text">{{ 'STUDENTS.PROFILE_PAGE.WAFAR' | translate }}</h3>
+                </div>
+                <div class="surface-50 border-round-lg p-4 flex flex-wrap gap-5">
+                  <div class="profile-stat-box">
+                    <div class="profile-stat-box__label">{{ 'STUDENTS.PROFILE_PAGE.WAFAR_AMOUNT' | translate }}</div>
+                    <div class="profile-stat-box__value text-orange-500">{{ formatAmount(w?.studentFinRecievedAmount) }}</div>
+                  </div>
+                  <div class="profile-stat-box">
+                    <div class="profile-stat-box__label">{{ 'STUDENTS.PROFILE_PAGE.FIN_YEAR' | translate }}</div>
+                    <div class="profile-stat-box__value">{{ w?.studentFinRecievedYear ?? '—' }}</div>
+                  </div>
+                </div>
+              </div>
+            }
+            <p-divider></p-divider>
+            <!-- Archived finance history -->
+            <div class="mt-5">
+              <div class="section-title">
+                <i class="pi pi-history section-title__icon"></i>
+                <h3 class="section-title__text">{{ 'STUDENTS.PROFILE_PAGE.TAB_HISTORY' | translate }}</h3>
+              </div>
+              <p-table [value]="financeHistory"
+                responsiveLayout="scroll"
+                [tableStyle]="{ 'min-width': '42rem' }"
+                styleClass="p-datatable-sm p-datatable-striped student-profile-datatable border-round-lg overflow-hidden">
+                <ng-template pTemplate="header">
+                  <tr>
+                    <th>{{ 'STUDENTS.ID' | translate }}</th>
+                    <th>{{ 'STUDENTS.PROFILE_PAGE.ARCH_AMOUNT' | translate }}</th>
+                    <th>{{ 'STUDENTS.PROFILE_PAGE.ARCH_DATE' | translate }}</th>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-h>
+                  <tr>
+                    <td>{{ h?.financeArchEntryId ?? h?.id ?? '—' }}</td>
+                    <td class="font-semibold">{{ formatAmount(h?.studentFinRecievedAmount) }}</td>
+                    <td>{{ formatDate(h?.archievedDate) }}</td>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                  <tr><td colspan="3" class="text-center text-600 p-4">{{ 'STUDENTS.NO_RECORD_FOUND' | translate }}</td></tr>
+                </ng-template>
+              </p-table>
+            </div>
+          </p-tabpanel>
+          <p-tabpanel [value]="4">
+            <p-table [value]="profile?.['universityFees'] ?? []"
+              responsiveLayout="scroll"
+              [tableStyle]="{ 'min-width': '56rem' }"
+              styleClass="p-datatable-sm p-datatable-striped student-profile-datatable border-round-lg overflow-hidden">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th>{{ 'STUDENTS.ID' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.UNI_FEE_YEAR' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.AMOUNT' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.UNI_FEE_DISCOUNT' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.UNI_FEE_REAL' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.UNI_FEE_STATUS' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.UNI_FEE_PAY_DATE' | translate }}</th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-u>
+                <tr>
+                  <td>{{ u?.id ?? '—' }}</td>
+                  <td>{{ u?.studyUniversityFeeYear ?? u?.studyUniversityFeeFirstYear ?? '—' }}</td>
+                  <td>{{ formatAmount(u?.studyUniversityFeeAmount) }}</td>
+                  <td>{{ formatAmount(u?.studyUniversityFeeDiscount) }}</td>
+                  <td class="font-semibold">{{ formatAmount(u?.studyUniversityRealFeeAmount) }}</td>
+                  <td>{{ statusLabel(uniFeeStatusOptions, u?.studyUniversityFeePayStatus) }}</td>
+                  <td>{{ formatDate(u?.studyUniversityFeePayDate) }}</td>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="emptymessage">
+                <tr><td colspan="7" class="text-center text-600 p-4">{{ 'STUDENTS.NO_RECORD_FOUND' | translate }}</td></tr>
+              </ng-template>
+            </p-table>
+          </p-tabpanel>
+          <p-tabpanel [value]="5">
+            <p-table [value]="profile?.['delegationRecipients'] ?? []"
+              responsiveLayout="scroll"
+              [tableStyle]="{ 'min-width': '30rem' }"
+              styleClass="p-datatable-sm p-datatable-striped student-profile-datatable border-round-lg overflow-hidden">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th>{{ 'STUDENTS.ID' | translate }}</th>
+                  <th>{{ 'STUDENTS.PROFILE_PAGE.DELEGATE_STUDENT' | translate }}</th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-d>
+                <tr>
+                  <td>{{ d?.studyReceivedWhomId ?? '—' }}</td>
+                  <td>{{ d?.studentForDelegationId ?? d?.delegatedStudentId ?? '—' }}</td>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="emptymessage">
+                <tr><td colspan="2" class="text-center text-600 p-4">{{ 'STUDENTS.NO_RECORD_FOUND' | translate }}</td></tr>
+              </ng-template>
+            </p-table>
+          </p-tabpanel>
+          <p-tabpanel [value]="6">
+            <div class="grid">
+              <!-- Extensions table -->
+              <div class="col-12">
+                <div class="section-title section-title--sm mb-3">
+                  <i class="pi pi-calendar-plus section-title__icon"></i>
+                  <h4 class="section-title__text m-0">{{ 'STUDENTS.PROFILE_PAGE.EXTENSIONS' | translate }}</h4>
+                </div>
+                <p-table [value]="profile?.['extensions'] ?? []"
+                  responsiveLayout="scroll"
+                  [tableStyle]="{ 'min-width': '60rem' }"
+                  styleClass="p-datatable-sm p-datatable-striped student-profile-datatable border-round-lg overflow-hidden">
+                  <ng-template pTemplate="header">
+                    <tr>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.EXTENSION_TYPE' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.EXTENSION_QUARTERS' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.EXTENSION_START' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.EXTENSION_END' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.EXTENSION_DECISION' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.EXTENSION_STATUS' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.EXTENSION_REASON' | translate }}</th>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="body" let-e>
+                    <tr>
+                      <td>{{ e?.extensionType ?? '—' }}</td>
+                      <td class="text-center">{{ e?.extensionQuarters ?? '—' }}</td>
+                      <td>{{ formatDate(e?.extensionStartDate) }}</td>
+                      <td>{{ formatDate(e?.extensionEndDate) }}</td>
+                      <td>{{ e?.extensionDecisionNo ?? '—' }}</td>
+                      <td>
+                        @if (e?.extensionStatus) {
+                          <p-tag [value]="e.extensionStatus" severity="info" [rounded]="true"></p-tag>
+                        }
+                        @if (!e?.extensionStatus) {
+                          <span>—</span>
+                        }
+                      </td>
+                      <td class="text-600 text-sm">{{ e?.extensionReason ?? e?.extensionReasonDetails ?? '—' }}</td>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="emptymessage">
+                    <tr><td colspan="7" class="text-center text-600 p-4">{{ 'STUDENTS.NO_RECORD_FOUND' | translate }}</td></tr>
+                  </ng-template>
+                </p-table>
+              </div>
+              <!-- Travel tickets table -->
+              <div class="col-12 mt-4">
+                <div class="section-title section-title--sm mb-3">
+                  <i class="pi pi-send section-title__icon"></i>
+                  <h4 class="section-title__text m-0">{{ 'STUDENTS.PROFILE_PAGE.TRAVEL' | translate }}</h4>
+                </div>
+                <p-table [value]="profile?.['travelTickets'] ?? []"
+                  responsiveLayout="scroll"
+                  [tableStyle]="{ 'min-width': '56rem' }"
+                  styleClass="p-datatable-sm p-datatable-striped student-profile-datatable border-round-lg overflow-hidden">
+                  <ng-template pTemplate="header">
+                    <tr>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.TRAVEL_TYPE' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.TRAVEL_DATE' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.TRAVEL_ROUTE' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.TRAVEL_AIRLINE' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.TRAVEL_COST' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.TRAVEL_PURPOSE' | translate }}</th>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="body" let-t>
+                    <tr>
+                      <td>
+                        @if (t?.travelType) {
+                          <p-tag [value]="travelTypeLabel(t.travelType)" severity="secondary" [rounded]="true"></p-tag>
+                        }
+                        @if (!t?.travelType) {
+                          <span>—</span>
+                        }
+                      </td>
+                      <td>{{ formatDate(t?.travelDate) }}</td>
+                      <td class="text-sm">
+                        {{ t?.departureCity ?? t?.departureCountry ?? '—' }}
+                        <i class="pi pi-arrow-right mx-1 text-xs text-400"></i>
+                        {{ t?.destinationCity ?? t?.destinationCountry ?? '—' }}
+                      </td>
+                      <td>{{ t?.airline ?? '—' }}</td>
+                      <td class="font-semibold">
+                        @if (t?.ticketCost) {
+                          <span>{{ formatAmount(t.ticketCost) }}</span>
+                        }
+                        @if (!t?.ticketCost) {
+                          <span>—</span>
+                        }
+                      </td>
+                      <td class="text-600 text-sm">{{ t?.travelPurpose ?? '—' }}</td>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="emptymessage">
+                    <tr><td colspan="6" class="text-center text-600 p-4">{{ 'STUDENTS.NO_RECORD_FOUND' | translate }}</td></tr>
+                  </ng-template>
+                </p-table>
+              </div>
+            </div>
+          </p-tabpanel>
+          <p-tabpanel [value]="7">
+            <div class="grid">
+              <!-- Loans table -->
+              <div class="col-12 lg:col-6">
+                <div class="section-title section-title--sm mb-3">
+                  <i class="pi pi-book section-title__icon"></i>
+                  <h4 class="section-title__text m-0">{{ 'STUDENTS.PROFILE_PAGE.LOANS' | translate }}</h4>
+                </div>
+                <p-table [value]="profile?.['loans'] ?? []"
+                  responsiveLayout="scroll"
+                  styleClass="p-datatable-sm p-datatable-striped student-profile-datatable border-round-lg overflow-hidden">
+                  <ng-template pTemplate="header">
+                    <tr>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.LOAN_YEAR' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.LOAN_AMOUNT' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.LOAN_STATUS' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.LOAN_NOTES' | translate }}</th>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="body" let-l>
+                    <tr>
+                      <td>{{ l?.studyYear ?? '—' }}</td>
+                      <td class="font-semibold">{{ formatAmount(l?.loanAmount) }}</td>
+                      <td>{{ statusLabel(loanStatusOptions, l?.loanStatus) }}</td>
+                      <td class="text-600 text-sm">{{ l?.repaymentNotes ?? '—' }}</td>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="emptymessage">
+                    <tr><td colspan="4" class="text-center text-600 p-4">{{ 'STUDENTS.NO_RECORD_FOUND' | translate }}</td></tr>
+                  </ng-template>
+                </p-table>
+              </div>
+              <!-- Books allowance table -->
+              <div class="col-12 lg:col-6">
+                <div class="section-title section-title--sm mb-3">
+                  <i class="pi pi-bookmark section-title__icon"></i>
+                  <h4 class="section-title__text m-0">{{ 'STUDENTS.PROFILE_PAGE.BOOKS' | translate }}</h4>
+                </div>
+                <p-table [value]="profile?.['booksAllowances'] ?? []"
+                  responsiveLayout="scroll"
+                  styleClass="p-datatable-sm p-datatable-striped student-profile-datatable border-round-lg overflow-hidden">
+                  <ng-template pTemplate="header">
+                    <tr>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.BOOK_YEAR' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.BOOK_AMOUNT' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.BOOK_STATUS' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.BOOK_DATE' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.BOOK_NOTES' | translate }}</th>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="body" let-b>
+                    <tr>
+                      <td>{{ b?.studyYear ?? '—' }}</td>
+                      <td class="font-semibold">{{ formatAmount(b?.allowanceAmount) }}</td>
+                      <td>{{ statusLabel(bookPayStatusOptions, b?.payStatus) }}</td>
+                      <td>{{ formatDate(b?.receiptDate) }}</td>
+                      <td class="text-600 text-sm">{{ b?.notes ?? '—' }}</td>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="emptymessage">
+                    <tr><td colspan="5" class="text-center text-600 p-4">{{ 'STUDENTS.NO_RECORD_FOUND' | translate }}</td></tr>
+                  </ng-template>
+                </p-table>
+              </div>
+            </div>
+          </p-tabpanel>
+          <p-tabpanel [value]="8">
+            @if (!deathCase) {
+              <div class="p-3">
+                <p class="text-600 mb-3">{{ 'STUDENTS.PROFILE_PAGE.DEATH_INTRO' | translate }}</p>
+                <div class="formgrid grid">
+                  <div class="field col-12 md:col-4">
+                    <label>{{ 'STUDENTS.PROFILE_PAGE.DEATH_DATE' | translate }}</label>
+                    <p-datepicker [(ngModel)]="deathCaseForm.dateOfDeath" dateFormat="yy-mm-dd" [showIcon]="true" appendTo="body"></p-datepicker>
+                  </div>
+                  <div class="field col-12 md:col-4">
+                    <label>{{ 'STUDENTS.PROFILE_PAGE.DEATH_LEVEL' | translate }}</label>
+                    <p-select [options]="currentLevelOptions" [(ngModel)]="deathCaseForm.levelAtDeathId"
+                    optionLabel="name" optionValue="value" appendTo="body" styleClass="w-full"></p-select>
+                  </div>
+                  <div class="field col-12 md:col-4">
+                    <label>{{ 'STUDENTS.PROFILE_PAGE.DEATH_STUDY_YEAR' | translate }}</label>
+                    <p-inputnumber [(ngModel)]="deathCaseForm.studyYearAtDeath" [min]="1" [max]="20" [useGrouping]="false" styleClass="w-full"></p-inputnumber>
+                  </div>
+                  <div class="field col-12 md:col-6">
+                    <label>{{ 'STUDENTS.PROFILE_PAGE.DEATH_PLACE' | translate }}</label>
+                    <input pInputText [(ngModel)]="deathCaseForm.placeOfDeath" class="w-full" />
+                  </div>
+                  <div class="field col-12 md:col-6">
+                    <label>{{ 'STUDENTS.PROFILE_PAGE.DEATH_CAUSE' | translate }}</label>
+                    <input pInputText [(ngModel)]="deathCaseForm.cause" class="w-full" />
+                  </div>
+                  <div class="field col-12">
+                    <label>{{ 'STUDENT_ADD.NOTE_1' | translate }}</label>
+                    <textarea pTextarea [(ngModel)]="deathCaseForm.notes" rows="3" class="w-full"></textarea>
+                  </div>
+                </div>
+                <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-danger"
+                  [label]="'STUDENTS.PROFILE_PAGE.DEATH_CREATE_CASE' | translate"
+                [loading]="savingDeathCase" (click)="createDeathCase()"></button>
+              </div>
+            }
+            @if (deathCase) {
+              <div class="p-3">
+                <div class="flex flex-wrap gap-3 mb-4">
+                  <p-tag [value]="deathCase.caseStatus || 'OPEN'" [severity]="deathCase.caseStatus === 'CLOSED' ? 'success' : 'warning'"></p-tag>
+                  <span>{{ 'STUDENTS.PROFILE_PAGE.DEATH_DATE' | translate }}: <strong>{{ formatDate(deathCase.dateOfDeath) }}</strong></span>
+                  <span>{{ 'STUDENTS.PROFILE_PAGE.DEATH_LEVEL' | translate }}: <strong>{{ deathCase.levelAtDeathName || label(currentLevelOptions, deathCase.levelAtDeathId) }}</strong></span>
+                  <span>{{ 'STUDENTS.PROFILE_PAGE.DEATH_STUDY_YEAR' | translate }}: <strong>{{ deathCase.studyYearAtDeath ?? '—' }}</strong></span>
+                </div>
+                <div class="grid mb-4">
+                  <div class="col-12 md:col-6"><span class="text-600">{{ 'STUDENTS.PROFILE_PAGE.DEATH_PLACE' | translate }}:</span> {{ deathCase.placeOfDeath || '—' }}</div>
+                  <div class="col-12 md:col-6"><span class="text-600">{{ 'STUDENTS.PROFILE_PAGE.DEATH_CAUSE' | translate }}:</span> {{ deathCase.cause || '—' }}</div>
+                  <div class="col-12"><span class="text-600">{{ 'STUDENT_ADD.NOTE_1' | translate }}:</span> {{ deathCase.notes || '—' }}</div>
+                </div>
+                <h3 class="mt-0">{{ 'STUDENTS.PROFILE_PAGE.DEATH_PROCEDURES' | translate }}</h3>
+                <p-table [value]="deathCase.steps || []" styleClass="p-datatable-sm p-datatable-gridlines">
+                  <ng-template pTemplate="header">
+                    <tr>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.DEATH_PROCEDURE' | translate }}</th>
+                      <th style="width:8rem">{{ 'STUDENTS.PROFILE_PAGE.DEATH_COMPLETED' | translate }}</th>
+                      <th>{{ 'STUDENTS.PROFILE_PAGE.DEATH_COMPLETED_DATE' | translate }}</th>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="body" let-step>
+                    <tr>
+                      <td>{{ deathProcedureLabel(step) }}</td>
+                      <td class="text-center">
+                        <p-toggleswitch [ngModel]="step.isCompleted" (ngModelChange)="toggleDeathStep(step, $event)"
+                        [disabled]="deathCase.caseStatus === 'CLOSED'"></p-toggleswitch>
+                      </td>
+                      <td>{{ formatDate(step.completedDate) }}</td>
+                    </tr>
+                  </ng-template>
+                </p-table>
+                @if (deathCase.caseStatus !== 'CLOSED') {
+                  <button pButton pRipple type="button" icon="pi pi-lock"
+                    class="p-button-outlined p-button-success mt-3"
+                    [label]="'STUDENTS.PROFILE_PAGE.DEATH_CLOSE_CASE' | translate"
+                  [loading]="closingDeathCase" (click)="closeDeathCase()"></button>
+                }
+              </div>
+            }
+          </p-tabpanel>
+          <p-tabpanel [value]="9">
+            <div class="p-3 student-profile-docs">
+              <!-- Current profile photo -->
+              <section class="student-profile-docs__section">
+                <h4 class="student-profile-docs__title">
+                  <i class="pi pi-camera"></i> {{ 'STUDENTS.PROFILE_PICTURE' | translate }}
+                </h4>
+                <div class="student-profile-docs__photo">
+                  @if (photoUrl) {
+                    <img [src]="photoUrl" alt="" class="student-profile-docs__photo-img" />
+                  }
+                  @if (!photoUrl) {
+                    <div class="student-profile-docs__photo-empty">
+                      <i class="pi pi-user"></i>
+                      <span>{{ 'STUDENTS.NO_PHOTO' | translate }}</span>
+                    </div>
+                  }
+                </div>
+              </section>
+              <!-- Current documents -->
+              <section class="student-profile-docs__section">
+                <h4 class="student-profile-docs__title">
+                  <i class="pi pi-file"></i> {{ 'STUDENTS.DOCUMENTS' | translate }}
+                  @if (studentDocuments.length) {
+                    <p-tag severity="info"
+                    [value]="studentDocuments.length.toString()"></p-tag>
+                  }
+                </h4>
+                @if (loadingDocuments) {
+                  <div class="text-600 text-sm py-2">
+                    <i class="pi pi-spin pi-spinner mr-2"></i>{{ 'COMMON.LOADING' | translate }}
+                  </div>
+                }
+                @if (!loadingDocuments && !studentDocuments.length) {
+                  <div class="text-600 text-sm py-2">
+                    {{ 'GENERAL.NO_DATA_AVAILABLE' | translate }}
+                  </div>
+                }
+                @if (studentDocuments.length) {
+                  <p-table [value]="studentDocuments"
+                    responsiveLayout="scroll"
+                    [tableStyle]="{ 'min-width': '48rem' }"
+                    styleClass="p-datatable-sm p-datatable-striped student-profile-datatable border-round-lg overflow-hidden">
+                    <ng-template pTemplate="header">
+                      <tr>
+                        <th>{{ 'STUDENTS.DOCUMENT_NAME' | translate }}</th>
+                        <th>{{ 'STUDENTS.DOCUMENT_TYPE' | translate }}</th>
+                        <th>{{ 'STUDENTS.DOCUMENT_FORMAT' | translate }}</th>
+                        <th>{{ 'STUDENTS.DOCUMENT_SIZE' | translate }}</th>
+                        <th class="text-center">{{ 'STUDENTS.DOCUMENT_VERSION' | translate }}</th>
+                        <th>{{ 'STUDENTS.DOCUMENT_UPLOAD_DATE' | translate }}</th>
+                        <th>{{ 'STUDENTS.DOCUMENT_EXPIRY_DATE' | translate }}</th>
+                        <th style="width:4rem"></th>
+                      </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-doc>
+                      <tr>
+                        <td>
+                          <span class="flex align-items-center gap-2 min-w-0">
+                            <i [class]="studentDocumentService.getDocumentFormatIcon(doc)"
+                            class="student-profile-docs__doc-icon"></i>
+                            <span class="student-profile-docs__doc-name" [title]="doc.documentName">{{ doc.documentName }}</span>
+                          </span>
+                        </td>
+                        <td>
+                          @if (documentTypeLabel(doc) !== '—') {
+                            <p-tag [value]="documentTypeLabel(doc)"
+                            severity="secondary" styleClass="text-xs"></p-tag>
+                          }
+                          @if (documentTypeLabel(doc) === '—') {
+                            <span class="text-500">—</span>
+                          }
+                        </td>
+                        <td>{{ documentFormatLabel(doc) }}</td>
+                        <td>{{ formatFileSize(doc.fileSize) }}</td>
+                        <td class="text-center">{{ doc.versionNo ?? 1 }}</td>
+                        <td>{{ doc.uploadDate ? (doc.uploadDate | date:'yyyy-MM-dd') : '—' }}</td>
+                        <td>{{ doc.expiryDate ? (doc.expiryDate | date:'yyyy-MM-dd') : '—' }}</td>
+                        <td class="text-center">
+                          <button pButton pRipple type="button" icon="pi pi-eye"
+                            class="p-button-text p-button-sm"
+                            [pTooltip]="'COMMON.VIEW' | translate"
+                          (click)="viewDocument(doc)"></button>
+                        </td>
+                      </tr>
+                    </ng-template>
+                  </p-table>
+                }
+              </section>
+              <!-- History: replaced / removed documents and old photos -->
+              <section class="student-profile-docs__section">
+                <h4 class="student-profile-docs__title">
+                  <i class="pi pi-history"></i> {{ 'STUDENTS.DOCUMENT_HISTORY' | translate }}
+                </h4>
+                <app-student-document-history [studentId]="studentId"></app-student-document-history>
+              </section>
+            </div>
+          </p-tabpanel>
+          <p-tabpanel [value]="10">
+            <div class="p-3">
+              <p class="text-600 mb-3">{{ 'WAFAR.STUDENT_FEE_PAYMENTS_DESC' | translate }}</p>
+              <p-table [value]="wafarFeePayments" [paginator]="true" [rows]="10"
+                styleClass="p-datatable-sm p-datatable-gridlines">
+                <ng-template pTemplate="header">
+                  <tr>
+                    <th>{{ 'WAFAR.DATE' | translate }}</th>
+                    <th>{{ 'WAFAR.REFERENCE' | translate }}</th>
+                    <th>{{ 'WAFAR.ACADEMIC_YEAR' | translate }}</th>
+                    <th>{{ 'WAFAR.AMOUNT' | translate }}</th>
+                    <th>{{ 'WAFAR.STATUS.ALL' | translate }}</th>
+                    <th>{{ 'WAFAR.NOTES' | translate }}</th>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-p>
+                  <tr>
+                    <td>{{ p.spendingDate ?? '—' }}</td>
+                    <td>{{ p.referenceNumber ?? '—' }}</td>
+                    <td>{{ p.academicYear ?? '—' }}</td>
+                    <td class="font-semibold">{{ p.amount | number:'1.2-2' }}</td>
+                    <td>{{ p.status ?? '—' }}</td>
+                    <td class="text-600 text-sm">{{ p.notes ?? '—' }}</td>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                  <tr><td colspan="6" class="text-center text-600 p-4">{{ 'WAFAR.NO_DATA' | translate }}</td></tr>
+                </ng-template>
+              </p-table>
+            </div>
+          </p-tabpanel>
+          <p-tabpanel [value]="11">
+            @if (!pendingApprovals.length && !completedApprovals.length && !loadingApprovals) {
+              <div
+                class="p-4 text-center text-600">
+                <i class="pi pi-inbox text-3xl block mb-2"></i>
+                {{ 'APPROVAL.NO_REQUESTS_FOR_STUDENT' | translate }}
+              </div>
+            }
+            <!-- Decisions already taken -->
+            @if (completedApprovals.length) {
+              <section class="mb-4">
+                <h4 class="student-profile-approval__section-title">
+                  <i class="pi pi-verified"></i>
+                  {{ 'APPROVAL.COMPLETED_TITLE' | translate }}
+                  <p-tag severity="info" [value]="completedApprovals.length.toString()"></p-tag>
+                </h4>
+                @for (request of completedApprovals; track request) {
+                  <div class="student-profile-approval mb-3">
+                    <header class="student-profile-approval__head">
+                      <div class="flex align-items-center gap-2 flex-wrap">
+                        <p-tag [value]="request.requestType" severity="secondary"></p-tag>
+                        <span class="font-semibold">#{{ request.id }}</span>
+                        <span class="text-600 text-sm">{{ request.requestedAt | date:'yyyy-MM-dd HH:mm' }}</span>
+                        @if (request.requesterFullName) {
+                          <span class="text-600 text-sm">
+                            — {{ request.requesterFullName }}
+                          </span>
+                        }
+                      </div>
+                      <p-tag [value]="request.status | codeLabel:'approval-status':currentLanguage" [severity]="request.status | codeSeverity:'approval-status'"></p-tag>
+                    </header>
+                    <!-- Why it was refused matters more than anything else on a rejected request -->
+                    @if (request.rejectionReason) {
+                      <div class="student-profile-approval__reason">
+                        <i class="pi pi-times-circle"></i>
+                        <div>
+                          <strong>{{ 'APPROVAL.REJECT_REASON' | translate }}:</strong>
+                          {{ request.rejectionReason }}
+                        </div>
+                      </div>
+                    }
+                    @if (request.executedAt) {
+                      <div class="text-600 text-sm mb-2">
+                        <i class="pi pi-check mr-1"></i>
+                        {{ 'APPROVAL.EXECUTED_AT' | translate }}: {{ request.executedAt | date:'yyyy-MM-dd HH:mm' }}
+                      </div>
+                    }
+                    <app-approval-changes [requestId]="request.id"></app-approval-changes>
+                  </div>
+                }
+              </section>
+            }
+            <!-- Still awaiting a decision -->
+            @if (pendingApprovals.length) {
+              <h4 class="student-profile-approval__section-title">
+                <i class="pi pi-clock"></i>
+                {{ 'APPROVAL.AWAITING_TITLE' | translate }}
+                <p-tag severity="warn" [value]="pendingApprovals.length.toString()"></p-tag>
+              </h4>
+            }
+            @for (request of pendingApprovals; track request) {
+              <div class="student-profile-approval mb-3">
+                <header class="student-profile-approval__head">
+                  <div class="flex align-items-center gap-2 flex-wrap">
+                    <p-tag [value]="request.requestType" severity="info"></p-tag>
+                    <span class="font-semibold">#{{ request.id }}</span>
+                    <span class="text-600 text-sm">{{ request.requestedAt | date:'yyyy-MM-dd HH:mm' }}</span>
+                    @if (request.requesterFullName) {
+                      <span class="text-600 text-sm">
+                        — {{ request.requesterFullName }}
+                      </span>
+                    }
+                  </div>
+                  <p-tag [value]="request.status" severity="warn"></p-tag>
+                </header>
+                <app-approval-changes [requestId]="request.id"></app-approval-changes>
+                <!-- The server's decision per request (FIX-PLAN D3-a), not a blanket permission. -->
+                @if (request.canApprove || request.canReject) {
+                  <footer class="student-profile-approval__actions">
+                    @if (request.canApprove) {
+                      <button pButton pRipple type="button" icon="pi pi-check"
+                        class="p-button-success p-button-sm"
+                        [label]="'APPROVAL.APPROVE' | translate"
+                        [disabled]="decisionInFlight"
+                      (click)="approve(request)"></button>
+                    }
+                    @if (request.canReject) {
+                      <button pButton pRipple type="button" icon="pi pi-times"
+                        class="p-button-danger p-button-outlined p-button-sm"
+                        [label]="'APPROVAL.REJECT' | translate"
+                        [disabled]="decisionInFlight"
+                      (click)="openReject(request)"></button>
+                    }
+                  </footer>
+                }
+              </div>
+            }
+          </p-tabpanel>
+        </p-tabpanels>
+      </p-tabs>
+    </p-card>
+  </div>
+}
+
+<!-- ── Edit Student Modal ──────────────────────────────────────────── -->
+<p-dialog [(visible)]="studentFormModalVisible"
+  position="center"
+  [modal]="true"
+  [closable]="true"
+  [dismissableMask]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [blockScroll]="true"
+  appendTo="body"
+  styleClass="student-add-modal"
+  contentStyleClass="student-add-modal__content overflow-y-auto"
+  [style]="{ width: 'min(1360px, 96vw)', maxHeight: '95vh' }"
+  [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"
+  (onShow)="openStudentFormModalShown()">
+  <ng-template pTemplate="header">
+    <span class="text-xl font-semibold">{{ 'STUDENTS.EDIT_STUDENT' | translate }}</span>
+  </ng-template>
+  <app-student-add #studentFormEmbed
+    [dialogMode]="true"
+    (dialogSaved)="onStudentFormSaved($event)"
+    (dialogCancelled)="studentFormModalVisible = false">
+  </app-student-add>
+  <ng-template pTemplate="footer">
+    <span class="text-600 text-sm mr-auto">{{ 'STUDENTS.FORM_MODAL_HINT' | translate }}</span>
+  </ng-template>
+</p-dialog>
+
+<!-- ── Reject reason ─────────────────────────────────────────────────── -->
+<p-dialog [(visible)]="rejectDialogVisible" [modal]="true" [style]="{ width: '460px' }"
+  [header]="'APPROVAL.REJECT_TITLE' | translate" appendTo="body"
+  [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <ng-template pTemplate="content">
+    <label for="rejectReason" class="block font-bold mb-2">
+      {{ 'APPROVAL.REJECT_REASON' | translate }}
+    </label>
+    <textarea pTextarea id="rejectReason" [(ngModel)]="rejectReason" rows="4"
+    class="w-full" [placeholder]="'APPROVAL.REJECT_REASON_HINT' | translate"></textarea>
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <div class="flex justify-content-end gap-2">
+      <button pButton pRipple type="button" icon="pi pi-times" class="p-button-text"
+        [label]="'COMMON.CANCEL' | translate"
+      (click)="rejectDialogVisible = false"></button>
+      <button pButton pRipple type="button" icon="pi pi-check" class="p-button-danger"
+        [label]="'APPROVAL.REJECT' | translate"
+        [disabled]="!rejectReason.trim() || decisionInFlight"
+      (click)="confirmReject()"></button>
+    </div>
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,315 @@
+<div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="mb-3">
+    <button pButton type="button" [label]="'REPORTS.REPORT_SUBPAGES.BACK_TO_FINANCIAL_REPORTS' | translate"
+      [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+      class="p-button-text p-button-sm"
+    routerLink="/reports/financial"></button>
+  </div>
+
+  <!-- Header Section. `flex-1` on the leading block, not
+       `justify-content-between`: under `direction: rtl` a flex row already
+       runs right to left, and the global rule in styles.scss reverses every
+       `.flex.justify-content-between` again, which put the heading back on
+       the left and the actions on the right in Arabic. See
+       src/app/demo/components/page-headings.spec.ts. -->
+  <div class="flex align-items-center mb-4">
+    <h2 class="m-0 flex-1">
+      <i class="pi pi-verified text-primary mr-2"></i>
+      {{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.TITLE' | translate }}
+    </h2>
+    <div class="flex gap-2">
+      <app-report-actions
+        pdfApiPath="/api/reports/financial/financial-audit/export-report"
+        [query]="reportQuery()"
+        baseFilename="financial-audit">
+      </app-report-actions>
+
+    </div>
+  </div>
+
+  <div class="grid mb-4">
+    <div class="col-12 md:col-6 lg:col-3">
+      <div class="surface-card shadow-2 border-round p-3">
+        <div class="flex align-items-center justify-content-between mb-2">
+          <div class="text-500">{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.TOTAL_RECORDS' | translate }}</div>
+          <div class="flex align-items-center justify-content-center bg-blue-100 border-circle" style="width:2.5rem;height:2.5rem">
+            <i class="pi pi-list text-blue-600 text-xl"></i>
+          </div>
+        </div>
+        <div class="text-900 text-2xl font-bold">{{ auditSummary.totalRecords }}</div>
+      </div>
+    </div>
+    <div class="col-12 md:col-6 lg:col-3">
+      <div class="surface-card shadow-2 border-round p-3">
+        <div class="flex align-items-center justify-content-between mb-2">
+          <div class="text-500">{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.VERIFIED' | translate }}</div>
+          <div class="flex align-items-center justify-content-center bg-green-100 border-circle" style="width:2.5rem;height:2.5rem">
+            <i class="pi pi-check text-green-600 text-xl"></i>
+          </div>
+        </div>
+        <div class="text-900 text-2xl font-bold">{{ auditSummary.verified }}</div>
+      </div>
+    </div>
+    <div class="col-12 md:col-6 lg:col-3">
+      <div class="surface-card shadow-2 border-round p-3">
+        <div class="flex align-items-center justify-content-between mb-2">
+          <div class="text-500">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.PENDING' | translate }}</div>
+          <div class="flex align-items-center justify-content-center bg-orange-100 border-circle" style="width:2.5rem;height:2.5rem">
+            <i class="pi pi-clock text-orange-600 text-xl"></i>
+          </div>
+        </div>
+        <div class="text-900 text-2xl font-bold">{{ auditSummary.pending }}</div>
+      </div>
+    </div>
+    <div class="col-12 md:col-6 lg:col-3">
+      <div class="surface-card shadow-2 border-round p-3">
+        <div class="flex align-items-center justify-content-between mb-2">
+          <div class="text-500">{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.DISCREPANCIES' | translate }}</div>
+          <div class="flex align-items-center justify-content-center bg-red-100 border-circle" style="width:2.5rem;height:2.5rem">
+            <i class="pi pi-exclamation-triangle text-red-600 text-xl"></i>
+          </div>
+        </div>
+        <div class="text-900 text-2xl font-bold">{{ auditSummary.discrepancies }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <h3 class="mt-0 mb-3">
+      <i class="pi pi-filter text-primary mr-2"></i>
+      {{ 'REPORTS.REPORT_SUBPAGES.FILTERS' | translate }}
+    </h3>
+    <div class="p-fluid grid formgrid">
+      @if (hasMultiCountry) {
+        <div class="field col-12 md:col-3">
+          <label>{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</label>
+          <p-multiselect
+            [options]="allowedCountries"
+            [(ngModel)]="selectedCountryIds"
+            optionLabel="label"
+            optionValue="value"
+            [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_COUNTRIES' | translate"
+            (onChange)="onCountryChange()"
+            styleClass="w-full"
+            appendTo="body">
+          </p-multiselect>
+        </div>
+      }
+      <div class="field col-12 md:col-3">
+        <label for="status">{{ 'REPORTS.COMMON_FIELDS.STATUS' | translate }}</label>
+        <p-select
+          id="status"
+          [(ngModel)]="selectedStatus"
+          [options]="metadata.statuses"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_STATUS' | translate"
+          (onChange)="onFiltersChanged()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="category">{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.CATEGORY' | translate }}</label>
+        <p-select
+          id="category"
+          [(ngModel)]="selectedCategory"
+          [options]="metadata.categories"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_CATEGORY' | translate"
+          (onChange)="onFiltersChanged()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="bank">{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.BANK' | translate }}</label>
+        <p-select
+          id="bank"
+          [(ngModel)]="selectedBank"
+          [options]="metadata.banks"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_BANK' | translate"
+          (onChange)="onFiltersChanged()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="auditor">{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.AUDITOR' | translate }}</label>
+        <p-select
+          id="auditor"
+          [(ngModel)]="selectedAuditor"
+          [options]="metadata.auditors"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_AUDITOR' | translate"
+          (onChange)="onFiltersChanged()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+    </div>
+    <div class="p-fluid grid formgrid">
+      <div class="field col-12 md:col-3">
+        <label for="currency">{{ 'REPORTS.COMMON_FIELDS.CURRENCY' | translate }}</label>
+        <p-select
+          id="currency"
+          [(ngModel)]="selectedCurrency"
+          [options]="metadata.currencies"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_CURRENCY' | translate"
+          (onChange)="onFiltersChanged()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="year">{{ 'REPORTS.COMMON_FIELDS.YEAR' | translate }}</label>
+        <p-select
+          id="year"
+          [(ngModel)]="selectedYear"
+          [options]="metadata.years"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.COMMON_FIELDS.SELECT_YEAR' | translate"
+          (onChange)="onFiltersChanged()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="quarter">{{ 'REPORTS.COMMON_FIELDS.QUARTER' | translate }}</label>
+        <p-select
+          id="quarter"
+          [(ngModel)]="selectedQuarter"
+          [options]="metadata.quarters"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_QUARTER' | translate"
+          (onChange)="onFiltersChanged()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="dateRange">{{ 'REPORTS.REPORT_SUBPAGES.DATE_RANGE' | translate }}</label>
+        <p-datepicker
+          id="dateRange"
+          [(ngModel)]="dateRange"
+          selectionMode="range"
+          dateFormat="yy-mm-dd"
+          [showIcon]="true"
+          [showButtonBar]="true"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_DATE_RANGE' | translate"
+          (onSelect)="onDateRangeSelected()">
+        </p-datepicker>
+      </div>
+    </div>
+    <div class="p-fluid grid formgrid">
+      <div class="field col-12 md:col-9">
+        <label for="search">{{ 'REPORTS.REPORT_SUBPAGES.SEARCH' | translate }}</label>
+        <span class="p-input-icon-right w-full">
+          <i class="pi pi-search"></i>
+          <input
+            id="search"
+            pInputText
+            [(ngModel)]="searchTerm"
+            [placeholder]="'REPORTS.REPORT_SUBPAGES.SEARCH_AUDIT' | translate"
+            (keyup.enter)="onSearch()">
+        </span>
+      </div>
+      <div class="field col-12 md:col-3 flex align-items-end justify-content-end gap-2">
+        <button pButton type="button" [label]="'REPORTS.REPORT_SUBPAGES.SEARCH' | translate" icon="pi pi-search" class="p-button-search" (click)="onSearch()"></button>
+        <button pButton pRipple type="button" [label]="'REPORTS.REPORT_SUBPAGES.CLEAR_FILTERS' | translate" icon="pi pi-times" class="p-button-action-outlined" (click)="clearFilters()"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="mt-0 mb-3">{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.TITLE' | translate }}</h3>
+    <p-table
+      [value]="auditRecords"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="rows"
+      [(first)]="first"
+      [totalRecords]="totalRecords"
+      [rowsPerPageOptions]="[10, 20, 50]"
+      [lazy]="true"
+      (onPage)="onPageChange($event)"
+      styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.AUDIT_ID' | translate }}</th>
+          <th>{{ 'REPORTS.COMMON_FIELDS.DATE' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.CATEGORY' | translate }}</th>
+          <th>{{ 'REPORTS.COMMON_FIELDS.AMOUNT' | translate }}</th>
+          <th>{{ 'REPORTS.COMMON_FIELDS.CURRENCY' | translate }}</th>
+          <th>{{ 'REPORTS.COMMON_FIELDS.STATUS' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.AUDITOR' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.BANK' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.STUDENT' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.PASSPORT' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.FINANCIAL_AUDIT.NOTES' | translate }}</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-record>
+        <tr>
+          <td>{{ record.auditId || '-' }}</td>
+          <td>{{ formatDate(record.auditDate) }}</td>
+          <td>{{ (record | inLanguage:'auditCategory') || '-' }}</td>
+          <td class="font-bold">{{ formatCurrency(record.auditAmount, record.auditCurrency) }}</td>
+          <td>{{ (record | inLanguage:'auditCurrency') || '-' }}</td>
+          <td>
+            <p-tag [value]="(record | inLanguage:'auditStatus') || translationService.translate('COMMON.UNKNOWN')" [severity]="getStatusSeverity(record.auditStatusEn || record.auditStatus || '')"></p-tag>
+          </td>
+          <td>{{ (record | inLanguage:'auditorName') || '-' }}</td>
+          <td>{{ record.bankName || '-' }}</td>
+          <td>{{ record.studentName || '-' }}</td>
+          <td>{{ record.studentPassport || '-' }}</td>
+          <td>{{ record.auditNotes || '-' }}</td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="11" class="text-center py-4">
+            <i class="pi pi-info-circle text-4xl text-400 mb-2"></i>
+            <div class="text-500">{{ 'REPORTS.REPORT_SUBPAGES.NO_DATA_FOUND' | translate }}</div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<!-- PDF Report Viewer -->
+<div class="card mt-3">
+  <!-- Heading leads this row too; see the comment on the page header above. -->
+  <div class="flex align-items-center mb-3 flex-wrap gap-2">
+    <div class="flex align-items-center gap-2 flex-1">
+      <i class="pi pi-file-pdf" style="font-size:1.4rem;color:#6b2737"></i>
+      <h4 class="m-0" style="color:#6b2737">{{ 'REPORTS.VIEWER.GENERATE_REPORT' | translate }}</h4>
+    </div>
+    <div class="flex align-items-center gap-3 flex-wrap">
+      <div class="flex align-items-center gap-2">
+        <span class="font-semibold text-sm">{{ 'REPORTS.VIEWER.LANGUAGE' | translate }}: </span>
+        <p-selectButton [options]="reportLangOptions"
+          [(ngModel)]="selectedLang" optionLabel="label" optionValue="value">
+        </p-selectButton>
+      </div>
+      <p-button icon="pi pi-play"
+        [label]="'REPORTS.VIEWER.GENERATE_REPORT' | translate"
+        [loading]="reportLoading"
+        (onClick)="generateReport()">
+      </p-button>
+    </div>
+  </div>
+  <app-report-viewer [pdfApiPath]="pdfApiPath" [pdfQuery]="pdfQuery" [loadTrigger]="loadTrigger" [loading]="reportLoading" [filename]="'financial-audit.pdf'">
+  </app-report-viewer>
+</div>
+<p-toast></p-toast>
+

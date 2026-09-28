@@ -1,0 +1,806 @@
+<div class="grid sfa-page" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"
+  [class.rtl]="translationService.isRTL()">
+  <div class="col-12">
+    <div class="card p-0 overflow-hidden">
+
+      <!-- Header: identity, count and every action in one band -->
+      <div class="sfa-header">
+        <div class="sfa-header__left">
+          <div class="sfa-header__icon"><i class="pi pi-history"></i></div>
+          <div>
+            <h4 class="sfa-header__title">{{'STUDENT_FINANCE_ARCH.TITLE' | translate}}</h4>
+            <span class="sfa-header__count">
+              {{totalElements | localeNumber}} &middot; {{'STUDENT_FINANCE_ARCH.SUBTITLE' | translate}}
+            </span>
+          </div>
+        </div>
+
+        <!-- The header keeps Refresh: what acts on the data, not what narrows
+             the view of it. There is no Add: an archived quarter is written by
+             quarter create/close, never typed in here (review F5, S9). -->
+        <div class="sfa-header__actions">
+          <button pButton pRipple type="button" icon="pi pi-refresh" class="p-button-action-outlined"
+            (click)="refreshData()" [disabled]="loading || isLoadingData"
+            [pTooltip]="'STUDENT_FINANCE_ARCH.REFRESH_DATA' | translate" tooltipPosition="bottom">
+          </button>
+        </div>
+      </div>
+
+      <!--
+        Filter. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+        The search box used to sit in the header between four icon buttons, so
+        nothing distinguished the one control that narrows the list from the
+        three that do something to it. Search runs server-side, hence the
+        explicit submit rather than filtering as you type.
+      -->
+      <div class="filter-bar filter-bar--inset">
+        <div class="filter-bar__grid filter-bar__grid--cols-2">
+          <div class="filter-bar__field filter-bar__field--wide"
+            [class.filter-bar__field--active]="globalFilter">
+            <label for="sfaSearch">{{ 'STUDENT_FINANCE_ARCH.SEARCH_BY_NAME' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="sfaSearch" pInputText [(ngModel)]="globalFilter"
+                [placeholder]="'STUDENT_FINANCE_ARCH.SEARCH_BY_NAME' | translate"
+                [disabled]="loading || isLoadingData"
+                (keyup.enter)="searchStudents()">
+            </span>
+          </div>
+        </div>
+
+        <div class="filter-bar__actions">
+          <button pButton type="button" icon="pi pi-search" class="p-button-search"
+            [label]="'COMMON.SEARCH' | translate"
+            (click)="searchStudents()" [disabled]="loading || isLoadingData">
+          </button>
+          <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+            [label]="'COMMON.CLEAR' | translate"
+            (click)="clearFilters()" [disabled]="loading || isLoadingData || !globalFilter">
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      @if (loading) {
+        <div class="sfa-loading">
+          <p-progressSpinner [style]="{width: '44px', height: '44px'}" strokeWidth="4"></p-progressSpinner>
+          <span>{{'STUDENT_FINANCE_ARCH.LOADING_STUDENTS' | translate}}</span>
+        </div>
+      }
+
+      <!--
+      No scrollHeight and no [scrollable]: a fixed-height viewport put a second scrollbar
+      inside the page for a table that is already paginated. The page scrolls, the table
+      does not.
+      -->
+      @if (!loading) {
+        <p-table #dt [value]="studentFinanceArchList" dataKey="id" [paginator]="true" [rows]="rows"
+          [totalRecords]="totalElements" [lazy]="true" (onLazyLoad)="onPageChange($event)"
+          [rowsPerPageOptions]="rowsPerPageOptions" responsiveLayout="scroll" [rowHover]="true"
+          [showCurrentPageReport]="true"
+          [currentPageReportTemplate]="'STUDENT_FINANCE_ARCH.SHOWING_ENTRIES' | translate"
+          styleClass="p-datatable-sm p-datatable-gridlines">
+          <!--
+          PrimeNG renders its own sort indicator via p-sortIcon, so the pi-sort-alt glyph
+          that used to sit in every header was both duplicated and, on the three unsortable
+          totals columns, a promise the table could not keep.
+          -->
+          <ng-template pTemplate="header">
+            <tr>
+              <th pSortableColumn="id" style="width: 6rem" class="text-center">
+                {{'STUDENT_FINANCE_ARCH.ID' | translate}}
+                <p-sortIcon field="id"></p-sortIcon>
+              </th>
+              <th pSortableColumn="studentName" style="min-width: 12rem">
+                {{'STUDENT_FINANCE_ARCH.STUDENT_NAME' | translate}}
+                <p-sortIcon field="studentName"></p-sortIcon>
+              </th>
+              <th pSortableColumn="studentAddedQuarter" style="width: 7rem" class="text-center">
+                {{'STUDENT_FINANCE_ARCH.QUARTER' | translate}}
+                <p-sortIcon field="studentAddedQuarter"></p-sortIcon>
+              </th>
+              <th pSortableColumn="studentAmount" style="width: 7rem" class="text-right">
+                {{'STUDENT_FINANCE_ARCH.AMOUNT' | translate}}
+                <p-sortIcon field="studentAmount"></p-sortIcon>
+              </th>
+              <!-- Totals across the student's archived finance rows, not the allowance above. -->
+              <th style="width: 7rem" class="text-right">{{'STUDENT_FINANCE_ARCH.TOTAL_RECEIVED' | translate}}</th>
+              <th style="width: 7rem" class="text-right">{{'STUDENT_FINANCE_ARCH.TOTAL_WAFAR' | translate}}</th>
+              <th style="width: 7rem" class="text-right">{{'STUDENT_FINANCE_ARCH.TOTAL_NET' | translate}}</th>
+              <th pSortableColumn="archiveDate" style="width: 7.5rem" class="text-center">
+                {{'STUDENT_FINANCE_ARCH.ARCHIVE_DATE' | translate}}
+                <p-sortIcon field="archiveDate"></p-sortIcon>
+              </th>
+              <th style="width: 8rem" class="text-center">{{'STUDENT_FINANCE_ARCH.ACTIONS' | translate}}</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-student>
+            <tr class="sfa-row" (dblclick)="viewStudentFinanceArch(student)">
+              <td class="text-center"><span class="text-600">{{student.id}}</span></td>
+              <td>
+                <div class="sfa-student">
+                  <span class="sfa-student__avatar">{{ (student.studentName || '?').charAt(0) }}</span>
+                  <span class="font-medium text-900">{{student.studentName || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+                </div>
+              </td>
+              <td class="text-center">
+                <!-- 20262 is stored as YYYYQ; show it as "2026 Q2" rather than the raw number. -->
+                @if (student.studentAddedQuarter) {
+                  <p-tag severity="info" [rounded]="true"
+                  [value]="getQuarterLabel(student.studentAddedQuarter)"></p-tag>
+                }
+                @if (!student.studentAddedQuarter) {
+                  <span class="text-500">&mdash;</span>
+                }
+              </td>
+              <td class="text-right"><span class="sfa-amount">{{student.getFormattedAmount()}}</span></td>
+              <td class="text-right"><span class="text-900">{{student.archivedAmountReceived | localeNumber}}</span></td>
+              <td class="text-right">
+                @if (student.archivedWafarAmount) {
+                  <span class="sfa-amount sfa-amount--wafar">{{student.archivedWafarAmount | localeNumber}}</span>
+                }
+                @if (!student.archivedWafarAmount) {
+                  <span class="text-500">&mdash;</span>
+                }
+              </td>
+              <td class="text-right"><span class="sfa-amount sfa-amount--net">{{student.archivedNetAmount | localeNumber}}</span></td>
+              <td class="text-center"><span class="text-600">{{student.getArchiveDateFormatted()}}</span></td>
+              <td>
+                <div class="flex gap-1 justify-content-center">
+                  <button pButton pRipple icon="pi pi-eye" class="p-button-rounded p-button-info p-button-text"
+                    [pTooltip]="'STUDENT_FINANCE_ARCH.VIEW_DETAILS' | translate"
+                    (click)="viewStudentFinanceArch(student)" *hasPermission="'FINANCE_ARCH.VIEW'">
+                  </button>
+                  <button pButton pRipple icon="pi pi-pencil" class="p-button-rounded p-button-warning p-button-text"
+                    [pTooltip]="'STUDENT_FINANCE_ARCH.EDIT_RECORD' | translate" (click)="editStudentFinanceArch(student)" *hasPermission="'FINANCE_ARCH.EDIT'">
+                  </button>
+                  <!-- No delete: an archived quarter is history, and the endpoint is gone (H1). -->
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td colspan="9">
+                <div class="sfa-empty-state">
+                  <i class="pi pi-inbox"></i>
+                  <span>{{'STUDENT_FINANCE_ARCH.NO_STUDENTS_FOUND' | translate}}</span>
+                  <small>{{'STUDENT_FINANCE_ARCH.ADJUST_SEARCH' | translate}}</small>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- ── View Dialog ─────────────────────────────────────────────────────────── -->
+<p-dialog [(visible)]="viewDialog"
+  [style]="{width: '90vw', maxWidth: '1100px'}"
+  [modal]="true" [maximizable]="true" [draggable]="false" [resizable]="false"
+  styleClass="sfa-view-dialog"
+  [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+  <ng-template pTemplate="header">
+    <div class="flex align-items-center gap-3 w-full">
+      <div class="sfa-dialog-avatar"><i class="pi pi-user"></i></div>
+      <div>
+        <div class="font-semibold text-lg">{{'STUDENT_FINANCE_ARCH.STUDENT_DETAILS' | translate}}</div>
+        @if (selectedStudentFinanceArch) {
+          <div class="text-sm sfa-dialog-header__sub">
+            {{selectedStudentFinanceArch.studentName}}
+            @if (selectedStudentFinanceArch.studentDelegationDecisionYear) {
+              <span>
+                &bull; {{'STUDENT_FINANCE_ARCH.DECISION_YEAR' | translate}}: {{selectedStudentFinanceArch.studentDelegationDecisionYear}}
+              </span>
+            }
+          </div>
+        }
+      </div>
+      @if (selectedStudentFinanceArch?.studentGender) {
+        <div class="ml-auto mr-2">
+          <p-tag [value]="getLookupName(selectedStudentFinanceArch!.studentGender, genderOptions)" severity="info"></p-tag>
+        </div>
+      }
+    </div>
+  </ng-template>
+
+  <ng-template pTemplate="content">
+    @if (selectedStudentFinanceArch) {
+      <div class="sfa-view-grid">
+        <!-- Section 1: Personal Info -->
+        <div class="sfa-section">
+          <div class="sfa-section-header">
+            <i class="pi pi-user"></i>
+            <span>{{'STUDENT_FINANCE_ARCH.STUDENT_INFORMATION' | translate}}</span>
+          </div>
+          <div class="sfa-row-grid">
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.STUDENT_NAME' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentName || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.GENDER' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentGender, genderOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.DEGREE' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentDegreeId, degreeOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.DECISION_YEAR' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentDelegationDecisionYear || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.AGE' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentAge || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.SOURCE_STUDENT_ID' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentId || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Section 2: Origin Location -->
+        <div class="sfa-section">
+          <div class="sfa-section-header">
+            <i class="pi pi-map-marker"></i>
+            <span>{{'STUDENT_FINANCE_ARCH.ORIGIN_LOCATION' | translate}}</span>
+          </div>
+          <div class="sfa-row-grid">
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.COUNTRY' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentCountryId, countryOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.GOVERNMENT' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentGovId, governmentOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.MUNICIPALITY' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentMudId, municipalityOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.BIRTHDATE' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentBirthdate | localeDate:'mediumDate'}}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Section 2b: Contact Information -->
+        <div class="sfa-section">
+          <div class="sfa-section-header">
+            <i class="pi pi-phone"></i>
+            <span>{{'STUDENT_FINANCE_ARCH.CONTACT_INFORMATION' | translate}}</span>
+          </div>
+          <div class="sfa-row-grid">
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.EMAIL' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentEmail || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.CELLPHONE' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentCellphone || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.HOME_NUMBER' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentHomeNumber || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.EMERGENCY_CONTACT' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentEmergencyContact || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+            </div>
+            @if (selectedStudentFinanceArch.picturePath) {
+              <div class="sfa-col">
+                <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.PICTURE_PATH' | translate}}</span>
+                <span class="sfa-value sfa-multiline">{{selectedStudentFinanceArch.picturePath}}</span>
+              </div>
+            }
+          </div>
+        </div>
+        <!-- Section 3: Classification -->
+        <div class="sfa-section">
+          <div class="sfa-section-header">
+            <i class="pi pi-tags"></i>
+            <span>{{'STUDENT_FINANCE_ARCH.CLASSIFICATION' | translate}}</span>
+          </div>
+          <div class="sfa-row-grid">
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.AGENCY_TYPE' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentAgencyTypeId, agencyTypeOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.MINISTRY_TYPE' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentMinistryTypeId, ministryTypeOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.STUDY_TYPE' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentStudyTypeId, studyTypeOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.UNIVERSITY_TYPE' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentUniversityTypeId, universityTypeOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.MAJOR' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentMajorId, majorOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.CURRENT_LEVEL' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentCurrentLevelId, currentLevelOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.STUDY_STATUS' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentStudyStatusId, studyStatusOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.STUDY_YEARS' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentStudyNoOfYears || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Section 4: Study Abroad -->
+        <div class="sfa-section">
+          <div class="sfa-section-header">
+            <i class="pi pi-globe"></i>
+            <span>{{'STUDENT_FINANCE_ARCH.STUDY_ABROAD' | translate}}</span>
+          </div>
+          <div class="sfa-row-grid">
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.STUDY_COUNTRY' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studyCountryIn, studyCountryInOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.STUDY_GOVERNMENT' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.syudyGovIn, studyGovInOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.UNIVERSITY' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studyUniversityIn, studyUniversityInOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.COLLEGE' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studyCollegeIn, studyCollegeInOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.STUDY_MAJOR' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studyMajorIn, studyMajorInOptions)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.EDUCATION' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studyEducationIn, studyEducationInOptions)}}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Section 5: Financial Records -->
+        <div class="sfa-section">
+          <div class="sfa-section-header">
+            <i class="pi pi-dollar"></i>
+            <span>{{'STUDENT_FINANCE_ARCH.FINANCIAL_RECORDS' | translate}}</span>
+            @if (!loadingFinancialRecords) {
+              <span class="p-badge p-badge-warning ml-auto">
+                {{financeArchDetails.length}} {{'STUDENT_FINANCE_ARCH.RECORDS_COUNT' | translate}}
+              </span>
+            }
+          </div>
+          @if (loadingFinancialRecords) {
+            <div class="flex flex-column align-items-center py-4 gap-2">
+              <p-progressSpinner [style]="{width: '36px', height: '36px'}" strokeWidth="4"></p-progressSpinner>
+              <span class="text-500 text-sm">{{'STUDENT_FINANCE_ARCH.LOADING_FINANCIAL_RECORDS' | translate}}</span>
+            </div>
+          }
+          @if (!loadingFinancialRecords) {
+            <div>
+              @if (financeArchDetails.length > 0) {
+                <p-table [value]="financeArchDetails" dataKey="financeArchEntryId"
+                  styleClass="p-datatable-sm p-datatable-striped">
+                  <ng-template pTemplate="header">
+                    <tr>
+                      <th class="text-center">
+                        <div class="flex align-items-center justify-content-center">
+                          <i class="pi pi-calendar mr-2"></i>{{'STUDENT_FINANCE_ARCH.QUARTER' | translate}}
+                        </div>
+                      </th>
+                      <th class="text-center">
+                        <div class="flex align-items-center justify-content-center">
+                          <i class="pi pi-dollar mr-2"></i>{{'STUDENT_FINANCE_ARCH.AMOUNT' | translate}}
+                        </div>
+                      </th>
+                      <th class="text-center">
+                        <div class="flex align-items-center justify-content-center">
+                          <i class="pi pi-building mr-2"></i>{{'STUDENT_FINANCE_ARCH.BANK' | translate}}
+                        </div>
+                      </th>
+                      <th class="text-center">
+                        <div class="flex align-items-center justify-content-center">
+                          <i class="pi pi-star mr-2"></i>{{'STUDENT_FINANCE_ARCH.WAFAR_AMOUNT' | translate}}
+                        </div>
+                      </th>
+                      <th class="text-center">
+                        <div class="flex align-items-center justify-content-center">
+                          <i class="pi pi-calculator mr-2"></i>{{'STUDENT_FINANCE_ARCH.NET_AMOUNT' | translate}}
+                        </div>
+                      </th>
+                      <th class="text-center">
+                        <div class="flex align-items-center justify-content-center">
+                          <i class="pi pi-tag mr-2"></i>{{'STUDENT_FINANCE_ARCH.WAFAR_TYPE' | translate}}
+                        </div>
+                      </th>
+                      <th class="text-center">
+                        <div class="flex align-items-center justify-content-center">
+                          <i class="pi pi-clock mr-2"></i>{{'STUDENT_FINANCE_ARCH.ARCHIVE_DATE' | translate}}
+                        </div>
+                      </th>
+                      <th class="text-center">
+                        <div class="flex align-items-center justify-content-center">
+                          <i class="pi pi-check-circle mr-2"></i>{{'STUDENT_FINANCE_ARCH.STATUS' | translate}}
+                        </div>
+                      </th>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="body" let-record>
+                    <tr>
+                      <td class="text-center">
+                        <!--
+                        Through the component, not record.getQuarterLabel(): financeArchDetails
+                        is the raw HTTP response, so these rows are plain objects and carry
+                        none of StudentFinanceArch's methods. The outer table can call its
+                        entity methods because mapToStudentDataArch() constructs real instances.
+                        -->
+                        @if (record.studentFinRecievedYearMonth) {
+                          <span class="p-tag p-tag-info">{{getQuarterLabel(record.studentFinRecievedYearMonth)}}</span>
+                        }
+                        @if (!record.studentFinRecievedYearMonth) {
+                          <span class="text-500">-</span>
+                        }
+                      </td>
+                      <td class="text-right">
+                        <span class="font-bold text-green-600">{{record.studentFinRecievedAmount | localeNumber}}</span>
+                      </td>
+                      <td class="text-center">{{getLookupName(record.studyFinanceBankeId, studyFinanceBankOptions)}}</td>
+                      <td class="text-right">
+                        @if (record.wafarAmount) {
+                          <span>{{record.wafarAmount | localeNumber}}</span>
+                        }
+                        @if (!record.wafarAmount) {
+                          <span class="text-500">-</span>
+                        }
+                      </td>
+                      <td class="text-right">
+                        <span class="font-bold text-indigo-600">{{getRecordNetAmount(record) | localeNumber}}</span>
+                      </td>
+                      <td class="text-center">{{getLookupName(record.wafarTypeId, wafarTypeOptions)}}</td>
+                      <td class="text-center">{{record.archievedDate | localeDate:'shortDate'}}</td>
+                      <td class="text-center">
+                        <!--
+                        Name and colour come from STUDY_FIN_RECEIVED_STATUS, in the current
+                        language. This used to branch on 1 / 0 / 2 and rendered nothing for
+                        99 (NOT_SPECIFIED), which the legacy 0 rows are back-filled to (H2).
+                        -->
+                        @if (record.studyFinRecievedStatus != null) {
+                          <p-tag [severity]="getFinReceivedStatusSeverity(record.studyFinRecievedStatus)"
+                            [value]="getFinReceivedStatusName(record.studyFinRecievedStatus)" [rounded]="true"></p-tag>
+                        }
+                        @if (record.studyFinRecievedStatus == null) {
+                          <span class="text-500">-</span>
+                        }
+                      </td>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="emptymessage">
+                    <tr>
+                      <td colspan="8" class="text-center py-4">
+                        <div class="flex flex-column align-items-center gap-2">
+                          <i class="pi pi-dollar text-4xl text-300"></i>
+                          <span class="text-500">{{'STUDENT_FINANCE_ARCH.NO_FINANCIAL_RECORDS' | translate}}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </ng-template>
+                </p-table>
+              }
+              @if (financeArchDetails.length === 0) {
+                <div class="sfa-empty-state">
+                  <i class="pi pi-dollar"></i>
+                  <span>{{'STUDENT_FINANCE_ARCH.NO_FINANCIAL_RECORDS_FOUND' | translate}}</span>
+                  <small>{{'STUDENT_FINANCE_ARCH.NO_FINANCIAL_RECORDS_MESSAGE2' | translate}}</small>
+                </div>
+              }
+            </div>
+          }
+        </div>
+        <!-- Section 6: Passport -->
+        <div class="sfa-section">
+          <div class="sfa-section-header">
+            <i class="pi pi-id-card"></i>
+            <span>{{'STUDENT_FINANCE_ARCH.PASSPORT_INFORMATION' | translate}}</span>
+          </div>
+          <div class="sfa-row-grid">
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.PASSPORT_NUMBER' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentPassportNumber || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.ISSUE_DATE' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentPassportIssueDate | localeDate:'mediumDate'}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.EXPIRE_DATE' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.studentPassportExpireDate | localeDate:'mediumDate'}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.ISSUE_COUNTRY' | translate}}</span>
+              <span class="sfa-value">{{getLookupName(selectedStudentFinanceArch.studentPassportIssueCountryId, countryOptions)}}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Section 7: Archive -->
+        <div class="sfa-section">
+          <div class="sfa-section-header">
+            <i class="pi pi-archive"></i>
+            <span>{{'STUDENT_FINANCE_ARCH.ARCHIVE_INFORMATION' | translate}}</span>
+          </div>
+          <div class="sfa-row-grid">
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.ARCHIVE_DATE_LABEL' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.getArchiveDateFormatted()}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.ORIGINAL_DATE' | translate}}</span>
+              <span class="sfa-value">{{selectedStudentFinanceArch.getStudentMidateFormatted()}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.QUARTER' | translate}}</span>
+              <span class="sfa-value">{{getQuarterLabel(selectedStudentFinanceArch.studentAddedQuarter)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.AMOUNT' | translate}}</span>
+              <span class="sfa-value font-bold" style="color:var(--green-700)">{{selectedStudentFinanceArch.getFormattedAmount()}}</span>
+            </div>
+            <!-- Resolved through STUDY_CURRENCY_IN rather than printing the raw id. -->
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.AMOUNT_CURRENCY' | translate}}</span>
+              <span class="sfa-value">{{getCurrencyName(selectedStudentFinanceArch.amountCurrency)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.UNIVERSITY_FEE_STATUS_CURRENCY' | translate}}</span>
+              <span class="sfa-value">{{getCurrencyName(selectedStudentFinanceArch.universityFeeStatusCurrency)}}</span>
+            </div>
+            <div class="sfa-col">
+              <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.LAST_QUARTER' | translate}}</span>
+              <span class="sfa-value">{{getQuarterLabel(selectedStudentFinanceArch.studentLastQuarter)}}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Section 8: Notes (conditional) -->
+        @if (selectedStudentFinanceArch.studentNote1 || selectedStudentFinanceArch.studentNote2) {
+          <div class="sfa-section"
+            >
+            <div class="sfa-section-header">
+              <i class="pi pi-file-edit"></i>
+              <span>{{'STUDENT_FINANCE_ARCH.NOTES' | translate}}</span>
+            </div>
+            <div class="sfa-row-grid">
+              @if (selectedStudentFinanceArch.studentNote1) {
+                <div class="sfa-col">
+                  <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.NOTE_1' | translate}}</span>
+                  <span class="sfa-value sfa-multiline">{{selectedStudentFinanceArch.studentNote1}}</span>
+                </div>
+              }
+              @if (selectedStudentFinanceArch.studentNote2) {
+                <div class="sfa-col">
+                  <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.NOTE_2' | translate}}</span>
+                  <span class="sfa-value sfa-multiline">{{selectedStudentFinanceArch.studentNote2}}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <button pButton pRipple icon="pi pi-times" class="p-button-text" (click)="hideDialog()"
+    [label]="'COMMON.CLOSE' | translate"></button>
+  </ng-template>
+</p-dialog>
+
+<!-- ── Edit / Add Dialog ───────────────────────────────────────────────────── -->
+<p-dialog [(visible)]="feeDialog"
+  [style]="{width: '90vw', maxWidth: '1100px'}"
+  [header]="'STUDENT_FINANCE_ARCH.EDIT_FINANCE' | translate"
+  [modal]="true" [maximizable]="true" [draggable]="false" [resizable]="false"
+  styleClass="sfa-edit-dialog"
+  [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+  <ng-template pTemplate="content">
+    <div class="sfa-edit-grid">
+
+      <!--
+      Who and which quarter, read-only (review F5). This row is the archived record of
+      what was on file in that quarter; the finance page corrects its amounts and notes,
+      not the student's identity. The server keeps the other columns whatever is sent.
+      -->
+      <div class="sfa-section">
+        <div class="sfa-section-header">
+          <i class="pi pi-user"></i>
+          <span>{{'STUDENT_FINANCE_ARCH.STUDENT_INFORMATION' | translate}}</span>
+        </div>
+        <small class="sfa-hint">{{'STUDENT_FINANCE_ARCH.IDENTITY_READ_ONLY_HINT' | translate}}</small>
+        <div class="sfa-row-grid">
+          <div class="sfa-col">
+            <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.STUDENT_NAME' | translate}}</span>
+            <span class="sfa-value">{{newStudentFinanceArch.studentName || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+          </div>
+          <div class="sfa-col">
+            <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.SOURCE_STUDENT_ID' | translate}}</span>
+            <span class="sfa-value">{{newStudentFinanceArch.studentId || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+          </div>
+          <div class="sfa-col">
+            <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.PASSPORT_NUMBER' | translate}}</span>
+            <span class="sfa-value">{{newStudentFinanceArch.studentPassportNumber || ('COMMON.NOT_SPECIFIED' | translate)}}</span>
+          </div>
+          <div class="sfa-col">
+            <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.STUDY_COUNTRY' | translate}}</span>
+            <span class="sfa-value">{{getLookupName(newStudentFinanceArch.studyCountryIn, studyCountryInOptions)}}</span>
+          </div>
+          <div class="sfa-col">
+            <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.UNIVERSITY' | translate}}</span>
+            <span class="sfa-value">{{getLookupName(newStudentFinanceArch.studyUniversityIn, studyUniversityInOptions)}}</span>
+          </div>
+          <div class="sfa-col">
+            <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.QUARTER' | translate}}</span>
+            <span class="sfa-value">{{getQuarterLabel(newStudentFinanceArch.studentAddedQuarter)}}</span>
+          </div>
+          <div class="sfa-col">
+            <span class="sfa-label">{{'STUDENT_FINANCE_ARCH.LAST_QUARTER' | translate}}</span>
+            <span class="sfa-value">{{getQuarterLabel(newStudentFinanceArch.studentLastQuarter)}}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5: Financial -->
+      <div class="sfa-section">
+        <div class="sfa-section-header">
+          <i class="pi pi-wallet"></i>
+          <span>{{'STUDENT_FINANCE_ARCH.FINANCIAL_DETAILS' | translate}}</span>
+        </div>
+        <div class="sfa-form-row">
+          <div class="sfa-form-col">
+            <label for="studentAmount">{{'STUDENT_FINANCE_ARCH.AMOUNT' | translate}}</label>
+            <p-inputnumber [min]="0" id="studentAmount" [(ngModel)]="newStudentFinanceArch.studentAmount"
+              mode="decimal" [minFractionDigits]="2" [maxFractionDigits]="2">
+            </p-inputnumber>
+          </div>
+          <!--
+          Both columns are ids into STUDY_CURRENCY_IN, not amounts — the same lookup the
+          student-add screen binds them to. They used to be free number inputs, which
+          asked the user to type a foreign key.
+          -->
+          <div class="sfa-form-col">
+            <label for="amountCurrency">{{'STUDENT_FINANCE_ARCH.AMOUNT_CURRENCY' | translate}}</label>
+            <p-select id="amountCurrency" [(ngModel)]="newStudentFinanceArch.amountCurrency"
+              [options]="currencyOptions" optionLabel="name" optionValue="id"
+              [placeholder]="'STUDENT_FINANCE_ARCH.SELECT_CURRENCY' | translate"
+              [showClear]="true" [filter]="true" filterBy="name" appendTo="body">
+            </p-select>
+          </div>
+          <div class="sfa-form-col">
+            <label for="universityFeeStatusCurrency">{{'STUDENT_FINANCE_ARCH.UNIVERSITY_FEE_STATUS_CURRENCY' | translate}}</label>
+            <p-select id="universityFeeStatusCurrency"
+              [(ngModel)]="newStudentFinanceArch.universityFeeStatusCurrency"
+              [options]="currencyOptions" optionLabel="name" optionValue="id"
+              [placeholder]="'STUDENT_FINANCE_ARCH.SELECT_CURRENCY' | translate"
+              [showClear]="true" [filter]="true" filterBy="name" appendTo="body">
+            </p-select>
+          </div>
+          <div class="sfa-form-col">
+            <label for="studentFirstReceiptOfDue">{{'STUDENT_FINANCE_ARCH.RECEIPT' | translate}}</label>
+            <p-inputnumber id="studentFirstReceiptOfDue"
+              [(ngModel)]="newStudentFinanceArch.studentFirstReceiptOfDue" [min]="0">
+            </p-inputnumber>
+          </div>
+        </div>
+      </div>
+
+      <!--
+      Section 7: Financial Records - archived history, shown read-only for context while
+      correcting the quarter's amounts. editStudentFinanceArch() fetches these.
+      -->
+        <div class="sfa-section">
+          <div class="sfa-section-header">
+            <i class="pi pi-dollar"></i>
+            <span>{{'STUDENT_FINANCE_ARCH.FINANCIAL_RECORDS' | translate}}</span>
+            @if (!loadingFinancialRecords) {
+              <span class="p-badge p-badge-warning ml-auto">
+                {{financeArchDetails.length}} {{'STUDENT_FINANCE_ARCH.RECORDS_COUNT' | translate}}
+              </span>
+            }
+          </div>
+          <small class="sfa-hint">{{'STUDENT_FINANCE_ARCH.FINANCIAL_RECORDS_READONLY' | translate}}</small>
+          @if (loadingFinancialRecords) {
+            <div class="flex flex-column align-items-center py-4 gap-2">
+              <p-progressSpinner [style]="{width: '36px', height: '36px'}" strokeWidth="4"></p-progressSpinner>
+              <span class="text-500 text-sm">{{'STUDENT_FINANCE_ARCH.LOADING_FINANCIAL_RECORDS' | translate}}</span>
+            </div>
+          }
+          @if (!loadingFinancialRecords && financeArchDetails.length > 0) {
+            <p-table [value]="financeArchDetails" dataKey="financeArchEntryId"
+              styleClass="p-datatable-sm p-datatable-striped">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th class="text-center">{{'STUDENT_FINANCE_ARCH.QUARTER' | translate}}</th>
+                  <th class="text-center">{{'STUDENT_FINANCE_ARCH.AMOUNT' | translate}}</th>
+                  <th class="text-center">{{'STUDENT_FINANCE_ARCH.WAFAR_AMOUNT' | translate}}</th>
+                  <th class="text-center">{{'STUDENT_FINANCE_ARCH.NET_AMOUNT' | translate}}</th>
+                  <th class="text-center">{{'STUDENT_FINANCE_ARCH.ARCHIVE_DATE' | translate}}</th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-record>
+                <tr>
+                  <td class="text-center">
+                    @if (record.studentFinRecievedYearMonth) {
+                      <span class="p-tag p-tag-info">{{getQuarterLabel(record.studentFinRecievedYearMonth)}}</span>
+                    }
+                    @if (!record.studentFinRecievedYearMonth) {
+                      <span class="text-500">-</span>
+                    }
+                  </td>
+                  <td class="text-right">{{record.studentFinRecievedAmount | localeNumber}}</td>
+                  <td class="text-right">
+                    @if (record.wafarAmount) {
+                      <span>{{record.wafarAmount | localeNumber}}</span>
+                    }
+                    @if (!record.wafarAmount) {
+                      <span class="text-500">-</span>
+                    }
+                  </td>
+                  <td class="text-right font-bold text-indigo-600">{{getRecordNetAmount(record) | localeNumber}}</td>
+                  <td class="text-center">{{record.archievedDate | localeDate:'shortDate'}}</td>
+                </tr>
+              </ng-template>
+            </p-table>
+          }
+          @if (!loadingFinancialRecords && financeArchDetails.length === 0) {
+            <div class="sfa-empty-state">
+              <i class="pi pi-dollar"></i>
+              <span>{{'STUDENT_FINANCE_ARCH.NO_FINANCIAL_RECORDS' | translate}}</span>
+            </div>
+          }
+        </div>
+
+      <!-- Section 8: Notes -->
+      <div class="sfa-section">
+        <div class="sfa-section-header">
+          <i class="pi pi-file-edit"></i>
+          <span>{{'STUDENT_FINANCE_ARCH.NOTES' | translate}}</span>
+        </div>
+        <div class="sfa-form-row sfa-form-row--2col">
+          <div class="sfa-form-col">
+            <label for="studentNote1">{{'STUDENT_FINANCE_ARCH.NOTE_1' | translate}}</label>
+            <textarea id="studentNote1" pTextarea [(ngModel)]="newStudentFinanceArch.studentNote1"
+            rows="3" [autoResize]="true"></textarea>
+          </div>
+          <div class="sfa-form-col">
+            <label for="studentNote2">{{'STUDENT_FINANCE_ARCH.NOTE_2' | translate}}</label>
+            <textarea id="studentNote2" pTextarea [(ngModel)]="newStudentFinanceArch.studentNote2"
+            rows="3" [autoResize]="true"></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <button pButton pRipple icon="pi pi-times" class="p-button-text" (click)="hideDialog()"
+    [label]="'COMMON.CANCEL' | translate"></button>
+    <button pButton pRipple icon="pi pi-check" (click)="saveStudentFinanceArch()"
+    [label]="'COMMON.SAVE' | translate"></button>
+  </ng-template>
+</p-dialog>
+
+<p-toast></p-toast>

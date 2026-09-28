@@ -1,0 +1,11 @@
+# MOHE - crawlers have no business past the public landing page.
+# The student portal and the API are authenticated; listing them helps nobody
+# but a scanner (security plan S-14).
+User-agent: *
+Disallow: /student-portal/
+Disallow: /mohe/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /ums-admin/
+Disallow: /profile
+Allow: /$

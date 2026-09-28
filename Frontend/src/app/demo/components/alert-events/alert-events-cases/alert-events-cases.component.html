@@ -1,0 +1,291 @@
+<div class="alert-events-container" [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+  <p-toast></p-toast>
+
+  <!-- Page Header -->
+  <div class="card mb-3">
+    <!--
+      The heading block takes the free space rather than the row carrying
+      justify-content-between: styles.scss reverses that class again for RTL,
+      which put the title on the left and the buttons on the right in Arabic.
+    -->
+    <div class="flex align-items-center flex-wrap gap-2">
+      <div class="flex align-items-center gap-3 flex-1">
+        <i class="pi pi-bell text-primary" style="font-size: 2rem"></i>
+        <div>
+          <h3 class="m-0 text-primary">{{ 'ALERT_EVENTS.PAGE_TITLE' | translate }}</h3>
+          <p class="text-600 mt-1 mb-0">{{ 'ALERT_EVENTS.PAGE_DESCRIPTION' | translate }}</p>
+        </div>
+      </div>
+      <!-- No "Scenarios" button (review R6): the page has its own menu row. -->
+      <div class="flex gap-2">
+        @if (canRunDetection()) {
+          <p-button icon="pi pi-play"
+            [label]="'ALERT_EVENTS.RUN_DETECTION' | translate"
+            styleClass="p-button-outlined"
+          (onClick)="runDetection()"></p-button>
+        }
+        <p-button icon="pi pi-refresh" [label]="'COMMON.REFRESH' | translate"
+          styleClass="p-button-action-outlined"
+        (onClick)="loadSummary(); loadCases()"></p-button>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    Summary. Collapsed on arrival: the counts are a detail of the case list
+    below, not the reason for opening the page.
+
+    Cards use the shared band (assets/layout/styles/_summary-cards.scss). They
+    were four `card border-left-3 text-center` blocks on primeflex columns
+    before, which is a fifth private spelling of the same thing.
+  -->
+  <p-panel [toggleable]="true" [collapsed]="true" styleClass="mb-3">
+    <ng-template pTemplate="header">
+      <div class="flex align-items-center gap-2">
+        <i class="pi pi-chart-bar text-primary"></i>
+        <span class="font-semibold">{{ 'ALERT_EVENTS.SUMMARY_TITLE' | translate }}</span>
+        @if (!summaryFailed) {
+          <p-tag [value]="summary.totalAll?.toString()" severity="info" styleClass="ml-2"></p-tag>
+        }
+      </div>
+    </ng-template>
+
+    @if (summaryFailed) {
+      <div class="summary-failed" role="alert">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>{{ 'COMMON.FIGURES_LOAD_FAILED' | translate }}</span>
+        <button pButton type="button" class="p-button-text p-button-sm" icon="pi pi-refresh"
+                [label]="'COMMON.RETRY' | translate" (click)="loadSummary()"></button>
+      </div>
+    } @else {
+    <div class="summary-cards summary-cards--cols-4">
+      <div class="summary-card open">
+        <div class="summary-icon">
+          <i class="pi pi-exclamation-circle"></i>
+        </div>
+        <div class="summary-content">
+          <span class="summary-label">{{ 'ALERT_EVENTS.STATUS.OPEN' | translate }}</span>
+          <span class="summary-value">{{ summary.totalOpen | number }}</span>
+          @if (summary.totalOpen > 0) {
+            <!-- The severity split is only meaningful for open cases: it says
+                 how urgent the backlog is, not merely how big. -->
+            <!-- One chip per severity row the server sends (LU_ALERT_SEVERITY, its own name and colour). -->
+            <span class="summary-meta summary-severities">
+              @for (row of summary.bySeverity || []; track row.code) {
+                @if (row.count > 0) {
+                  <p-tag [value]="row.count + ' ' + severityName(row)" [severity]="tagSeverity(row.uiSeverity)" styleClass="text-xs"></p-tag>
+                }
+              }
+            </span>
+          }
+        </div>
+      </div>
+      <div class="summary-card acknowledged">
+        <div class="summary-icon">
+          <i class="pi pi-eye"></i>
+        </div>
+        <div class="summary-content">
+          <span class="summary-label">{{ 'ALERT_EVENTS.STATUS.ACKNOWLEDGED' | translate }}</span>
+          <span class="summary-value">{{ summary.totalAcknowledged | number }}</span>
+        </div>
+      </div>
+      <div class="summary-card resolved">
+        <div class="summary-icon">
+          <i class="pi pi-check-circle"></i>
+        </div>
+        <div class="summary-content">
+          <span class="summary-label">{{ 'ALERT_EVENTS.STATUS.RESOLVED' | translate }}</span>
+          <span class="summary-value">{{ summary.totalResolved | number }}</span>
+        </div>
+      </div>
+      <div class="summary-card total">
+        <div class="summary-icon">
+          <i class="pi pi-bell"></i>
+        </div>
+        <div class="summary-content">
+          <span class="summary-label">{{ 'ALERT_EVENTS.TOTAL' | translate }}</span>
+          <span class="summary-value">{{ summary.totalAll | number }}</span>
+        </div>
+      </div>
+    </div>
+    }
+  </p-panel>
+
+  <!--
+    Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+    Six tracks so the two wide fields can take two each: the scenario name and
+    the student search hold sentences, the severity and status dropdowns hold a
+    word. The buttons were a sixth primeflex column bottom-aligned with
+    `align-items-end` against invisible label height; they belong in the action
+    row instead.
+  -->
+  <div class="filter-bar">
+    <div class="filter-bar__grid filter-bar__grid--cols-6">
+      <div class="filter-bar__field filter-bar__field--wide"
+        [class.filter-bar__field--active]="filterScenarioCode">
+        <label for="aeScenario">{{ 'ALERT_EVENTS.FILTER.SCENARIO' | translate }}</label>
+        <p-select inputId="aeScenario" [options]="scenarioOptions" [(ngModel)]="filterScenarioCode"
+          optionLabel="label" optionValue="value" [showClear]="true"
+          [placeholder]="'COMMON.ALL' | translate"></p-select>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterSeverity">
+        <label for="aeSeverity">{{ 'ALERT_EVENTS.FILTER.SEVERITY' | translate }}</label>
+        <p-select inputId="aeSeverity" [options]="severityOptions" [(ngModel)]="filterSeverity"
+          optionLabel="label" optionValue="value" [showClear]="true"
+          [placeholder]="'COMMON.ALL' | translate"></p-select>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterStatus">
+        <label for="aeStatus">{{ 'ALERT_EVENTS.FILTER.STATUS' | translate }}</label>
+        <p-select inputId="aeStatus" [options]="statusOptions" [(ngModel)]="filterStatus"
+          optionLabel="label" optionValue="value" [showClear]="true"
+          [placeholder]="'COMMON.ALL' | translate"></p-select>
+      </div>
+      <div class="filter-bar__field filter-bar__field--wide"
+        [class.filter-bar__field--active]="filterStudentName">
+        <label for="aeStudent">{{ 'ALERT_EVENTS.FILTER.STUDENT_NAME' | translate }}</label>
+        <span class="p-input-icon-left">
+          <i class="pi pi-search"></i>
+          <input id="aeStudent" pInputText [(ngModel)]="filterStudentName"
+            [placeholder]="'ALERT_EVENTS.FILTER.STUDENT_NAME_PH' | translate"
+            (keyup.enter)="applyFilters()" />
+        </span>
+      </div>
+    </div>
+
+    <div class="filter-bar__actions">
+      <p-button icon="pi pi-search" [label]="'COMMON.SEARCH' | translate"
+        styleClass="p-button-search" (onClick)="applyFilters()"></p-button>
+      <p-button icon="pi pi-filter-slash" [label]="'COMMON.RESET' | translate"
+        styleClass="p-button-action-outlined"
+        [disabled]="!filterScenarioCode && !filterSeverity && !filterStatus && !filterStudentName"
+        (onClick)="resetFilters()"></p-button>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <p-table [value]="cases" [lazy]="true" [paginator]="true"
+      [rows]="pageSize" [totalRecords]="totalRecords" [(first)]="first"
+      [loading]="loading" [rowsPerPageOptions]="[10, 20, 50]"
+      (onPage)="onPage($event)" (onSort)="onSort($event)"
+      dataKey="caseId"
+      styleClass="p-datatable-gridlines p-datatable-sm">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th style="width: 8rem">{{ 'ALERT_EVENTS.COL.SEVERITY' | translate }}</th>
+          <th pSortableColumn="scenario.scenarioCode">
+            {{ 'ALERT_EVENTS.COL.SCENARIO' | translate }}
+            <p-sortIcon field="scenario.scenarioCode"></p-sortIcon>
+          </th>
+          <th pSortableColumn="student.studentName">
+            {{ 'ALERT_EVENTS.COL.STUDENT' | translate }}
+            <p-sortIcon field="student.studentName"></p-sortIcon>
+          </th>
+          <th pSortableColumn="referenceDate">
+            {{ 'ALERT_EVENTS.COL.REFERENCE_DATE' | translate }}
+            <p-sortIcon field="referenceDate"></p-sortIcon>
+          </th>
+          <th style="width: 9rem">{{ 'ALERT_EVENTS.COL.STATUS' | translate }}</th>
+          <th pSortableColumn="createdAt">
+            {{ 'ALERT_EVENTS.COL.DETECTED' | translate }}
+            <p-sortIcon field="createdAt"></p-sortIcon>
+          </th>
+          @if (canManage()) {
+            <th style="width: 14rem">{{ 'COMMON.ACTIONS' | translate }}</th>
+          }
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-c>
+        <tr>
+          <td>
+            <p-tag [value]="c.severity | codeLabel:'alert-severity':currentLanguage" [severity]="c.severity | codeSeverity:'alert-severity'"></p-tag>
+          </td>
+          <td>{{ scenarioLabel(c) }}</td>
+          <td>
+            <span class="font-medium">{{ c.studentName }}</span>
+            <span class="text-500 text-sm ml-2">#{{ c.studentId }}</span>
+          </td>
+          <td>
+            @if (c.referenceDate) {
+              <span>{{ c.referenceDate | date:'yyyy-MM-dd' }}</span>
+            }
+            @if (!c.referenceDate) {
+              <span class="text-500">—</span>
+            }
+          </td>
+          <td>
+            <p-tag [value]="c.status | codeLabel:'alert-status':currentLanguage"
+            [severity]="c.status | codeSeverity:'alert-status'"></p-tag>
+          </td>
+          <td>{{ c.createdAt | date:'yyyy-MM-dd' }}</td>
+          @if (canManage()) {
+            <td>
+              <div class="flex gap-1 flex-wrap">
+                @if (c.status === 'OPEN') {
+                  <p-button icon="pi pi-eye"
+                    [label]="'ALERT_EVENTS.ACKNOWLEDGE' | translate"
+                    styleClass="p-button-sm p-button-outlined p-button-warning"
+                    (onClick)="openAction(c, 'acknowledge')"
+                  [pTooltip]="'ALERT_EVENTS.ACKNOWLEDGE' | translate"></p-button>
+                }
+                @if (c.status === 'OPEN' || c.status === 'ACKNOWLEDGED') {
+                  <p-button
+                    icon="pi pi-check"
+                    [label]="'ALERT_EVENTS.RESOLVE' | translate"
+                    styleClass="p-button-sm p-button-outlined p-button-success"
+                    (onClick)="openAction(c, 'resolve')"
+                  [pTooltip]="'ALERT_EVENTS.RESOLVE' | translate"></p-button>
+                }
+                @if (c.status === 'OPEN' || c.status === 'ACKNOWLEDGED') {
+                  <p-button
+                    icon="pi pi-ban"
+                    styleClass="p-button-sm p-button-outlined p-button-secondary"
+                    (onClick)="openAction(c, 'dismiss')"
+                  [pTooltip]="'ALERT_EVENTS.DISMISS' | translate"></p-button>
+                }
+              </div>
+            </td>
+          }
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td [colSpan]="canManage() ? 7 : 6" class="text-center text-500 py-5">
+            <i class="pi pi-bell text-200" style="font-size: 3rem; display:block; margin-bottom:0.5rem"></i>
+            {{ 'ALERT_EVENTS.EMPTY' | translate }}
+          </td>
+        </tr>
+      </ng-template>
+
+    </p-table>
+  </div>
+
+  <!-- Action Dialog -->
+  <p-dialog [(visible)]="actionDialogVisible" [modal]="true" [header]="actionDialogHeader"
+    [style]="{width: '400px'}" [closable]="!actionLoading">
+    @if (actionDialogCase) {
+      <div class="py-2">
+        <p class="text-600 mb-3">
+          <strong>{{ actionDialogCase.studentName }}</strong> —
+          {{ scenarioLabel(actionDialogCase) }}
+        </p>
+        <label class="block text-600 mb-1">{{ 'ALERT_EVENTS.NOTES' | translate }} ({{ 'COMMON.OPTIONAL' | translate }})</label>
+        <textarea pTextarea [(ngModel)]="actionNotes" rows="3"
+        class="w-full" [placeholder]="'ALERT_EVENTS.NOTES_PH' | translate"></textarea>
+      </div>
+    }
+    <ng-template pTemplate="footer">
+      <p-button [label]="'COMMON.CANCEL' | translate" icon="pi pi-times"
+        styleClass="p-button-outlined p-button-secondary"
+        (onClick)="actionDialogVisible = false"
+      [disabled]="actionLoading"></p-button>
+      <p-button [label]="actionDialogHeader" icon="pi pi-check"
+        (onClick)="confirmAction()"
+      [loading]="actionLoading"></p-button>
+    </ng-template>
+  </p-dialog>
+</div>

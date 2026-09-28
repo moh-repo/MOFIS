@@ -1,0 +1,165 @@
+<div class="db-root">
+
+  @if (loading) {
+    <div class="db-loading">
+      <nz-spin nzSize="large" [nzTip]="'COMMON.LOADING' | translate"></nz-spin>
+    </div>
+  }
+
+  @if (!loading && !profile) {
+    <nz-result nzStatus="warning" [nzTitle]="'STUDENT_PORTAL.NO_DATA' | translate"></nz-result>
+  }
+
+  @if (!loading && profile) {
+
+    <!-- Anything time-critical goes above everything else. -->
+    @if (passportAlertType) {
+      <nz-alert
+        class="db-alert"
+        [nzType]="passportAlertType"
+        nzShowIcon
+        [nzMessage]="passportAlertType === 'error'
+          ? ('STUDENT_PORTAL.PASSPORT_EXPIRE_DATE' | translate)
+          : (('STUDENT_PORTAL.PASSPORT_EXPIRE_DATE' | translate) + ': ' + passportExpiryDays + ' ' + ('STUDENT_PORTAL.DAYS_LEFT' | translate))">
+      </nz-alert>
+    }
+
+    <!-- ── Identity strip ────────────────────────────────────
+         A record header, not a banner: who this is, and the two facts that
+         identify the file. The greeting stays, but it no longer takes a
+         quarter of the page to say it. -->
+    <section class="db-identity">
+      <span class="db-identity__avatar">{{ studentInitials }}</span>
+      <div class="db-identity__body">
+        <h2 class="db-identity__name">{{ 'STUDENT_PORTAL.WELCOME' | translate:{ name: profile.studentName } }}</h2>
+        <p class="db-identity__hint">{{ 'STUDENT_PORTAL.WELCOME_HINT' | translate }}</p>
+      </div>
+      <dl class="db-identity__facts">
+        <div>
+          <dt>{{ 'STUDENT_PORTAL.STUDENT_ID' | translate }}</dt>
+          <dd>{{ profile.studentId }}</dd>
+        </div>
+        @if (progress?.currentYearLabel) {
+          <div>
+            <dt>{{ 'STUDENT_PORTAL.CURRENT_LEVEL' | translate }}</dt>
+            <dd>{{ progress | inLanguage:'currentYearLabel' }}</dd>
+          </div>
+        }
+      </dl>
+    </section>
+
+    <!-- ── What needs attention (review T1) ──────────────────
+         Four cards, each a count and a link. The page used to open with four
+         figure tiles and close with the nine menu destinations again as a
+         services grid; the menu is always beside it, so the page now carries
+         only what asks for the student's action. -->
+    <h3 class="db-heading">{{ 'STUDENT_PORTAL.NEEDS_ATTENTION' | translate }}</h3>
+    <nz-row [nzGutter]="[16, 16]" class="db-stats">
+      @for (card of actionCards; track card.route) {
+        <nz-col [nzXs]="12" [nzSm]="12" [nzMd]="6">
+          <a [routerLink]="card.route" class="db-stat db-stat--link"
+            [class.db-stat--warn]="card.attention" [class.db-stat--muted]="!card.attention">
+            <span class="db-stat__icon" nz-icon [nzType]="card.icon" nzTheme="outline"></span>
+            <span class="db-stat__label">{{ 'STUDENT_PORTAL.' + card.titleKey | translate }}</span>
+            <span class="db-stat__value">{{ card.failed ? '—' : card.count }}</span>
+            <span class="db-stat__hint">{{ 'STUDENT_PORTAL.' + card.hintKey | translate }}</span>
+          </a>
+        </nz-col>
+      }
+    </nz-row>
+    @if (countsFailed) {
+      <p class="db-stats__failed" role="alert">
+        {{ 'STUDENT_PORTAL.COUNTS_LOAD_FAILED' | translate }}
+        <button nz-button nzType="link" nzSize="small" (click)="load()">{{ 'COMMON.RETRY' | translate }}</button>
+      </p>
+    }
+
+    <nz-row [nzGutter]="[16, 16]">
+
+      <!-- ── Study progress ──────────────────────────────── -->
+      @if (progress) {
+        <nz-col [nzXs]="24" [nzLg]="10">
+          <section class="db-card db-card--full">
+            <h3 class="db-card__title">
+              <span nz-icon nzType="bar-chart" nzTheme="outline"></span>
+              {{ 'STUDENTS.PROFILE_PAGE.TAB_PROGRESS' | translate }}
+            </h3>
+            <div class="db-progress">
+              <div class="db-progress__figure">
+                <span class="db-progress__pct">{{ progressPercent }}%</span>
+                <span class="db-progress__of">
+                  {{ progress.currentYearOrder }} / {{ progress.totalYears }}
+                  {{ 'STUDENT_PORTAL.STUDY_YEARS' | translate }}
+                </span>
+              </div>
+              <div class="db-progress__track">
+                <div class="db-progress__fill" [style.width.%]="progressPercent"
+                  [class.db-progress__fill--done]="progressPercent >= 100"></div>
+              </div>
+              <p class="db-progress__meta">
+                {{ 'STUDENTS.PROFILE_PAGE.CURRENT_YEAR' | translate }}:
+                <strong>{{ progress | inLanguage:'currentYearLabel' }}</strong>
+              </p>
+            </div>
+          </section>
+        </nz-col>
+      }
+
+      <!-- ── Personal information ────────────────────────── -->
+      @if (myData?.student) {
+        <nz-col [nzXs]="24" [nzLg]="progress ? 14 : 24">
+          <section class="db-card db-card--full">
+            <h3 class="db-card__title">
+              <span nz-icon nzType="profile" nzTheme="outline"></span>
+              {{ 'STUDENT_PORTAL.STUDENT_INFO' | translate }}
+            </h3>
+            <!-- A definition list, because that is what it is: a run of
+                 label/value pairs rather than a grid of coloured boxes. -->
+            <dl class="db-facts">
+              @if (myData?.student?.studentPassportNumber) {
+                <div class="db-facts__row">
+                  <dt>{{ 'STUDENT_PORTAL.PASSPORT_NUMBER' | translate }}</dt>
+                  <dd>{{ myData?.student?.studentPassportNumber }}</dd>
+                </div>
+              }
+              @if (myData?.student?.studentPassportExpireDate) {
+                <div class="db-facts__row">
+                  <dt>{{ 'STUDENT_PORTAL.PASSPORT_EXPIRE_DATE' | translate }}</dt>
+                  <dd [class.db-val--danger]="passportAlertType === 'error'"
+                    [class.db-val--warn]="passportAlertType === 'warning'">
+                    {{ myData?.student?.studentPassportExpireDate | localeDate:'mediumDate' }}
+                  </dd>
+                </div>
+              }
+              @if (myData?.student?.studentStudyNoOfYears) {
+                <div class="db-facts__row">
+                  <dt>{{ 'STUDENT_PORTAL.STUDY_YEARS' | translate }}</dt>
+                  <dd>{{ myData?.student?.studentStudyNoOfYears }}</dd>
+                </div>
+              }
+              @if (myData?.student?.studentDelegationDecisionYear) {
+                <div class="db-facts__row">
+                  <dt>{{ 'STUDENT_PORTAL.DELEGATION_YEAR' | translate }}</dt>
+                  <dd>{{ myData?.student?.studentDelegationDecisionYear }}</dd>
+                </div>
+              }
+              @if (myData?.finance?.studentFinRecievedAmount) {
+                <div class="db-facts__row">
+                  <dt>{{ 'STUDENT_PORTAL.RECEIVED_AMOUNT' | translate }}</dt>
+                  <dd>{{ myData?.finance?.studentFinRecievedAmount | number:'1.0-2' }}</dd>
+                </div>
+              }
+              @if (myData?.finance?.studyCheckDate) {
+                <div class="db-facts__row">
+                  <dt>{{ 'STUDENT_PORTAL.CHECK_DATE' | translate }}</dt>
+                  <dd>{{ myData?.finance?.studyCheckDate | localeDate:'mediumDate' }}</dd>
+                </div>
+              }
+            </dl>
+          </section>
+        </nz-col>
+      }
+    </nz-row>
+
+  }
+</div>

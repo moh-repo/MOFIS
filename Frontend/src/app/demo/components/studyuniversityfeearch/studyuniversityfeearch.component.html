@@ -1,0 +1,431 @@
+<p-toast></p-toast>
+
+<!-- One heading, not two: the page opened with a p-toolbar whose whole
+     content was a bare text node, above a card with a heading of its own.
+     STUDY_UNIVERSITY_FEE_HISTORY.MANAGEMENT is no longer used. -->
+<div class="card">
+    <!-- Header. `flex-1` on the icon-and-title block, not
+         `justify-content-between`: under `direction: rtl` a flex row already
+         runs right to left, and the global rule in styles.scss reverses every
+         `.flex.justify-content-between` again, which put the heading on the left
+         and the buttons on the right in Arabic. See
+         src/app/demo/components/page-headings.spec.ts. -->
+  <div class="flex align-items-center mb-4 flex-wrap gap-3">
+    <div class="flex align-items-center gap-3 flex-1">
+      <i class="pi pi-folder-open text-primary" style="font-size: 2.5rem"></i>
+      <div>
+        <h2 class="m-0 text-primary">{{ 'STUDY_UNIVERSITY_FEE_HISTORY.TITLE' | translate }}</h2>
+        <p class="text-600 mt-1 mb-0">{{ 'STUDY_UNIVERSITY_FEE_HISTORY.SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+    <!-- View-only: the fee history is the archive of the fee records, written by the
+         quarter close and read here. The "Add New", edit and delete controls it used
+         to offer wrote into the archive itself (live QA H2, 24 Sep 2026); like Student
+         History, this screen now shows the log and nothing else. -->
+    <div class="flex gap-2 flex-wrap">
+      <button pButton pRipple [label]="'STUDY_UNIVERSITY_FEE_HISTORY.CLEAR_SELECTION' | translate" icon="pi pi-filter-slash" class="p-button-outlined" (click)="clearFilters()"></button>
+    </div>
+  </div>
+
+  <!-- Master-Detail Layout -->
+  <div class="grid">
+    <!-- Master Section - Students List -->
+    <div class="col-12 md:col-4">
+      <div class="card">
+        <div class="flex align-items-center mb-3">
+          <i class="pi pi-users text-primary mr-2"></i>
+          <h6 class="text-primary m-0">{{'STUDY_UNIVERSITY_FEE_HISTORY.STUDENTS_MASTER' | translate}}</h6>
+        </div>
+
+        <!-- Search -->
+        <div class="mb-3">
+          <span class="p-input-icon-left w-full">
+            <i class="pi pi-search"></i>
+            <input pInputText
+              [(ngModel)]="studentSearchTerm"
+              [placeholder]="'STUDY_UNIVERSITY_FEE_HISTORY.SEARCH_STUDENTS' | translate"
+              class="w-full"/>
+          </span>
+        </div>
+
+        <!-- Students List -->
+        <div class="student-list" style="max-height: 500px; overflow-y: auto;">
+          @for (student of filteredStudents; track student) {
+            <div
+              class="student-item p-3 mb-2 border-round cursor-pointer transition-colors transition-duration-150"
+              [class.bg-primary-50]="selectedStudent && selectedStudent.studentId === student.studentId"
+              [class.border-primary]="selectedStudent && selectedStudent.studentId === student.studentId"
+              [class.border-1]="selectedStudent && selectedStudent.studentId === student.studentId"
+              (click)="onStudentSelect(student)">
+              <div class="flex align-items-center">
+                <i class="pi pi-user mr-2 text-primary"></i>
+                <div class="flex-1">
+                  <div class="font-semibold text-900">{{student.studentName}}</div>
+                  <div class="text-sm text-600">ID: {{student.studentId}}</div>
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (masterStudents.length === 0) {
+            <div class="text-center p-4 text-500">
+              <i class="pi pi-users text-4xl mb-3 block"></i>
+              <span>{{'STUDY_UNIVERSITY_FEE_HISTORY.NO_STUDENTS_FOUND' | translate}}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail Section - Fee Records -->
+    <div class="col-12 md:col-8">
+      <div class="card">
+        <div class="flex align-items-center mb-3">
+          <i class="pi pi-money-bill text-green-600 mr-2"></i>
+          <h6 class="text-green-600 m-0">
+            {{'STUDY_UNIVERSITY_FEE_HISTORY.FEE_RECORDS_DETAILS' | translate}}
+            @if (selectedStudent) {
+              <span class="text-600 ml-2">- {{selectedStudent.studentName}}</span>
+            }
+          </h6>
+        </div>
+
+        @if (!selectedStudent) {
+          <div class="text-center p-6">
+            <i class="pi pi-info-circle text-4xl text-400 mb-3 block"></i>
+            <h6 class="text-600 mb-2">{{'STUDY_UNIVERSITY_FEE_HISTORY.NO_STUDENT_SELECTED' | translate}}</h6>
+            <p class="text-500">{{'STUDY_UNIVERSITY_FEE_HISTORY.NO_STUDENT_SELECTED_MESSAGE' | translate}}</p>
+          </div>
+        }
+
+        @if (selectedStudent && detailRecords.length === 0 && !loading) {
+          <div class="text-center p-6">
+            <i class="pi pi-money-bill text-4xl text-400 mb-3 block"></i>
+            <h6 class="text-600 mb-2">{{'STUDY_UNIVERSITY_FEE_HISTORY.NO_FEE_RECORDS' | translate}}</h6>
+            <p class="text-500">{{'STUDY_UNIVERSITY_FEE_HISTORY.NO_FEE_RECORDS_MESSAGE' | translate}}</p>
+          </div>
+        }
+
+        <!-- Fee Records Table -->
+        @if (selectedStudent && detailRecords.length > 0) {
+          <p-table #dt
+            [value]="detailRecords"
+            [loading]="loading"
+            styleClass="p-datatable-sm"
+            >
+            <ng-template pTemplate="header">
+              <tr>
+                <th pSortableColumn="studyUniversityFeeYear">{{'STUDY_UNIVERSITY_FEE_HISTORY.YEAR' | translate}} <p-sortIcon field="studyUniversityFeeYear"></p-sortIcon></th>
+                <th pSortableColumn="studyUniversityFeeAmount">{{'STUDY_UNIVERSITY_FEE_HISTORY.FEE_AMOUNT' | translate}} <p-sortIcon field="studyUniversityFeeAmount"></p-sortIcon></th>
+                <th pSortableColumn="studyUniversityRealFeeAmount">{{'STUDY_UNIVERSITY_FEE_HISTORY.REAL_AMOUNT' | translate}} <p-sortIcon field="studyUniversityRealFeeAmount"></p-sortIcon></th>
+                <th pSortableColumn="studyUniversityFeePayStatus">{{'STUDY_UNIVERSITY_FEE_HISTORY.PAYMENT_STATUS' | translate}} <p-sortIcon field="studyUniversityFeePayStatus"></p-sortIcon></th>
+                <th pSortableColumn="studyUniversityFeePayDate">{{'STUDY_UNIVERSITY_FEE_HISTORY.PAYMENT_DATE' | translate}} <p-sortIcon field="studyUniversityFeePayDate"></p-sortIcon></th>
+                <th>{{'STUDY_UNIVERSITY_FEE_HISTORY.CURRENCY' | translate}}</th>
+                <th>{{'STUDY_UNIVERSITY_FEE_HISTORY.CHECK_NO' | translate}}</th>
+                <th style="width: 8rem">{{'STUDY_UNIVERSITY_FEE_HISTORY.ACTIONS' | translate}}</th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-record>
+              <tr>
+                <td>
+                  <div class="text-center">
+                    <p-tag [value]="record.studyUniversityFeeYear" severity="info"></p-tag>
+                  </div>
+                </td>
+                <td>
+                  <div class="text-right font-medium text-green-600">
+                    {{record.studyUniversityFeeAmount | currency:'USD':'symbol':'1.2-2'}}
+                  </div>
+                </td>
+                <td>
+                  <div class="text-right font-medium text-blue-600">
+                    {{record.studyUniversityRealFeeAmount | currency:'USD':'symbol':'1.2-2'}}
+                  </div>
+                </td>
+                <td>
+                  <p-tag [value]="getPaymentStatusName(record.studyUniversityFeePayStatus)"
+                    [severity]="getSeverity(record.studyUniversityFeePayStatus)">
+                  </p-tag>
+                </td>
+                <td>
+                  <div class="text-center">
+                    <span class="text-sm">{{record.studyUniversityFeePayDate | date:'shortDate'}}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="flex align-items-center">
+                    <i class="pi pi-dollar mr-2 text-orange-500"></i>
+                    <span class="text-sm">{{getCurrencyName(record.studyUniversityFeeCurrency)}}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="text-sm">{{record.studyUniversityCheckNo}}</span>
+                </td>
+                <td>
+                  <div class="flex gap-1">
+                    <button pButton pRipple
+                      icon="pi pi-eye"
+                      class="p-button-rounded p-button-info p-button-text"
+                      [pTooltip]="'STUDY_UNIVERSITY_FEE_HISTORY.VIEW_DETAILS' | translate"
+                      (click)="viewStudyUniversityFeeArch(record)">
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="10" class="text-center p-4 text-color-secondary">
+                  {{ 'COMMON.NO_RECORDS_FOUND' | translate }}
+                </td>
+              </tr>
+            </ng-template>
+          </p-table>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ VIEW DIALOG ═══════════════════════════
+
+     hero  → three KPI tiles (fee / discount / real amount)
+           → "Student" / "Fee details" / "Payment & check" definition lists
+           → "Archive information" definition list + notes
+-->
+<p-dialog
+  [(visible)]="viewDialog"
+  [modal]="true"
+  [style]="{ width: '1000px', maxWidth: '96vw' }"
+  [header]="'STUDY_UNIVERSITY_FEE_HISTORY.UNIVERSITY_FEE_RECORD_DETAILS' | translate"
+  [draggable]="false"
+  [closable]="true"
+  styleClass="dv-dialog">
+
+  <ng-template pTemplate="content">
+    @if (newStudyUniversityFeeArch; as rec) {
+      <div class="dv-view">
+
+        <!-- Hero -->
+        <div class="dv-hero dv-hero--muted">
+          @if (rec.studyUniversityFeeYear) {
+            <div class="dv-hero__badge dv-hero__badge--text">{{ rec.studyUniversityFeeYear }}</div>
+          } @else {
+            <div class="dv-hero__badge"><i class="pi pi-money-bill"></i></div>
+          }
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'STUDY_UNIVERSITY_FEE_HISTORY.ARCHIVED_RECORD' | translate }}</div>
+            <div class="dv-hero__title">{{ rec.studyUniversityFeeStudentName || '—' }}</div>
+            <div class="dv-hero__subtitle">
+              {{ 'STUDY_UNIVERSITY_FEE_HISTORY.STUDENT_ID' | translate }}: {{ rec.studentId ?? '—' }}
+            </div>
+            <div class="dv-hero__meta">
+              <span class="dv-chip dv-chip--blue">
+                <i class="pi pi-calendar"></i>
+                {{ 'STUDY_UNIVERSITY_FEE_HISTORY.FEE_YEAR' | translate }}: {{ rec.studyUniversityFeeYear || '—' }}
+              </span>
+              <span class="dv-chip dv-chip--orange">
+                <i class="pi pi-flag"></i>
+                {{ 'STUDY_UNIVERSITY_FEE_HISTORY.FIRST_YEAR' | translate }}: {{ rec.studyUniversityFeeFirstYear || '—' }}
+              </span>
+              <span class="dv-chip dv-chip--green">
+                <i class="pi pi-dollar"></i>
+                {{ getCurrencyName(rec.studyUniversityFeeCurrency) }}
+              </span>
+              <p-tag [value]="getPaymentStatusName(rec.studyUniversityFeePayStatus)"
+                     [severity]="getSeverity(rec.studyUniversityFeePayStatus)"
+                     [rounded]="true">
+              </p-tag>
+              <p-tag severity="secondary"
+                     [rounded]="true"
+                     icon="pi pi-inbox"
+                     [value]="'STUDY_UNIVERSITY_FEE_HISTORY.ARCHIVED' | translate">
+              </p-tag>
+            </div>
+          </div>
+          <div class="dv-hero__amount">
+            <div class="dv-hero__amount-label">{{ 'STUDY_UNIVERSITY_FEE_HISTORY.FEE_AMOUNT_LABEL' | translate }}</div>
+            <div class="dv-hero__amount-value">{{ (rec.studyUniversityFeeAmount | currency:'USD':'symbol':'1.2-2') || '—' }}</div>
+            <div class="dv-hero__amount-sub">{{ getCurrencyName(rec.studyUniversityFeeCurrency) }}</div>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="dv-kpis dv-kpis--cols-3">
+          <div class="dv-kpi dv-kpi--green">
+            <span class="dv-kpi__icon"><i class="pi pi-wallet"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDY_UNIVERSITY_FEE_HISTORY.FEE_AMOUNT_LABEL' | translate }}</div>
+              <div class="dv-kpi__value">{{ (rec.studyUniversityFeeAmount | currency:'USD':'symbol':'1.2-2') || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--orange">
+            <span class="dv-kpi__icon"><i class="pi pi-percentage"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDY_UNIVERSITY_FEE_HISTORY.DISCOUNT' | translate }}</div>
+              <div class="dv-kpi__value">{{ (rec.studyUniversityFeeDiscount | currency:'USD':'symbol':'1.2-2') || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--blue">
+            <span class="dv-kpi__icon"><i class="pi pi-check-circle"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDY_UNIVERSITY_FEE_HISTORY.REAL_AMOUNT' | translate }}</div>
+              <div class="dv-kpi__value">{{ (rec.studyUniversityRealFeeAmount | currency:'USD':'symbol':'1.2-2') || '—' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dv-columns dv-columns--3">
+          <!-- Student -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-user"></i></span>
+              <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE_HISTORY.BASIC_INFORMATION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.STUDENT_ID' | translate }}</dt>
+                <dd>{{ rec.studentId ?? '—' }}</dd>
+              </div>
+              <div class="dv-dl__row dv-dl__row--stack">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.STUDENT_NAME' | translate }}</dt>
+                <dd>{{ rec.studyUniversityFeeStudentName || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Fee details -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-dollar"></i></span>
+              <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE_HISTORY.FEE_INFORMATION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.FEE_YEAR' | translate }}</dt>
+                <dd>
+                  @if (rec.studyUniversityFeeYear) {
+                    <p-tag [value]="rec.studyUniversityFeeYear" severity="info" [rounded]="true"></p-tag>
+                  } @else {
+                    —
+                  }
+                </dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.FIRST_YEAR' | translate }}</dt>
+                <dd>
+                  @if (rec.studyUniversityFeeFirstYear) {
+                    <p-tag [value]="rec.studyUniversityFeeFirstYear" severity="warn" [rounded]="true"></p-tag>
+                  } @else {
+                    —
+                  }
+                </dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.FEE_AMOUNT_LABEL' | translate }}</dt>
+                <dd class="dv-dl__green">{{ (rec.studyUniversityFeeAmount | currency:'USD':'symbol':'1.2-2') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.DISCOUNT' | translate }}</dt>
+                <dd class="dv-dl__orange">{{ (rec.studyUniversityFeeDiscount | currency:'USD':'symbol':'1.2-2') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.REAL_FEE_AMOUNT' | translate }}</dt>
+                <dd class="dv-dl__blue">{{ (rec.studyUniversityRealFeeAmount | currency:'USD':'symbol':'1.2-2') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.CURRENCY' | translate }}</dt>
+                <dd>{{ getCurrencyName(rec.studyUniversityFeeCurrency) }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Payment & check -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--orange"><i class="pi pi-credit-card"></i></span>
+              <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE_HISTORY.PAYMENT_INFORMATION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.PAYMENT_STATUS' | translate }}</dt>
+                <dd>
+                  <p-tag [value]="getPaymentStatusName(rec.studyUniversityFeePayStatus)"
+                         [severity]="getSeverity(rec.studyUniversityFeePayStatus)"
+                         [rounded]="true">
+                  </p-tag>
+                </dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.PAYMENT_DATE' | translate }}</dt>
+                <dd>{{ (rec.studyUniversityFeePayDate | date:'mediumDate') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.CHECK_NUMBER' | translate }}</dt>
+                <dd>{{ rec.studyUniversityCheckNo || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.CHECK_DATE' | translate }}</dt>
+                <dd>{{ (rec.studyUniversityCheckDate | date:'mediumDate') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.FORM_NUMBER' | translate }}</dt>
+                <dd>{{ rec.studyUniversityCheckFormNumber || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <div class="dv-columns">
+          <!-- Archive information -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-inbox"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_HISTORY.ARCHIVE_INFORMATION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.ARCHIVE_DATE' | translate }}</dt>
+                <dd>{{ (rec.studyUniversityFeeArchDate | date:'mediumDate') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'LOOKUP_TABLES.LAST_MODIFIED' | translate }}</dt>
+                <dd class="dv-dl__muted">{{ (rec.studyUniversityFeeMidate | date:'mediumDate') || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Notes -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-comment"></i></span>
+              <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE_HISTORY.CHECK_NOTES' | translate }}</div>
+            </header>
+            @if (rec.studyUniversityCheckNotes) {
+              <p class="dv-notes">{{ rec.studyUniversityCheckNotes }}</p>
+            } @else {
+              <p class="dv-notes dv-notes--empty">—</p>
+            }
+          </section>
+        </div>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint">
+        <i class="pi pi-lock"></i>
+        <span>{{ 'STUDY_UNIVERSITY_FEE_HISTORY.ARCHIVED_RECORD' | translate }}</span>
+      </div>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button"
+          class="p-button-text p-button-secondary"
+          icon="pi pi-times"
+          [label]="'COMMON.CLOSE' | translate"
+          (click)="hideDialog()">
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>

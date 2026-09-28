@@ -1,0 +1,816 @@
+/* ── Palette ───────────────────────────────────────────────────
+   A ministry portal, so: one navy, one accent, and neutrals. Colour is kept
+   for meaning (status, alerts) rather than spent on decoration. */
+:host {
+  --p-navy:        #0b2545;
+  --p-navy-soft:   #123356;
+  --p-accent:      #2f7fd8;
+  --p-ink:         #10243b;
+  /* QA C6 / SP-010: #64748b measured 4.40:1 on --p-canvas, under AA's 4.5.
+     This is 5.8:1 there and 6.3:1 on white, and still reads as secondary
+     against --p-ink. Every muted label in the portal resolves through here. */
+  --p-muted:       #566175;
+  --p-line:        #e3e9f0;
+  --p-canvas:      #f4f6fa;
+  --p-on-dark:     rgba(255, 255, 255, 0.72);
+  --p-header-h:    64px;
+}
+
+.portal-shell {
+  min-height: 100vh;
+  background: var(--p-canvas);
+
+  &.portal-rtl { direction: rtl; text-align: right; }
+}
+
+/* ── Side rail ─────────────────────────────────────────────── */
+.portal-sider {
+  background: var(--p-navy) !important;
+  /* Fixed so a long page scrolls under a menu that stays put. */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.06);
+
+  ::ng-deep .ant-layout-sider-children {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+}
+
+.portal-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  height: var(--p-header-h);
+  flex-shrink: 0;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+
+  &__mark {
+    font-size: 22px;
+    color: var(--p-accent);
+    flex-shrink: 0;
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__sub {
+    font-size: 11px;
+    color: var(--p-on-dark);
+    white-space: nowrap;
+  }
+
+  &:hover { color: #fff; }
+}
+
+.portal-nav {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 0 16px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 2px; }
+
+  &__heading {
+    margin: 14px 0 4px;
+    padding: 0 20px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    /* 0.42 measured 3.9:1 on the navy rail; 0.55 is 5.6:1 (QA C6). */
+    color: rgba(255, 255, 255, 0.55);
+    white-space: nowrap;
+
+    &--light { color: var(--p-muted); }
+  }
+
+  /* Collapsed: the headings go, so a rule keeps the groups apart. */
+  &__rule {
+    display: block;
+    height: 1px;
+    margin: 10px 16px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.portal-menu {
+  background: transparent !important;
+  border-inline-end: none !important;
+
+  ::ng-deep .ant-menu-item {
+    height: 40px;
+    line-height: 40px;
+    margin: 2px 10px;
+    width: auto;
+    border-radius: 8px;
+    color: var(--p-on-dark);
+    font-size: 13.5px;
+
+    [nz-icon] { font-size: 16px; }
+
+    &:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    &.ant-menu-item-selected {
+      background: var(--p-accent);
+      color: #fff;
+      font-weight: 600;
+      &::after { display: none; }
+    }
+  }
+
+  /* Collapsed rail: centre the glyphs in the 72px column. */
+  ::ng-deep .ant-menu-inline-collapsed .ant-menu-item {
+    margin: 2px 12px;
+    padding: 0 !important;
+    text-align: center;
+  }
+}
+
+/* ── Identity block ────────────────────────────────────────── */
+.portal-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+
+  &--tight { justify-content: center; padding: 12px 8px; }
+
+  &__avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--p-accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+  }
+
+  &__name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__id {
+    font-size: 11px;
+    color: var(--p-on-dark);
+    white-space: nowrap;
+  }
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.portal-body { background: var(--p-canvas); }
+
+.portal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--p-header-h);
+  line-height: normal;
+  padding: 0 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--p-line);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+
+  &__titles {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  &__trail {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--p-muted);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  /* Live QA L13 (P31): on a phone the Arabic trail was cut mid-word ("... الطلبات وال").
+     Each part ends in an ellipsis instead, and on a phone the portal's own name, which
+     the menu already shows, gives its room to the section. */
+  &__trail > span:not(.portal-header__sep) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 575px) {
+    &__trail > span:first-child,
+    &__trail > .portal-header__sep { display: none; }
+  }
+
+  &__sep { font-size: 9px; flex-shrink: 0; }
+
+  &__title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--p-ink);
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+}
+
+.portal-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--p-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  [nz-icon] { font-size: 17px; }
+
+  &:hover { background: #eef2f7; color: var(--p-ink); }
+
+  &--onDark {
+    color: var(--p-on-dark);
+    margin-inline-start: auto;
+    &:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+  }
+}
+
+.portal-lang {
+  display: inline-flex;
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+  overflow: hidden;
+
+  button {
+    border: none;
+    background: transparent;
+    padding: 0 10px;
+    height: 30px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--p-muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+
+    &.is-active { background: var(--p-navy); color: #fff; }
+    &:hover:not(.is-active) { background: #eef2f7; color: var(--p-ink); }
+  }
+}
+
+.portal-logout {
+  height: 32px;
+  border-radius: 8px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--p-ink) !important;
+  border-color: var(--p-line) !important;
+
+  &:hover {
+    color: #c0392b !important;
+    border-color: #f0b3ab !important;
+  }
+
+  @media (max-width: 575px) {
+    .portal-logout__text { display: none; }
+  }
+}
+
+/* ── Content ───────────────────────────────────────────────── */
+.portal-content {
+  padding: 22px 24px 32px;
+  @media (max-width: 575px) { padding: 14px 14px 24px; }
+}
+
+/* A flex item's minimum width is its content's, so a ten-column table beside
+   the side menu widened the whole column past the viewport instead of
+   scrolling inside .portal-table-wrapper (live QA #14). */
+.portal-body,
+.portal-content {
+  min-width: 0;
+}
+
+.portal-content-inner { width: 100%; }
+
+/* ── Mobile drawer ─────────────────────────────────────────── */
+.portal-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0.25s;
+
+  &--open {
+    pointer-events: auto;
+    visibility: visible;
+    .portal-drawer__mask  { opacity: 1; }
+    .portal-drawer__panel { transform: translateX(0); }
+  }
+
+  &__mask {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 20, 35, 0.55);
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  &__panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 280px;
+    max-width: 86vw;
+    height: 100%;
+    background: #fff;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &--rtl &__panel {
+    left: auto;
+    right: 0;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.2);
+    transform: translateX(100%);
+  }
+  &--rtl.portal-drawer--open &__panel { transform: translateX(0); }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px 0 18px;
+    height: var(--p-header-h);
+    background: var(--p-navy);
+    flex-shrink: 0;
+  }
+
+  &__title {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  &__identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    background: var(--p-navy-soft);
+    flex-shrink: 0;
+  }
+
+  &__nav {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 8px;
+
+    ul { list-style: none; margin: 0; padding: 0; }
+
+    li a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 20px;
+      color: var(--p-ink);
+      font-size: 14px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+
+      [nz-icon] { font-size: 16px; color: var(--p-muted); flex-shrink: 0; }
+
+      &:hover {
+        background: #eef4fb;
+        color: var(--p-accent);
+        [nz-icon] { color: var(--p-accent); }
+      }
+    }
+  }
+
+  &__footer {
+    padding: 14px 18px;
+    border-top: 1px solid var(--p-line);
+    flex-shrink: 0;
+  }
+
+  /* On the drawer's white panel the identity text has to invert. */
+  &__identity .portal-identity__name { color: #fff; }
+  &__identity .portal-identity__id   { color: var(--p-on-dark); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Portal page kit
+   ──────────────────────────────────────────────────────────────
+   The routed pages render inside this component's outlet, so these rules
+   reach them through :host ::ng-deep — scoped to the shell, never global.
+
+   It exists because the pages had drifted into ten private looks: a blue
+   gradient banner on nine of them (and a bare <h2> on Security), info cards in
+   one palette on Finance, another on Year Results, inline `style="color:#1890ff"`
+   on Documents. Stating the shape once here is what makes them one product,
+   and it means a page's own stylesheet only has to carry what is genuinely
+   peculiar to that page.
+   ══════════════════════════════════════════════════════════════ */
+:host ::ng-deep {
+
+  /* A wide table scrolls inside its own box, not the page. This sat outside
+     ::ng-deep, so it only matched the shell's own markup and never the pages
+     that use it: Travel tickets and Extensions ran off the page between the
+     phone breakpoint and 1100px (live QA #14). */
+  .portal-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  /* Live QA L13 (P31): at 768-1024 px Travel tickets and Extensions are wider than the
+     page and the wrapper does scroll, but an overlay scrollbar showed nothing, so the last
+     columns (the View action among them) looked cut off. Above the phone layout, where
+     the rows are not cards, the scrollbar is always drawn. */
+  @media (min-width: 768px) {
+    .portal-table-wrapper {
+      scrollbar-width: thin;
+      scrollbar-color: #94a3b8 #eef2f6;
+      padding-bottom: 4px;
+
+      &::-webkit-scrollbar { height: 8px; }
+      &::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+      &::-webkit-scrollbar-track { background: #eef2f6; }
+    }
+  }
+
+  .portal-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ── Page intro ────────────────────────────────────────────
+     What is left of the old page banner. The shell header already names the
+     page — repeating it in a gradient block underneath said the same thing
+     twice and pushed the actual content below the fold. */
+  .sp-intro {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+
+    &__text {
+      margin: 0;
+      font-size: 13.5px;
+      color: var(--p-muted);
+      line-height: 1.5;
+      max-width: 80ch;
+    }
+
+    &__action { flex-shrink: 0; }
+  }
+
+  /* ── Cards ─────────────────────────────────────────────────
+     One surface for everything: nz-card and the hand-rolled section blocks. */
+  .ant-card,
+  .sp-card {
+    border: 1px solid var(--p-line);
+    border-radius: 10px;
+    box-shadow: none;
+  }
+
+  .ant-card-head {
+    min-height: 0;
+    padding: 0 18px;
+    border-bottom: 1px solid var(--p-line);
+
+    .ant-card-head-title {
+      padding: 14px 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--p-ink);
+    }
+  }
+
+  .ant-card-body { padding: 18px; }
+
+  /* A heading for a hand-rolled block, matching .ant-card-head. */
+  .sp-card__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--p-line);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--p-ink);
+
+    [nz-icon] { color: var(--p-accent); font-size: 16px; }
+  }
+
+  /* ── Fact list ─────────────────────────────────────────────
+     label/value pairs, the shape Finance, Year Results and the dashboard all
+     wanted and each drew differently. */
+  .sp-facts {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0 32px;
+
+    &__row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--p-line);
+    }
+
+    dt, &__label {
+      margin: 0;
+      font-size: 12.5px;
+      color: var(--p-muted);
+    }
+
+    dd, &__value {
+      margin: 0;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--p-ink);
+      text-align: end;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  /* ── Tables ────────────────────────────────────────────────
+     Quieter head, roomier rows, numbers that line up. */
+  .ant-table {
+    font-size: 13px;
+
+    .ant-table-thead > tr > th {
+      background: #f7f9fc;
+      color: var(--p-muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--p-line);
+      white-space: nowrap;
+    }
+
+    .ant-table-tbody > tr > td {
+      border-bottom: 1px solid #eef2f7;
+      color: var(--p-ink);
+    }
+
+    .ant-table-tbody > tr:hover > td { background: #f7fafd; }
+  }
+
+  /* ── Status tags ───────────────────────────────────────────
+     Flat and bordered rather than filled: a row of solid colour chips is the
+     loudest thing on a table and it should not be. */
+  .ant-tag {
+    border-radius: 999px;
+    padding: 0 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 20px;
+    border: 1px solid currentColor;
+    background: transparent;
+  }
+
+  /* ── Empty and result states ───────────────────────────────*/
+  .ant-empty { padding: 32px 0; }
+  .ant-empty-description { color: var(--p-muted); font-size: 13px; }
+
+  /* ── Descriptions, used by every detail modal ──────────────*/
+  .ant-descriptions-bordered {
+    .ant-descriptions-item-label {
+      background: #f7f9fc;
+      color: var(--p-muted);
+      font-size: 12.5px;
+      font-weight: 600;
+      width: 40%;
+    }
+    .ant-descriptions-item-content { font-size: 13px; color: var(--p-ink); }
+    .ant-descriptions-view { border-radius: 8px; }
+  }
+
+  /* ── Modals ────────────────────────────────────────────────*/
+  .ant-modal-content { border-radius: 12px; overflow: hidden; }
+  .ant-modal-header {
+    border-bottom: 1px solid var(--p-line);
+    .ant-modal-title { font-size: 15px; font-weight: 700; color: var(--p-ink); }
+  }
+  .ant-modal-footer { border-top: 1px solid var(--p-line); }
+
+  /* ── Forms, alerts, buttons ────────────────────────────────*/
+  .ant-form-item-label > label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--p-ink);
+  }
+
+  .ant-input,
+  .ant-select-selector,
+  .ant-picker { border-radius: 8px !important; }
+
+  .ant-alert { border-radius: 8px; }
+
+  .ant-btn { border-radius: 8px; }
+  .ant-btn-primary {
+    background: var(--p-accent);
+    border-color: var(--p-accent);
+    &:hover, &:focus { background: #2569b8; border-color: #2569b8; }
+  }
+
+  /* A muted note under a field or block; several pages had their own. */
+  .sp-hint,
+  .hint {
+    font-size: 12.5px;
+    color: var(--p-muted);
+    line-height: 1.5;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   List furniture: toolbar, states, and tables that stack
+   ══════════════════════════════════════════════════════════════ */
+:host ::ng-deep {
+
+  /* ── Toolbar above a list ──────────────────────────────────*/
+  .sp-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+
+    &__search { width: 260px; max-width: 100%; }
+    &__filter { width: 200px; max-width: 100%; }
+    &__count {
+      margin-inline-start: auto;
+      font-size: 12.5px;
+      color: var(--p-muted);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 575px) {
+      &__search, &__filter { width: 100%; }
+      &__count { margin-inline-start: 0; }
+    }
+  }
+
+  /* ── One shape for empty / error / loading ─────────────────
+     The pages each had their own: an alert above the table on one, an
+     nz-empty inside it on another, an nz-result on a third. */
+  .sp-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 40px 20px;
+    text-align: center;
+
+    &__icon { font-size: 30px; color: #c7d2de; }
+    &__title { margin: 0; font-size: 14px; font-weight: 600; color: var(--p-ink); }
+    &__text  { margin: 0; font-size: 13px; color: var(--p-muted); max-width: 46ch; }
+  }
+
+  /* ── Tables that stack ─────────────────────────────────────
+     Extensions and Travel Tickets are ten columns wide. On a phone they were
+     a sideways scroll with the row's identity off-screen, so reading one meant
+     dragging back and forth to remember which row you were on. Below the
+     breakpoint each row becomes a card and each cell states its own label,
+     which is what `data-label` on the <td> is for — the header is gone, so the
+     cell has to carry its name.
+
+     Markup stays one table; this is a presentation change only. A cell with no
+     data-label (the actions cell) renders as a plain full-width row. */
+  @media (max-width: 767px) {
+    .sp-stack {
+      .ant-table { font-size: 13px; }
+      .ant-table-thead { display: none; }
+      .ant-table-container,
+      .ant-table-content { overflow: visible !important; }
+      .ant-table table { display: block; }
+      .ant-table colgroup { display: none; }
+      .ant-table-tbody { display: block; }
+
+      .ant-table-tbody > tr {
+        display: block;
+        margin-bottom: 12px;
+        background: #fff;
+        border: 1px solid var(--p-line);
+        border-radius: 10px;
+        overflow: hidden;
+
+        &:hover > td { background: transparent; }
+      }
+
+      .ant-table-tbody > tr > td {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 9px 14px;
+        border-bottom: 1px dashed var(--p-line);
+        text-align: end;
+
+        &::before {
+          content: attr(data-label);
+          flex-shrink: 0;
+          text-align: start;
+          font-size: 11.5px;
+          font-weight: 700;
+          letter-spacing: 0.4px;
+          text-transform: uppercase;
+          color: var(--p-muted);
+        }
+
+        /* The actions cell has no label; give it the full width. */
+        &:not([data-label]) {
+          justify-content: flex-end;
+          border-bottom: none;
+          background: #f8fafc;
+          &::before { content: none; }
+        }
+
+        &:last-child { border-bottom: none; }
+      }
+
+      /* nz-empty inside a stacked table should not sit in a card. */
+      .ant-table-placeholder > td {
+        display: block;
+        border: none;
+        background: transparent;
+        &::before { content: none; }
+      }
+    }
+  }
+}

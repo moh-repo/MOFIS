@@ -1,0 +1,559 @@
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>
+
+<div class="page-root" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'" [class.rtl]="translationService.isRTL()">
+
+  <!-- ==================== LIST PAGE ==================== -->
+  <div class="card page-hero mb-3">
+    <div class="flex flex-column lg:flex-row align-items-start justify-content-between gap-4">
+      <div>
+        <span class="inline-flex align-items-center gap-2 text-primary font-semibold text-sm mb-2">
+          <i class="pi pi-credit-card"></i>
+          {{ 'STUDENT_LOAN.HERO.BADGE' | translate }}
+        </span>
+        <h1 class="text-900 font-bold text-3xl m-0 mb-1">{{ 'STUDENT_LOAN.TITLE' | translate }}</h1>
+        <p class="text-600 m-0">{{ 'STUDENT_LOAN.SUBTITLE' | translate }}</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button pButton pRipple type="button" icon="pi pi-plus"
+          class="p-button-success"
+          [label]="'STUDENT_LOAN.ADD' | translate"
+        (click)="openCreateDialog()" *hasPermission="'FINANCE.EDIT'"></button>
+        <button pButton pRipple type="button" icon="pi pi-refresh"
+          class="p-button-action-outlined"
+          [label]="'COMMON.REFRESH' | translate"
+        (click)="loadRecords()"></button>
+      </div>
+    </div>
+
+    <p-panel [toggleable]="true" [collapsed]="true" styleClass="loan-stats-panel mt-4">
+      <ng-template pTemplate="header">
+        <div class="flex align-items-center gap-2">
+          <i class="pi pi-chart-bar text-primary"></i>
+          <span class="font-semibold">{{ 'STUDENT_LOAN.SUMMARY.TITLE' | translate }}</span>
+          <p-tag [value]="stats.totalRecords?.toString()" severity="info" styleClass="ml-2"></p-tag>
+        </div>
+      </ng-template>
+      <div class="grid">
+        <div class="col-12 md:col-4">
+          <div class="flex align-items-center gap-3 p-3 border-round surface-100">
+            <div class="flex align-items-center justify-content-center border-circle"
+              style="width:2.75rem;height:2.75rem;background:var(--primary-100)">
+              <i class="pi pi-database" style="color:var(--primary-color)"></i>
+            </div>
+            <div>
+              <div class="text-500 text-sm">{{ 'STUDENT_LOAN.SUMMARY.TOTAL_RECORDS' | translate }}</div>
+              <div class="text-900 font-bold text-xl">{{ stats.totalRecords | number:'1.0-0' }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 md:col-4">
+          <div class="flex align-items-center gap-3 p-3 border-round surface-100">
+            <div class="flex align-items-center justify-content-center border-circle"
+              style="width:2.75rem;height:2.75rem;background:var(--green-100)">
+              <i class="pi pi-chart-line" style="color:var(--green-600)"></i>
+            </div>
+            <div>
+              <div class="text-500 text-sm">{{ 'STUDENT_LOAN.SUMMARY.TOTAL_AMOUNT' | translate }}</div>
+              <div class="text-900 font-bold text-xl">{{ stats.totalAmount | number:'1.0-0' }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 md:col-4">
+          <div class="flex align-items-center gap-3 p-3 border-round surface-100">
+            <div class="flex align-items-center justify-content-center border-circle"
+              style="width:2.75rem;height:2.75rem;background:var(--blue-100)">
+              <i class="pi pi-sliders-h" style="color:var(--blue-500)"></i>
+            </div>
+            <div>
+              <div class="text-500 text-sm">{{ 'STUDENT_LOAN.SUMMARY.AVERAGE_AMOUNT' | translate }}</div>
+              <div class="text-900 font-bold text-xl">{{ stats.averageAmount | number:'1.0-0' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </p-panel>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-3">
+    <div class="flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+      <div class="flex align-items-center gap-2">
+        <i class="pi pi-sliders-h text-500"></i>
+        <span class="font-semibold text-700">{{ 'STUDENT_LOAN.FILTERS.TITLE' | translate }}</span>
+      </div>
+      <button pButton pRipple type="button" class="p-button-action-outlined p-button-sm"
+        icon="pi pi-filter-slash"
+        [label]="'STUDENT_LOAN.FILTERS.CLEAR' | translate"
+      (click)="clearFilters()" [disabled]="!hasActiveFilters"></button>
+    </div>
+    <div class="flex gap-3 flex-wrap">
+      <div class="flex-1" style="min-width:200px">
+        <span class="p-input-icon-left w-full">
+          <i class="pi pi-search"></i>
+          <input pInputText type="text" class="w-full"
+            [(ngModel)]="filters.search"
+            (ngModelChange)="onFiltersChanged()"
+            [placeholder]="'STUDENT_LOAN.FILTERS.SEARCH_PLACEHOLDER' | translate" />
+        </span>
+      </div>
+      <div style="min-width:200px;flex:1">
+        <p-select class="w-full"
+          [options]="loanStatuses" optionLabel="name" optionValue="id"
+          [showClear]="true" appendTo="body"
+          [(ngModel)]="filters.status" (onChange)="onFiltersChanged()"
+          [placeholder]="'STUDENT_LOAN.FILTERS.STATUS_PLACEHOLDER' | translate">
+        </p-select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <p-table [value]="filteredRecords" [loading]="loading" dataKey="loanId"
+      [paginator]="true" [rows]="tableRows" [(first)]="first" [rowsPerPageOptions]="rowsPerPageOptions"
+      responsiveLayout="scroll" [showCurrentPageReport]="true"
+      [currentPageReportTemplate]="tableReportTemplate"
+      [rowHover]="true" styleClass="p-datatable-sm">
+      <ng-template pTemplate="caption">
+        <div class="flex justify-content-between align-items-center">
+          <span class="text-600 text-sm">{{ tableCaptionLabel }}</span>
+          @if (hasActiveFilters) {
+            <p-tag icon="pi pi-filter"
+              [value]="'STUDENT_LOAN.TABLE.ACTIVE_FILTERS' | translate"
+            severity="info" styleClass="text-xs"></p-tag>
+          }
+        </div>
+      </ng-template>
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="loanId" style="width:4rem"># <p-sortIcon field="loanId"></p-sortIcon></th>
+          <th pSortableColumn="studentId">{{ 'STUDENT_LOAN.TABLE.STUDENT' | translate }} <p-sortIcon field="studentId"></p-sortIcon></th>
+          <th pSortableColumn="studyYear">{{ 'STUDENT_LOAN.TABLE.STUDY_YEAR' | translate }} <p-sortIcon field="studyYear"></p-sortIcon></th>
+          <th pSortableColumn="loanAmount">{{ 'STUDENT_LOAN.TABLE.AMOUNT' | translate }} <p-sortIcon field="loanAmount"></p-sortIcon></th>
+          <th pSortableColumn="currencyId">{{ 'STUDENT_LOAN.TABLE.CURRENCY' | translate }} <p-sortIcon field="currencyId"></p-sortIcon></th>
+          <th pSortableColumn="loanStatus">{{ 'STUDENT_LOAN.TABLE.STATUS' | translate }} <p-sortIcon field="loanStatus"></p-sortIcon></th>
+          <th pSortableColumn="midate">{{ 'STUDENT_LOAN.TABLE.MIDATE' | translate }} <p-sortIcon field="midate"></p-sortIcon></th>
+          <th style="width:9rem" class="text-center">{{ 'STUDENT_LOAN.TABLE.ACTIONS' | translate }}</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-record>
+        <tr>
+          <td class="text-500 text-sm">{{ record.loanId }}</td>
+          <td class="font-medium text-900">{{ getStudentName(record.studentId) }}</td>
+          <td>{{ record.studyYear || '—' }}</td>
+          <td class="font-semibold">{{ record.loanAmount | number:'1.0-0' }}</td>
+          <td>{{ getCurrencyName(record.currencyId) }}</td>
+          <td>
+            <p-tag [value]="getStatusName(record.loanStatus)"
+            [severity]="getStatusSeverity(record.loanStatus)"></p-tag>
+          </td>
+          <td class="text-500 text-sm">{{ record.midate | date:'dd/MM/yyyy' }}</td>
+          <td class="text-center">
+            <div class="flex justify-content-center gap-1">
+              <button pButton pRipple type="button" icon="pi pi-eye"
+                class="p-button-rounded p-button-text p-button-info"
+                [pTooltip]="'STUDENT_LOAN.VIEW' | translate" tooltipPosition="top"
+              (click)="openViewDialog(record)" *hasPermission="'FINANCE.VIEW'"></button>
+              <button pButton pRipple type="button" icon="pi pi-pencil"
+                class="p-button-rounded p-button-text p-button-warning"
+                [pTooltip]="'STUDENT_LOAN.EDIT' | translate" tooltipPosition="top"
+              (click)="openEditDialog(record)" *hasPermission="'FINANCE.EDIT'"></button>
+              <button pButton pRipple type="button" icon="pi pi-trash"
+                class="p-button-rounded p-button-text p-button-danger"
+                [pTooltip]="'STUDENT_LOAN.DELETE' | translate" tooltipPosition="top"
+              (click)="confirmDelete(record)" *hasPermission="'FINANCE.EDIT'"></button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td [attr.colspan]="8" class="text-center py-8">
+            <i class="pi pi-inbox text-400 block" style="font-size:3rem"></i>
+            <div class="text-600 font-semibold mt-3">{{ 'STUDENT_LOAN.EMPTY.TITLE' | translate }}</div>
+            <div class="text-500 text-sm mt-1">
+              {{ hasActiveFilters ? ('STUDENT_LOAN.EMPTY.FILTERED' | translate) : ('STUDENT_LOAN.EMPTY.DESCRIPTION' | translate) }}
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+
+  <!-- ═══════════════════════ ADD / EDIT DIALOG ═══════════════════════ -->
+  <p-dialog [(visible)]="formDialogVisible"
+    [modal]="true" [maximizable]="true" [closable]="true"
+    [style]="{ width: '860px', maxWidth: '96vw' }"
+    styleClass="loan-form-dialog"
+    (onHide)="hideFormDialog()">
+
+    <ng-template pTemplate="header">
+      <div class="loan-dialog-header-inner">
+        <div class="dialog-icon" [class.edit-mode]="dialogMode === 'edit'">
+          <i [class]="dialogMode === 'create' ? 'pi pi-plus' : 'pi pi-pencil'"></i>
+        </div>
+        <div>
+          <div class="dialog-title">{{ dialogTitle }}</div>
+          @if (dialogMode === 'edit' && selectedRecord) {
+            <div class="dialog-subtitle">
+              <i class="pi pi-hashtag"></i>{{ selectedRecord.loanId }}
+              <span class="mx-1">&bull;</span>
+              {{ getStudentName(selectedRecord.studentId) }}
+            </div>
+          }
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="content">
+      <div class="loan-form-content">
+
+        <!-- A request is already awaiting a decision; a second one would be refused. -->
+        @if (pendingApproval) {
+          <div class="flex align-items-start gap-2 p-3 mb-3 border-round surface-100">
+            <i class="pi pi-clock text-orange-500 mt-1"></i>
+            <div class="flex flex-column gap-1">
+              <strong class="text-900">{{ 'FINANCE.PENDING_APPROVAL_TITLE' | translate }}</strong>
+              <span class="text-600 text-sm">{{ 'FINANCE.PENDING_APPROVAL_MESSAGE' | translate }}</span>
+              @if (pendingApproval.requestedAt) {
+                <small class="text-500">
+                  {{ 'FINANCE.PENDING_APPROVAL_REQUESTED' | translate }}:
+                  {{ pendingApproval.requestedAt | date:'dd/MM/yyyy' }}
+                  @if (pendingApproval.requesterFullName) {
+                    &mdash; {{ pendingApproval.requesterFullName }}
+                  }
+                </small>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Live Summary Strip -->
+        <div class="loan-summary-strip">
+          <div class="summary-chip student">
+            <i class="pi pi-user"></i>
+            <div class="chip-body">
+              <span class="chip-label">{{ 'STUDENT_LOAN.FORM.STUDENT' | translate }}</span>
+              <span class="chip-value">{{ getStudentName(form.get('studentId')?.value) }}</span>
+            </div>
+          </div>
+          <div class="summary-chip amount">
+            <i class="pi pi-dollar"></i>
+            <div class="chip-body">
+              <span class="chip-label">{{ 'STUDENT_LOAN.FORM.AMOUNT' | translate }}</span>
+              <span class="chip-value">{{ (form.get('loanAmount')?.value ?? 0) | number:'1.0-0' }}</span>
+            </div>
+          </div>
+          @if (form.get('loanStatus')?.value !== null) {
+            <div class="summary-chip status">
+              <i class="pi pi-info-circle"></i>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'STUDENT_LOAN.FORM.STATUS' | translate }}</span>
+                <span class="chip-value">{{ getStatusName(form.get('loanStatus')?.value) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <form [formGroup]="form">
+
+          <!-- ── Student ── -->
+          <div class="loan-section-card">
+            <div class="loan-section-header student">
+              <i class="pi pi-id-card"></i>
+              <span>{{ 'STUDENT_LOAN.SECTIONS.STUDENT' | translate }}</span>
+            </div>
+            <div class="loan-section-body">
+              <div class="field mb-0">
+                <label class="field-label">
+                  {{ 'STUDENT_LOAN.FORM.STUDENT' | translate }}
+                  <span class="text-red-500 ml-1">*</span>
+                </label>
+                <p-select formControlName="studentId"
+                  (onFilter)="onStudentFilter($event)"
+                  [resetFilterOnHide]="false"
+                  [options]="studentsForDropdown"
+                  optionLabel="label" optionValue="id"
+                  [filter]="true" filterBy="label"
+                  [showClear]="true" appendTo="body"
+                  [placeholder]="'STUDENT_LOAN.FORM.SELECT_STUDENT' | translate"
+                  class="w-full">
+                </p-select>
+                @if (form.get('studentId')?.invalid && form.get('studentId')?.touched) {
+                  <small class="p-error block mt-1"
+                    >
+                    {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                  </small>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Loan Details ── -->
+          <div class="loan-section-card">
+            <div class="loan-section-header loan">
+              <i class="pi pi-credit-card"></i>
+              <span>{{ 'STUDENT_LOAN.SECTIONS.LOAN_DETAILS' | translate }}</span>
+            </div>
+            <div class="loan-section-body">
+              <div class="formgrid grid">
+
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'STUDENT_LOAN.FORM.STUDY_YEAR' | translate }}</label>
+                  <p-select formControlName="studyYear"
+                    [options]="studyYearOptions" optionLabel="label" optionValue="value"
+                    [editable]="true" [filter]="true" [showClear]="true" appendTo="body"
+                    [placeholder]="'STUDENT_LOAN.FORM.SELECT_STUDY_YEAR' | translate"
+                    class="w-full">
+                  </p-select>
+                </div>
+
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'STUDENT_LOAN.FORM.QUARTER' | translate }}</label>
+                  <p-select formControlName="moheQuarterId"
+                    [options]="quarters" optionLabel="quarterName" optionValue="id"
+                    [filter]="true" [showClear]="true" appendTo="body"
+                    [placeholder]="'STUDENT_LOAN.FORM.SELECT_QUARTER' | translate"
+                    class="w-full">
+                  </p-select>
+                </div>
+
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">
+                    {{ 'STUDENT_LOAN.FORM.AMOUNT' | translate }}
+                    <span class="text-red-500 ml-1">*</span>
+                  </label>
+                  <p-inputnumber formControlName="loanAmount"
+                    [useGrouping]="true" [min]="1" [minFractionDigits]="0"
+                    class="w-full">
+                  </p-inputnumber>
+                  @if (amountIsNotPositive) {
+                    <small class="p-error block mt-1">
+                      {{ 'STUDENT_LOAN.FORM.AMOUNT_MUST_BE_POSITIVE' | translate }}
+                    </small>
+                  } @else if (form.get('loanAmount')?.invalid && form.get('loanAmount')?.touched) {
+                    <small class="p-error block mt-1"
+                      >
+                      {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                  }
+                </div>
+
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">
+                    {{ 'STUDENT_LOAN.FORM.CURRENCY' | translate }}
+                    <span class="text-red-500 ml-1">*</span>
+                  </label>
+                  <p-select formControlName="currencyId"
+                    [options]="currencies" optionLabel="name" optionValue="id"
+                    [filter]="true" [showClear]="true" appendTo="body"
+                    [placeholder]="'STUDENT_LOAN.FORM.SELECT_CURRENCY' | translate"
+                    class="w-full">
+                  </p-select>
+                  @if (form.get('currencyId')?.invalid && form.get('currencyId')?.touched) {
+                    <small class="p-error block mt-1"
+                      >
+                      {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                  }
+                </div>
+
+                <div class="field col-12 md:col-6 mb-0">
+                  <label class="field-label">{{ 'STUDENT_LOAN.FORM.STATUS' | translate }}</label>
+                  <p-select formControlName="loanStatus"
+                    [options]="loanStatuses" optionLabel="name" optionValue="id"
+                    appendTo="body" class="w-full">
+                  </p-select>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Notes ── -->
+          <div class="loan-section-card">
+            <div class="loan-section-header notes">
+              <i class="pi pi-align-left"></i>
+              <span>{{ 'STUDENT_LOAN.SECTIONS.NOTES' | translate }}</span>
+            </div>
+            <div class="loan-section-body">
+              <div class="field mb-0">
+                <label class="field-label">{{ 'STUDENT_LOAN.FORM.REPAYMENT_NOTES' | translate }}</label>
+                <textarea pTextarea formControlName="repaymentNotes"
+                rows="3" class="w-full" [autoResize]="true"></textarea>
+              </div>
+            </div>
+          </div>
+
+        </form>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="loan-dialog-footer">
+        <button pButton pRipple type="button"
+          class="p-button-outlined p-button-secondary"
+          icon="pi pi-times"
+          [label]="'COMMON.CANCEL' | translate"
+        (click)="hideFormDialog()"></button>
+        <button pButton pRipple type="button"
+          class="p-button-primary"
+          icon="pi pi-check"
+          [label]="'COMMON.SAVE' | translate"
+          [loading]="saving"
+          [disabled]="!!pendingApproval"
+          [pTooltip]="pendingApproval ? ('FINANCE.PENDING_APPROVAL_MESSAGE' | translate) : ''"
+          tooltipPosition="top"
+        (click)="saveRecord()"></button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+
+  <!-- ═══════════════════════ VIEW DIALOG ═══════════════════════ -->
+  <p-dialog [(visible)]="viewDialogVisible"
+    [modal]="true" [maximizable]="true" [closable]="true"
+    [style]="{ width: '780px', maxWidth: '96vw' }"
+    styleClass="loan-view-dialog"
+    (onHide)="selectedRecord = null">
+
+    <ng-template pTemplate="header">
+      <div class="loan-dialog-header-inner">
+        <div class="dialog-icon view-mode">
+          <i class="pi pi-eye"></i>
+        </div>
+        <div>
+          <div class="dialog-title">{{ 'STUDENT_LOAN.VIEW' | translate }}</div>
+          @if (selectedRecord) {
+            <div class="dialog-subtitle">
+              <i class="pi pi-hashtag"></i>{{ selectedRecord.loanId }}
+            </div>
+          }
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="content">
+      @if (selectedRecord; as r) {
+        <div class="loan-view-content">
+          <!-- Header Card -->
+          <div class="loan-view-header-card">
+            <div class="view-header-badge">
+              <i class="pi pi-credit-card"></i>
+              <span>{{ 'STUDENT_LOAN.HERO.BADGE' | translate }}</span>
+            </div>
+            <h2 class="view-student-name">{{ getStudentName(r.studentId) }}</h2>
+            <div class="view-header-meta">
+              <span class="loan-id-pill"># {{ r.loanId }}</span>
+              <p-tag [value]="getStatusName(r.loanStatus)"
+              [severity]="getStatusSeverity(r.loanStatus)"></p-tag>
+            </div>
+          </div>
+          <!-- Chips Strip -->
+          <div class="loan-view-chips">
+            <div class="view-chip amount">
+              <div class="chip-icon"><i class="pi pi-dollar"></i></div>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'STUDENT_LOAN.FORM.AMOUNT' | translate }}</span>
+                <span class="chip-value">{{ r.loanAmount | number:'1.0-0' }}</span>
+                <span class="chip-sub">{{ getCurrencyName(r.currencyId) }}</span>
+              </div>
+            </div>
+            <div class="view-chip quarter">
+              <div class="chip-icon"><i class="pi pi-calendar"></i></div>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'STUDENT_LOAN.FORM.QUARTER' | translate }}</span>
+                <span class="chip-value">{{ getQuarterName(r.moheQuarterId) }}</span>
+              </div>
+            </div>
+            <div class="view-chip year">
+              <div class="chip-icon"><i class="pi pi-book"></i></div>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'STUDENT_LOAN.FORM.STUDY_YEAR' | translate }}</span>
+                <span class="chip-value">{{ r.studyYear || '—' }}</span>
+              </div>
+            </div>
+            <div class="view-chip date">
+              <div class="chip-icon"><i class="pi pi-clock"></i></div>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'STUDENT_LOAN.TABLE.MIDATE' | translate }}</span>
+                <span class="chip-value">{{ r.midate ? (r.midate | date:'dd/MM/yyyy') : '—' }}</span>
+              </div>
+            </div>
+          </div>
+          <!-- Loan Details section -->
+          <div class="loan-section-card">
+            <div class="loan-section-header loan">
+              <i class="pi pi-credit-card"></i>
+              <span>{{ 'STUDENT_LOAN.SECTIONS.LOAN_DETAILS' | translate }}</span>
+            </div>
+            <div class="loan-section-body">
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'STUDENT_LOAN.FORM.STUDENT' | translate }}</span>
+                  <span class="detail-value">{{ getStudentName(r.studentId) }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'STUDENT_LOAN.FORM.STATUS' | translate }}</span>
+                  <span class="detail-value">
+                    <p-tag [value]="getStatusName(r.loanStatus)"
+                    [severity]="getStatusSeverity(r.loanStatus)"></p-tag>
+                  </span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'STUDENT_LOAN.FORM.AMOUNT' | translate }}</span>
+                  <span class="detail-value detail-amount">{{ r.loanAmount | number:'1.0-0' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'STUDENT_LOAN.FORM.CURRENCY' | translate }}</span>
+                  <span class="detail-value">{{ getCurrencyName(r.currencyId) }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'STUDENT_LOAN.FORM.STUDY_YEAR' | translate }}</span>
+                  <span class="detail-value">{{ r.studyYear || '—' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'STUDENT_LOAN.FORM.QUARTER' | translate }}</span>
+                  <span class="detail-value">{{ getQuarterName(r.moheQuarterId) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Notes section -->
+          <div class="loan-section-card">
+            <div class="loan-section-header notes">
+              <i class="pi pi-align-left"></i>
+              <span>{{ 'STUDENT_LOAN.SECTIONS.NOTES' | translate }}</span>
+            </div>
+            <div class="loan-section-body">
+              @if (r.repaymentNotes) {
+                <p class="notes-text">{{ r.repaymentNotes }}</p>
+              } @else {
+                <span class="text-400 text-sm italic">{{ 'COMMON.NOT_AVAILABLE' | translate }}</span>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="loan-dialog-footer">
+        @if (selectedRecord) {
+          <button pButton pRipple type="button"
+            class="p-button-warning p-button-outlined"
+            icon="pi pi-pencil"
+            [label]="'STUDENT_LOAN.EDIT' | translate"
+          (click)="viewDialogVisible = false; openEditDialog(selectedRecord!)"></button>
+        }
+        <button pButton pRipple type="button"
+          class="p-button-text"
+          icon="pi pi-times"
+          [label]="'COMMON.CLOSE' | translate"
+        (click)="viewDialogVisible = false"></button>
+      </div>
+    </ng-template>
+  </p-dialog>
+</div>

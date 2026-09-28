@@ -1,0 +1,255 @@
+/* ── Approval detail dialog ────────────────────────────────────────────────
+
+   The dialog that shows one approval request: its level track, the cards that
+   name what is being changed, and the timeline of who acted on it. Pending
+   approvals, approval history and my requests each open their own copy of it.
+
+   All three carried the whole design in their own inline `styles` block —
+   43 rules, byte-identical across the three files, roughly 300 lines of CSS
+   maintained in triplicate. They are here once instead.
+
+   Global rather than component-scoped, and without `:host ::ng-deep`: a
+   `p-dialog` renders its content outside the component that declares it, which
+   is exactly why the three copies needed `::ng-deep` to reach their own dialog.
+   Same reason `_detail-dialog.scss` is global, and it says so there too.
+
+   Four rules stayed with their pages, because they genuinely differ:
+     - `.p-datatable tbody td` padding, which is the list's, not the dialog's,
+       and made global would reach every table in the application;
+     - `.step-row--pending .step-row__icon`, yellow on pending approvals and
+       blue on the other two;
+     - `.step-row__header`, which wraps on two of the three;
+     - `.level-connector`'s transition, which only pending approvals animates.
+   The second and third are differences nobody has resolved; they are left as
+   they were rather than picked between here. */
+
+/* ── Details dialog ──────────────────────────────────────── */
+
+.approval-detail-dialog .p-dialog-header {
+    padding: 1rem 1.5rem 0.75rem;
+    border-bottom: 1px solid var(--surface-200);
+}
+
+.approval-detail-dialog .p-dialog-content { padding: 0; }
+
+.approval-detail-dialog .p-dialog-footer {
+    border-top: 1px solid var(--surface-200);
+    padding: 0.75rem 1.5rem;
+}
+
+.approval-icon-badge {
+    width: 2.8rem; height: 2.8rem;
+    border-radius: 0.75rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem; color: #fff;
+}
+
+.badge-insert { background: var(--green-500); }
+
+.badge-update { background: var(--blue-500); }
+
+.badge-delete { background: var(--red-500); }
+
+.approval-detail-body { padding: 1.25rem 1.5rem 0.5rem; }
+
+/* Section wrapper */
+
+.approval-section {
+    background: var(--surface-50);
+    border: 1px solid var(--surface-200);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+}
+
+.approval-section__title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-color-secondary);
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Level track */
+
+.level-track {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    margin-bottom: 0.75rem;
+    overflow-x: auto;
+}
+
+.level-node {
+    display: flex; flex-direction: column; align-items: center;
+    flex-shrink: 0;
+}
+
+.level-node__circle {
+    width: 2.2rem; height: 2.2rem;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85rem;
+    border: 2px solid var(--surface-300);
+    background: var(--surface-0);
+    color: var(--text-color-secondary);
+    transition: all 0.2s;
+}
+
+.level-node--done .level-node__circle { background: var(--green-500); border-color: var(--green-500); color: #fff; }
+
+.level-node--rejected .level-node__circle { background: var(--red-500); border-color: var(--red-500); color: #fff; }
+
+.level-node--active .level-node__circle {
+    background: var(--primary-color); border-color: var(--primary-color); color: #fff;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 20%, transparent);
+}
+
+.level-node__label {
+    font-size: 0.7rem; margin-top: 0.3rem;
+    color: var(--text-color-secondary); white-space: nowrap;
+}
+
+.level-node--done .level-node__label, .level-node--active .level-node__label, .level-node--rejected .level-node__label { color: var(--text-color); }
+
+.level-connector--done { background: var(--green-400); }
+
+.level-progress-bar__fill--success { background: linear-gradient(90deg, var(--green-500), var(--green-400)); }
+
+.level-progress-bar__fill--danger { background: linear-gradient(90deg, var(--red-500), var(--red-400)); }
+
+/* Progress bar */
+
+.level-progress-bar {
+    height: 4px;
+    background: var(--surface-200);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.level-progress-bar__fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-400));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+/* Info card */
+
+.approval-info-card {
+    background: var(--surface-0);
+    border: 1px solid var(--surface-200);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    height: 100%;
+}
+
+.approval-info-card__title {
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-color-secondary);
+    display: flex; align-items: center; gap: 0.4rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--surface-100);
+}
+
+.approval-kv-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.3rem 1rem;
+    align-items: start;
+}
+
+.approval-kv-label {
+    font-size: 0.8rem;
+    color: var(--text-color-secondary);
+    white-space: nowrap;
+    line-height: 1.8;
+}
+
+.approval-kv-value {
+    font-size: 0.85rem;
+    color: var(--text-color);
+    line-height: 1.8;
+    word-break: break-word;
+}
+
+/* Timeline steps */
+
+.steps-timeline { display: flex; flex-direction: column; gap: 0; }
+
+.step-row {
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px dashed var(--surface-200);
+}
+
+.step-row:last-child { border-bottom: none; }
+
+.step-row__icon {
+    width: 2rem; height: 2rem;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; flex-shrink: 0;
+    background: var(--surface-200); color: var(--text-color-secondary);
+}
+
+.step-row--approved .step-row__icon { background: var(--green-100); color: var(--green-600); }
+
+.step-row--rejected .step-row__icon { background: var(--red-100); color: var(--red-600); }
+
+.step-row__body { flex: 1; }
+
+/* Diff table highlight */
+
+.approval-diff-changed { background: #fffbeb !important; }
+
+/* Travel ticket cost summary */
+
+.ticket-meta-grid {
+    grid-template-columns: auto 1fr auto 1fr;
+    margin-bottom: 1rem;
+}
+
+.ticket-cost-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface-0);
+    border: 1px solid var(--surface-200);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.ticket-cost-table th, .ticket-cost-table td {
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid var(--surface-100);
+    font-size: 0.85rem;
+}
+
+.ticket-cost-table thead th {
+    background: var(--surface-100);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-color-secondary);
+}
+
+.ticket-cost-table tfoot td {
+    background: var(--surface-50);
+    border-bottom: none;
+    border-top: 2px solid var(--surface-200);
+}
+
+.ticket-cost-table .text-right { text-align: right; }
+
+.ticket-total { color: var(--green-600); font-size: 0.95rem; }
+
+.level-connector {
+    flex: 1; min-width: 2rem; height: 2px;
+    background: var(--surface-300);
+    margin-top: 1.1rem;
+}

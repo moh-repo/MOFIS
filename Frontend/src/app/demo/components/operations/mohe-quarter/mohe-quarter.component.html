@@ -1,0 +1,758 @@
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>
+
+<div class="grid">
+  <div class="col-12">
+    <div class="card shadow-2 border-round">
+
+      <!-- ── Page Header ── -->
+      <!--
+        Title on the leading edge, actions on the trailing edge: left/right under
+        English, right/left under Arabic. `space-between` does that on its own —
+        see the stylesheet for the app-wide rule this header has to cancel.
+      -->
+      <div class="mq-page-header flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3">
+          <span class="flex align-items-center justify-content-center bg-primary-100 border-round p-3">
+            <i class="pi pi-calendar text-primary text-2xl"></i>
+          </span>
+          <div>
+            <h2 class="m-0 text-900 text-xl font-bold">{{ 'OPERATIONS.MOHE_QUARTER.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0 text-sm">{{ 'OPERATIONS.MOHE_QUARTER.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button pButton pRipple type="button"
+            icon="pi pi-refresh"
+            class="p-button-outlined"
+            [label]="'COMMON.REFRESH' | translate"
+            (click)="loadQuarters()"
+            [loading]="loading">
+          </button>
+          <button pButton pRipple type="button"
+            icon="pi pi-plus"
+            class="p-button-success"
+            [label]="'OPERATIONS.MOHE_QUARTER.ADD' | translate"
+            [disabled]="!!createJob"
+            (click)="openCreateDialog()">
+          </button>
+        </div>
+      </div>
+
+      <!-- A quarter being created on the server (review Q4). It archives every student,
+           which takes minutes, so it runs as a job and reports progress here. -->
+      @if (createJob) {
+        <div class="mq-create-job surface-100 border-round p-3 mb-4" role="status" aria-live="polite">
+          <div class="flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+            <span class="font-semibold">
+              <i class="pi pi-spin pi-spinner mq-create-job__icon" aria-hidden="true"></i>{{ 'OPERATIONS.MOHE_QUARTER.MESSAGES.CREATE_JOB_RUNNING' | translate }}
+            </span>
+            @if (createJob.total != null) {
+              <span class="text-600 text-sm">
+                {{ createJob.done }} / {{ createJob.total }} {{ 'OPERATIONS.MOHE_QUARTER.MESSAGES.CREATE_JOB_STUDENTS' | translate }}
+              </span>
+            }
+          </div>
+          <p-progressbar [value]="createJobPercent" [mode]="createJob.total == null ? 'indeterminate' : 'determinate'"
+            [style]="{ height: '0.6rem' }" [showValue]="false"></p-progressbar>
+          <small class="text-600 block mt-2">{{ 'OPERATIONS.MOHE_QUARTER.MESSAGES.CREATE_JOB_HINT' | translate }}</small>
+        </div>
+      }
+
+      <!--
+        Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+        The Year list is built from the quarters on screen (see
+        filterYearOptions in the component), so it only ever offers years that
+        have at least one quarter — the academic-years lookup it replaced
+        listed every year the system knows about, most of them empty here.
+      -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-4">
+          <div class="filter-bar__field filter-bar__field--wide"
+            [class.filter-bar__field--active]="filterGlobal">
+            <label for="mqSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="mqSearch" pInputText type="text" [(ngModel)]="filterGlobal"
+                (input)="applyGlobalFilter($any($event.target).value)"
+                [placeholder]="'COMMON.SEARCH' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterYear !== null">
+            <label for="mqYear">{{ 'OPERATIONS.MOHE_QUARTER.TABLE.YEAR' | translate }}</label>
+            <p-select inputId="mqYear"
+              [options]="filterYearOptions"
+              [(ngModel)]="filterYear"
+              optionLabel="label" optionValue="value"
+              [showClear]="true"
+              [placeholder]="'COMMON.ALL' | translate"
+              [emptyMessage]="'OPERATIONS.MOHE_QUARTER.EMPTY.TITLE' | translate"
+              (onChange)="applyYearFilter()"
+              (onClear)="applyYearFilter()">
+            </p-select>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterQuarterNumber !== null">
+            <label for="mqNumber">{{ 'OPERATIONS.MOHE_QUARTER.TABLE.QUARTER_NO' | translate }}</label>
+            <p-select inputId="mqNumber"
+              [options]="quarterNumberOptions"
+              [(ngModel)]="filterQuarterNumber"
+              optionLabel="label" optionValue="value"
+              [showClear]="true"
+              [placeholder]="'COMMON.ALL' | translate"
+              (onChange)="applyQuarterFilter()"
+              (onClear)="applyQuarterFilter()">
+            </p-select>
+          </div>
+        </div>
+
+        <div class="filter-bar__actions">
+          <button pButton pRipple type="button" icon="pi pi-filter-slash"
+            class="p-button-action-outlined p-button-sm"
+            [label]="'COMMON.CLEAR' | translate"
+            [disabled]="!filterGlobal && filterYear === null && filterQuarterNumber === null"
+            (click)="clearFilters()">
+          </button>
+          <span class="filter-bar__hint filter-bar__actions-spacer">
+            {{ 'COMMON.TOTAL' | translate }}: <strong>{{ quarters.length }}</strong>
+          </span>
+        </div>
+      </div>
+
+      <!-- ── Data Table ── -->
+      <p-table
+        #dt
+        [value]="quarters"
+        [loading]="loading"
+        [paginator]="true"
+        [rows]="10"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="{{ 'COMMON.TABLE.SHOWING' | translate }} {first} {{ 'COMMON.TABLE.TO' | translate }} {last} {{ 'COMMON.TABLE.OF' | translate }} {totalRecords} {{ 'COMMON.TABLE.ENTRIES' | translate }}"
+        styleClass="p-datatable-gridlines p-datatable-striped"
+        responsiveLayout="scroll"
+        dataKey="id"
+        [globalFilterFields]="['quarter','id','quarterYear','quarterNumber','quarterName','notes']">
+
+        <ng-template pTemplate="header">
+          <tr>
+            <!-- No per-column min-width: the eight of them summed to 79rem and
+                 stopped the table shrinking with the page. Column behaviour when
+                 space is tight lives in the stylesheet. -->
+            <!-- The period key, not the row id: 20254 is 2025 Q4, and it is the form
+                 every other table carries the period in. This column used to print
+                 "Q" and the identity key (Q3, Q10 ... Q15), which named nothing. -->
+            <th pSortableColumn="quarter">
+              {{ 'OPERATIONS.MOHE_QUARTER.TABLE.QUARTER' | translate }}
+              <p-sortIcon field="quarter"></p-sortIcon>
+            </th>
+            <th pSortableColumn="quarterYear">
+              {{ 'OPERATIONS.MOHE_QUARTER.TABLE.YEAR' | translate }}
+              <p-sortIcon field="quarterYear"></p-sortIcon>
+            </th>
+            <th pSortableColumn="quarterNumber">
+              {{ 'OPERATIONS.MOHE_QUARTER.TABLE.QUARTER_NO' | translate }}
+              <p-sortIcon field="quarterNumber"></p-sortIcon>
+            </th>
+            <th pSortableColumn="quarterName">
+              {{ 'OPERATIONS.MOHE_QUARTER.TABLE.NAME' | translate }}
+              <p-sortIcon field="quarterName"></p-sortIcon>
+            </th>
+            <th pSortableColumn="quarterAmount" class="text-right">
+              {{ 'OPERATIONS.MOHE_QUARTER.TABLE.AMOUNT' | translate }}
+              <p-sortIcon field="quarterAmount"></p-sortIcon>
+            </th>
+            <th>
+              {{ 'OPERATIONS.MOHE_QUARTER.TABLE.COUNTRY' | translate }}
+            </th>
+            <th>
+              {{ 'OPERATIONS.MOHE_QUARTER.CLOSED_LABEL' | translate }} /
+              {{ 'OPERATIONS.MOHE_QUARTER.OPEN_LABEL' | translate }}
+            </th>
+            <th class="text-center">
+              {{ 'OPERATIONS.MOHE_QUARTER.TABLE.ACTIONS' | translate }}
+            </th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-quarter>
+          <tr>
+            <td>
+              <span class="bg-primary-100 text-primary-700 border-round px-3 py-2 font-bold">
+                {{ quarter.quarter ?? '—' }}
+              </span>
+            </td>
+            <td>
+              <span class="text-700">{{ quarter.quarterYear ?? '—' }}</span>
+            </td>
+            <td>
+              <span class="text-700">{{ quarterNumberLabel(quarter.quarterNumber) }}</span>
+            </td>
+            <td>
+              <div class="flex align-items-center gap-2">
+                <i class="pi pi-bookmark text-500"></i>
+                <span class="font-medium">{{ quarter | inLanguage:'quarterName' }}</span>
+              </div>
+            </td>
+            <td class="text-right">
+              <div class="font-bold text-green-600">{{ quarter.quarterAmount | number:'1.0-0' }}</div>
+              @if (quarter.quarterAmountSource) {
+                <div class="text-500 text-xs mt-1">
+                  {{ amountSourceLabel(quarter.quarterAmountSource) }}
+                  &middot; {{ quarter.quarterStudentCount | number:'1.0-0' }}
+                </div>
+              }
+              @if (quarter.quarterWafarAmount) {
+                <div class="text-orange-600 text-xs">
+                  {{ 'OPERATIONS.MOHE_QUARTER.TABLE.WAFAR' | translate }}:
+                  {{ quarter.quarterWafarAmount | number:'1.0-0' }}
+                </div>
+              }
+            </td>
+            <td>
+              <span class="text-700">{{ countryName(quarter.countryId) }}</span>
+            </td>
+            <td>
+              <p-tag [severity]="quarter.quarterClosed ? 'danger' : 'success'"
+                     [value]="quarter.quarterClosed
+                       ? ('OPERATIONS.MOHE_QUARTER.CLOSED_LABEL' | translate)
+                       : ('OPERATIONS.MOHE_QUARTER.OPEN_LABEL' | translate)">
+              </p-tag>
+            </td>
+            <td class="text-center">
+              <div class="flex justify-content-center gap-1">
+                <button pButton pRipple type="button"
+                  icon="pi pi-lock"
+                  class="p-button-rounded p-button-text p-button-warning"
+                  [pTooltip]="'OPERATIONS.MOHE_QUARTER.CLOSE_QUARTER' | translate"
+                  tooltipPosition="top"
+                  [disabled]="quarter.quarterClosed"
+                  (click)="confirmCloseQuarter(quarter)">
+                </button>
+                <button pButton pRipple type="button"
+                  icon="pi pi-eye"
+                  class="p-button-rounded p-button-text p-button-info"
+                  [pTooltip]="'OPERATIONS.MOHE_QUARTER.VIEW' | translate"
+                  tooltipPosition="top"
+                  (click)="openViewDialog(quarter)">
+                </button>
+                <button pButton pRipple type="button"
+                  icon="pi pi-pencil"
+                  class="p-button-rounded p-button-text p-button-warning"
+                  [pTooltip]="'OPERATIONS.MOHE_QUARTER.EDIT' | translate"
+                  tooltipPosition="top"
+                  (click)="openEditDialog(quarter)">
+                </button>
+                <button pButton pRipple type="button"
+                  icon="pi pi-trash"
+                  class="p-button-rounded p-button-text p-button-danger"
+                  [pTooltip]="'OPERATIONS.MOHE_QUARTER.DELETE' | translate"
+                  tooltipPosition="top"
+                  (click)="confirmDelete(quarter)">
+                </button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="8" class="text-center py-6">
+              <div class="flex flex-column align-items-center gap-3">
+                <i class="pi pi-inbox text-400" style="font-size: 3rem"></i>
+                <h5 class="m-0 text-600">{{ 'OPERATIONS.MOHE_QUARTER.EMPTY.TITLE' | translate }}</h5>
+                <p class="m-0 text-500">{{ 'OPERATIONS.MOHE_QUARTER.EMPTY.DESCRIPTION' | translate }}</p>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ ADD / EDIT DIALOG ═══════════════════════════
+
+     Layout (styles: .dv-* in assets/layout/styles/_detail-dialog.scss):
+
+       hero     – the quarter's identity at a glance: badge, name, period,
+                  status and country. Updates live as the user types so the
+                  header always reflects what will be saved.
+       derived  – edit only: the figures the server computes (amount, wafar,
+                  net, students, inserted date). Read-only by design; shown
+                  here so nobody looks for an input that does not exist.
+       sections – "Identity" (name, period, IDs, country) and "Schedule"
+                  (dates, notes), each with a titled header and a hint.
+-->
+<p-dialog
+  [(visible)]="formDialogVisible"
+  [modal]="true"
+  [style]="{ width: '780px', maxWidth: '96vw' }"
+  [header]="dialogTitle"
+  [draggable]="false"
+  [dismissableMask]="false"
+  styleClass="dv-dialog"
+  (onHide)="hideFormDialog()">
+
+  <ng-template pTemplate="content">
+    <form [formGroup]="quarterForm" class="dv-form" autocomplete="off">
+
+      <!-- Hero -->
+      <div class="dv-hero"
+           [class.dv-hero--closed]="isEditMode && selectedQuarter?.quarterClosed"
+           [class.dv-hero--new]="!isEditMode">
+        <div class="dv-hero__badge">
+          @if (isEditMode) {
+            <span class="dv-hero__badge-prefix">Q</span>{{ quarterForm.get('id')?.value }}
+          } @else {
+            <i class="pi pi-plus"></i>
+          }
+        </div>
+        <div class="dv-hero__body">
+          <div class="dv-hero__eyebrow">
+            {{ (isEditMode ? 'OPERATIONS.MOHE_QUARTER.EDIT' : 'OPERATIONS.MOHE_QUARTER.FORM.NEW_QUARTER') | translate }}
+          </div>
+          <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!quarterForm.get('quarterName')?.value">
+            {{ formPreviewName }}
+          </div>
+          <div class="dv-hero__meta">
+            <span class="dv-chip">
+              <i class="pi pi-calendar"></i>
+              {{ formPreviewPeriod || ('OPERATIONS.MOHE_QUARTER.TABLE.PERIOD' | translate) }}
+            </span>
+            <span class="dv-chip">
+              <i class="pi pi-globe"></i>
+              {{ countryName(quarterForm.get('countryId')?.value) }}
+            </span>
+            @if (isEditMode) {
+              <p-tag [severity]="selectedQuarter?.quarterClosed ? 'danger' : 'success'"
+                     [rounded]="true"
+                     [value]="selectedQuarter?.quarterClosed
+                       ? ('OPERATIONS.MOHE_QUARTER.CLOSED_LABEL' | translate)
+                       : ('OPERATIONS.MOHE_QUARTER.OPEN_LABEL' | translate)">
+              </p-tag>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Create: what saving will do -->
+      @if (!isEditMode) {
+        <div class="dv-notice dv-notice--info">
+          <i class="pi pi-info-circle"></i>
+          <span>{{ 'OPERATIONS.MOHE_QUARTER.FORM.NEW_QUARTER_HINT' | translate }}</span>
+        </div>
+      }
+
+      <!-- Edit: derived, read-only figures -->
+      @if (isEditMode && selectedQuarter; as q) {
+        <div class="dv-derived">
+          <div class="dv-derived__head">
+            <i class="pi pi-lock"></i>
+            <span>{{ 'OPERATIONS.MOHE_QUARTER.FORM.DERIVED_FIGURES' | translate }}</span>
+            @if (q.quarterAmountSource) {
+              <p-tag class="ml-auto" [severity]="q.quarterAmountSource === 'LIVE' ? 'success' : 'info'"
+                     [rounded]="true" [value]="amountSourceLabel(q.quarterAmountSource)"></p-tag>
+            }
+          </div>
+          <div class="dv-derived__grid">
+            <div class="dv-derived__item">
+              <span class="dv-derived__label">{{ 'OPERATIONS.MOHE_QUARTER.FORM.AMOUNT' | translate }}</span>
+              <span class="dv-derived__value dv-derived__value--green">{{ (q.quarterAmount | number:'1.0-0') || '—' }}</span>
+            </div>
+            <div class="dv-derived__item">
+              <span class="dv-derived__label">{{ 'OPERATIONS.MOHE_QUARTER.TABLE.WAFAR' | translate }}</span>
+              <span class="dv-derived__value dv-derived__value--orange">{{ (q.quarterWafarAmount | number:'1.0-0') || '—' }}</span>
+            </div>
+            <div class="dv-derived__item">
+              <span class="dv-derived__label">{{ 'OPERATIONS.MOHE_QUARTER.TABLE.NET' | translate }}</span>
+              <span class="dv-derived__value">{{ (q.quarterNetAmount | number:'1.0-0') || '—' }}</span>
+            </div>
+            <div class="dv-derived__item">
+              <span class="dv-derived__label">{{ 'OPERATIONS.MOHE_QUARTER.TABLE.STUDENTS' | translate }}</span>
+              <span class="dv-derived__value">{{ (q.quarterStudentCount | number:'1.0-0') || '—' }}</span>
+            </div>
+            <div class="dv-derived__item">
+              <span class="dv-derived__label">{{ 'OPERATIONS.MOHE_QUARTER.FORM.INSERTED_DATE' | translate }}</span>
+              <span class="dv-derived__value">{{ (q.insertedDate | date:'dd/MM/yyyy') || '—' }}</span>
+            </div>
+          </div>
+          <div class="dv-derived__hint">{{ 'OPERATIONS.MOHE_QUARTER.FORM.AMOUNT_HINT' | translate }}</div>
+        </div>
+      }
+
+      <!-- Section: identity -->
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+          <div>
+            <div class="dv-section__title">{{ 'OPERATIONS.MOHE_QUARTER.FORM.SECTION_IDENTITY' | translate }}</div>
+            <div class="dv-section__hint">{{ 'OPERATIONS.MOHE_QUARTER.FORM.SECTION_IDENTITY_HINT' | translate }}</div>
+          </div>
+        </header>
+
+        <div class="dv-fields">
+          <!-- Quarter Name -->
+          <div class="dv-field dv-field--full">
+            <label for="mqName" class="dv-label">
+              {{ 'OPERATIONS.MOHE_QUARTER.FORM.NAME' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <input id="mqName" pInputText formControlName="quarterName" class="w-full"
+              [placeholder]="'OPERATIONS.MOHE_QUARTER.FORM.NAME' | translate" />
+            @if (quarterForm.get('quarterName')?.invalid && quarterForm.get('quarterName')?.touched) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'COMMON.REQUIRED_FIELD' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Year -->
+          <div class="dv-field">
+            <label for="mqFormYear" class="dv-label">{{ 'OPERATIONS.MOHE_QUARTER.FORM.YEAR' | translate }}</label>
+            <p-select inputId="mqFormYear"
+              [options]="quarterYearOptions"
+              formControlName="quarterYear"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'OPERATIONS.MOHE_QUARTER.FORM.SELECT_YEAR' | translate"
+              [showClear]="true"
+              [filter]="quarterYearOptions.length > 8"
+              appendTo="body"
+              class="w-full">
+            </p-select>
+          </div>
+
+          <!-- Quarter Number -->
+          <div class="dv-field">
+            <label for="mqFormNo" class="dv-label">{{ 'OPERATIONS.MOHE_QUARTER.FORM.QUARTER_NO' | translate }}</label>
+            <p-select inputId="mqFormNo"
+              [options]="quarterNumberOptions"
+              formControlName="quarterNumber"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'OPERATIONS.MOHE_QUARTER.FORM.SELECT_QUARTER_NO' | translate"
+              [showClear]="true"
+              appendTo="body"
+              class="w-full">
+            </p-select>
+            @if (quarterForm.get('quarterNumber')?.invalid && quarterForm.get('quarterNumber')?.touched) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'OPERATIONS.MOHE_QUARTER.FORM.QUARTER_NO_RANGE_HINT' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Secondary ID -->
+          <div class="dv-field">
+            <label for="mqId1" class="dv-label">{{ 'OPERATIONS.MOHE_QUARTER.FORM.ID' | translate }}</label>
+            <p-inputnumber [min]="0" inputId="mqId1" formControlName="id1" [useGrouping]="false" class="w-full"></p-inputnumber>
+          </div>
+
+          <!-- Country (null = global; locked after creation) -->
+          <div class="dv-field">
+            <label for="mqCountry" class="dv-label">
+              {{ 'OPERATIONS.MOHE_QUARTER.FORM.COUNTRY' | translate }}
+              @if (isEditMode) {
+                <i class="pi pi-lock dv-label__lock" [pTooltip]="'OPERATIONS.MOHE_QUARTER.FORM.COUNTRY_LOCKED_HINT' | translate" tooltipPosition="top"></i>
+              }
+            </label>
+            <p-select inputId="mqCountry"
+              [options]="countryOptions"
+              formControlName="countryId"
+              optionLabel="name"
+              optionValue="id"
+              [placeholder]="'OPERATIONS.MOHE_QUARTER.FORM.SELECT_COUNTRY' | translate"
+              [showClear]="!isEditMode"
+              [filter]="true"
+              filterBy="name"
+              appendTo="body"
+              class="w-full">
+            </p-select>
+            <small class="dv-hint">
+              {{ (isEditMode ? 'OPERATIONS.MOHE_QUARTER.FORM.COUNTRY_LOCKED_HINT' : 'OPERATIONS.MOHE_QUARTER.FORM.COUNTRY_HINT') | translate }}
+            </small>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: schedule & notes -->
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-clock"></i></span>
+          <div>
+            <div class="dv-section__title">{{ 'OPERATIONS.MOHE_QUARTER.FORM.SECTION_SCHEDULE' | translate }}</div>
+            <div class="dv-section__hint">{{ 'OPERATIONS.MOHE_QUARTER.FORM.SECTION_SCHEDULE_HINT' | translate }}</div>
+          </div>
+        </header>
+
+        <div class="dv-fields">
+          <!-- Pay Date -->
+          <div class="dv-field">
+            <label for="mqPayDate" class="dv-label">{{ 'OPERATIONS.MOHE_QUARTER.FORM.PAY_DATE' | translate }}</label>
+            <p-datepicker inputId="mqPayDate" formControlName="quarterPayDate"
+              dateFormat="dd/mm/yy"
+              [showIcon]="true"
+              [showButtonBar]="true"
+              appendTo="body"
+              class="w-full">
+            </p-datepicker>
+          </div>
+
+          <!-- Received Date -->
+          <div class="dv-field">
+            <label for="mqRecDate" class="dv-label">{{ 'OPERATIONS.MOHE_QUARTER.FORM.RECEIVED_DATE' | translate }}</label>
+            <p-datepicker inputId="mqRecDate" formControlName="quarterRecivedDate"
+              dateFormat="dd/mm/yy"
+              [showIcon]="true"
+              [showButtonBar]="true"
+              appendTo="body"
+              class="w-full">
+            </p-datepicker>
+          </div>
+
+          <!-- Notes -->
+          <div class="dv-field dv-field--full">
+            <label for="mqNotes" class="dv-label">{{ 'OPERATIONS.MOHE_QUARTER.FORM.NOTES' | translate }}</label>
+            <textarea id="mqNotes" pTextarea formControlName="notes" rows="3" class="w-full"
+              [placeholder]="'OPERATIONS.MOHE_QUARTER.FORM.NOTES_PLACEHOLDER' | translate"></textarea>
+          </div>
+        </div>
+      </section>
+
+    </form>
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <small class="dv-footer__hint">
+        <span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+      </small>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button"
+          class="p-button-text p-button-secondary"
+          [label]="'COMMON.CANCEL' | translate"
+          icon="pi pi-times"
+          [disabled]="saving"
+          (click)="hideFormDialog()">
+        </button>
+        <button pButton pRipple type="button"
+          [label]="(isEditMode ? 'OPERATIONS.MOHE_QUARTER.FORM.UPDATE_ACTION' : 'OPERATIONS.MOHE_QUARTER.FORM.CREATE_ACTION') | translate"
+          [icon]="isEditMode ? 'pi pi-check' : 'pi pi-plus'"
+          [class]="isEditMode ? 'p-button-primary' : 'p-button-success'"
+          (click)="saveQuarter()"
+          [loading]="saving">
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ═══════════════════════════ VIEW DIALOG ═══════════════════════════
+
+     hero  → four KPI tiles (amount / wafar / net / students)
+           → "Details" definition list (period, IDs, country)
+           → "Schedule" definition list (dates)
+           → notes
+-->
+<p-dialog
+  [(visible)]="viewDialogVisible"
+  [modal]="true"
+  [style]="{ width: '760px', maxWidth: '96vw' }"
+  [header]="'OPERATIONS.MOHE_QUARTER.VIEW' | translate"
+  [draggable]="false"
+  styleClass="dv-dialog"
+  (onHide)="selectedQuarter = null">
+
+  <ng-template pTemplate="content">
+    @if (selectedQuarter; as quarter) {
+      <div class="dv-view">
+
+        <!-- Hero -->
+        <div class="dv-hero" [class.dv-hero--closed]="quarter.quarterClosed">
+          <div class="dv-hero__badge">
+            {{ quarter.quarter ?? '—' }}
+          </div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'OPERATIONS.MOHE_QUARTER.TABLE.QUARTER' | translate }}</div>
+            <div class="dv-hero__title">{{ (quarter | inLanguage:'quarterName') || '—' }}</div>
+            <div class="dv-hero__meta">
+              <span class="dv-chip">
+                <i class="pi pi-calendar"></i>
+                {{ periodLabel(quarter) || '—' }}
+              </span>
+              <span class="dv-chip">
+                <i class="pi pi-globe"></i>
+                {{ countryName(quarter.countryId) }}
+              </span>
+              <p-tag [severity]="quarter.quarterClosed ? 'danger' : 'success'"
+                     [rounded]="true"
+                     [icon]="quarter.quarterClosed ? 'pi pi-lock' : 'pi pi-unlock'"
+                     [value]="quarter.quarterClosed
+                       ? ('OPERATIONS.MOHE_QUARTER.CLOSED_LABEL' | translate)
+                       : ('OPERATIONS.MOHE_QUARTER.OPEN_LABEL' | translate)">
+              </p-tag>
+            </div>
+          </div>
+          <div class="dv-hero__amount">
+            <div class="dv-hero__amount-label">{{ 'OPERATIONS.MOHE_QUARTER.TABLE.AMOUNT' | translate }}</div>
+            <div class="dv-hero__amount-value">{{ (quarter.quarterAmount | number:'1.0-0') || '—' }}</div>
+            @if (quarter.quarterAmountSource) {
+              <p-tag [severity]="quarter.quarterAmountSource === 'LIVE' ? 'success' : 'info'"
+                     [rounded]="true" [value]="amountSourceLabel(quarter.quarterAmountSource)"></p-tag>
+            }
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="dv-kpis">
+          <div class="dv-kpi dv-kpi--green">
+            <span class="dv-kpi__icon"><i class="pi pi-wallet"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'OPERATIONS.MOHE_QUARTER.FORM.AMOUNT' | translate }}</div>
+              <div class="dv-kpi__value">{{ (quarter.quarterAmount | number:'1.0-0') || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--orange">
+            <span class="dv-kpi__icon"><i class="pi pi-replay"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'OPERATIONS.MOHE_QUARTER.TABLE.WAFAR' | translate }}</div>
+              <div class="dv-kpi__value">{{ (quarter.quarterWafarAmount | number:'1.0-0') || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--blue">
+            <span class="dv-kpi__icon"><i class="pi pi-send"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'OPERATIONS.MOHE_QUARTER.TABLE.NET' | translate }}</div>
+              <div class="dv-kpi__value">{{ (quarter.quarterNetAmount | number:'1.0-0') || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--purple">
+            <span class="dv-kpi__icon"><i class="pi pi-users"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'OPERATIONS.MOHE_QUARTER.TABLE.STUDENTS' | translate }}</div>
+              <div class="dv-kpi__value">{{ (quarter.quarterStudentCount | number:'1.0-0') || '—' }}</div>
+            </div>
+          </div>
+        </div>
+        @if (!hasFinance(quarter)) {
+          <div class="dv-notice dv-notice--muted">
+            <i class="pi pi-info-circle"></i>
+            <span>{{ 'OPERATIONS.MOHE_QUARTER.VIEW_DIALOG.NO_FINANCE' | translate }}</span>
+          </div>
+        } @else {
+          <div class="dv-notice dv-notice--muted">
+            <i class="pi pi-info-circle"></i>
+            <span>{{ 'OPERATIONS.MOHE_QUARTER.FORM.AMOUNT_HINT' | translate }}</span>
+          </div>
+        }
+
+        <div class="dv-columns">
+          <!-- Details -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+              <div class="dv-section__title">{{ 'OPERATIONS.MOHE_QUARTER.VIEW_DIALOG.DETAILS' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'OPERATIONS.MOHE_QUARTER.FORM.YEAR' | translate }}</dt>
+                <dd>{{ quarter.quarterYear ?? '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'OPERATIONS.MOHE_QUARTER.FORM.QUARTER_NO' | translate }}</dt>
+                <dd>{{ quarterNumberLabel(quarter.quarterNumber) }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <!-- The row's own key. It was bound to id1, which the server has never
+                     sent, so this row read as empty on every quarter there has been. -->
+                <dt>{{ 'OPERATIONS.MOHE_QUARTER.FORM.ID' | translate }}</dt>
+                <dd>{{ quarter.id ?? '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'OPERATIONS.MOHE_QUARTER.FORM.COUNTRY' | translate }}</dt>
+                <dd>
+                  @if (quarter.countryId == null) {
+                    <p-tag severity="info" [rounded]="true" [value]="'OPERATIONS.MOHE_QUARTER.GLOBAL' | translate"></p-tag>
+                  } @else {
+                    {{ countryName(quarter.countryId) }}
+                  }
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Schedule -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-clock"></i></span>
+              <div class="dv-section__title">{{ 'OPERATIONS.MOHE_QUARTER.VIEW_DIALOG.SCHEDULE' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'OPERATIONS.MOHE_QUARTER.FORM.PAY_DATE' | translate }}</dt>
+                <dd>{{ (quarter.quarterPayDate | date:'dd/MM/yyyy') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'OPERATIONS.MOHE_QUARTER.FORM.RECEIVED_DATE' | translate }}</dt>
+                <dd>{{ (quarter.quarterRecivedDate | date:'dd/MM/yyyy') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'OPERATIONS.MOHE_QUARTER.FORM.INSERTED_DATE' | translate }}</dt>
+                <dd>{{ (quarter.insertedDate | date:'dd/MM/yyyy') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'OPERATIONS.MOHE_QUARTER.TABLE.AMOUNT' | translate }}</dt>
+                <dd>{{ amountSourceLabel(quarter.quarterAmountSource) || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <!-- Notes -->
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-comment"></i></span>
+            <div class="dv-section__title">{{ 'OPERATIONS.MOHE_QUARTER.FORM.NOTES' | translate }}</div>
+          </header>
+          @if (quarter.notes) {
+            <p class="dv-notes">{{ quarter.notes }}</p>
+          } @else {
+            <p class="dv-notes dv-notes--empty">{{ 'OPERATIONS.MOHE_QUARTER.VIEW_DIALOG.NO_NOTES' | translate }}</p>
+          }
+        </section>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint">
+        @if (selectedQuarter && !selectedQuarter.quarterClosed) {
+          <button pButton pRipple type="button"
+            class="p-button-text p-button-warning"
+            [label]="'OPERATIONS.MOHE_QUARTER.CLOSE_QUARTER' | translate"
+            icon="pi pi-lock"
+            (click)="closeFromView()">
+          </button>
+        }
+      </div>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button"
+          class="p-button-text p-button-secondary"
+          [label]="'COMMON.CLOSE' | translate"
+          icon="pi pi-times"
+          (click)="viewDialogVisible = false">
+        </button>
+        <button pButton pRipple type="button"
+          [label]="'COMMON.EDIT' | translate"
+          icon="pi pi-pencil"
+          (click)="editFromView()">
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>

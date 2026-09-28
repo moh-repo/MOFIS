@@ -1,0 +1,91 @@
+:host {
+  --sec-ink:   var(--p-ink, #10243b);
+  --sec-muted: var(--p-muted, #64748b);
+  --sec-line:  var(--p-line, #e3e9f0);
+  --sec-ok:    #1f8a53;
+}
+
+/* Security is a reading page, not a table: a full-width column of prose makes
+   for a poor line length, so the cards stop at a readable measure. */
+.security-card {
+  max-width: 760px;
+}
+
+/* .hint comes from the portal kit; only the state colour is local. */
+.ok {
+  color: var(--sec-ok);
+  margin-inline-end: 6px;
+}
+
+.steps {
+  margin: 0 0 14px;
+  padding-inline-start: 20px;
+  color: var(--sec-ink);
+  font-size: 13.5px;
+
+  li { margin-bottom: 4px; }
+}
+
+.qr-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 14px;
+
+  .qr {
+    width: 176px;
+    height: 176px;
+    border: 1px solid var(--sec-line);
+    border-radius: 10px;
+    background: #fff;
+    padding: 6px;
+  }
+
+  .manual {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    .label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--sec-muted);
+    }
+
+    /* The key is transcribed by hand into another device, so it is set as a
+       block of code rather than a run of body text. */
+    code {
+      display: inline-block;
+      padding: 8px 10px;
+      background: #f4f6fa;
+      border: 1px solid var(--sec-line);
+      border-radius: 8px;
+      font-size: 13px;
+      letter-spacing: 1.5px;
+      word-break: break-all;
+      color: var(--sec-ink);
+    }
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Three short fields, one under the other: a password is typed, not read, so
+   the inputs stop well short of the card's measure. */
+.password-form {
+  max-width: 420px;
+
+  nz-form-item { margin-bottom: 12px; }
+  .error { margin-bottom: 12px; }
+}
+
+.error {
+  margin-top: 12px;
+}

@@ -1,0 +1,12 @@
+package com.dilaw.mohe.studentportal.repository;
+
+import com.dilaw.mohe.studentportal.model.StudentGroup;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface StudentGroupRepository extends JpaRepository<StudentGroup, Integer> {
+    Optional<StudentGroup> findByGroupName(String groupName);
+}

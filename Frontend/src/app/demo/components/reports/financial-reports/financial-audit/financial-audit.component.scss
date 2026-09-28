@@ -1,0 +1,14 @@
+:host ::ng-deep {
+  .p-datatable {
+    .p-datatable-thead > tr > th {
+      background-color: var(--surface-50);
+    }
+  }
+}
+
+@media print {
+  button, .no-print {
+    display: none !important;
+  }
+}
+

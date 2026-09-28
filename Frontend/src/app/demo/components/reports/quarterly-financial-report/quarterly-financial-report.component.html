@@ -1,0 +1,168 @@
+<p-toast></p-toast>
+
+<!-- Screen View -->
+<div class="grid no-print">
+  <div class="col-12">
+    <div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+      <!-- Header -->
+      <!-- Header Section. `flex-1` on the leading block, not
+           `justify-content-between`: under `direction: rtl` a flex row already
+           runs right to left, and the global rule in styles.scss reverses every
+           `.flex.justify-content-between` again, which put the heading back on
+           the left and the actions on the right in Arabic. See
+           src/app/demo/components/page-headings.spec.ts. -->
+      <div class="flex align-items-center mb-4">
+        <div class="flex align-items-center gap-3 flex-1">
+          <button pButton pRipple type="button"
+            [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+            class="p-button-text p-button-plain"
+            (click)="goBack()"
+          [pTooltip]="'COMMON.BACK' | translate"></button>
+          <i class="pi pi-file-pdf text-primary" style="font-size: 2.5rem"></i>
+          <div>
+            <h2 class="m-0 text-primary">{{ 'REPORTS.QUARTERLY_FINANCIAL.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0">{{ 'REPORTS.QUARTERLY_FINANCIAL.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <app-report-actions
+            pdfApiPath="/api/v1/reports/quarterly-financial/export-report"
+            [query]="reportQuery()"
+            [baseFilename]="reportBaseFilename">
+          </app-report-actions>
+
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="surface-100 border-round p-4 mb-4">
+        <div class="grid">
+          <div class="col-12 md:col-4">
+            <label for="year" class="block mb-2 font-semibold">{{ 'REPORTS.COMMON_FIELDS.YEAR' | translate }}</label>
+            <p-select id="year"
+              [(ngModel)]="selectedYear"
+              [options]="yearOptions"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'REPORTS.COMMON_FIELDS.SELECT_YEAR' | translate"
+              (onChange)="onFilterChange()"
+              styleClass="w-full"
+            appendTo="body"></p-select>
+          </div>
+          <div class="col-12 md:col-4">
+            <label for="quarter" class="block mb-2 font-semibold">{{ 'REPORTS.COMMON_FIELDS.QUARTER' | translate }}</label>
+            <p-select id="quarter"
+              [(ngModel)]="selectedQuarter"
+              [options]="quarterOptions"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'REPORTS.COMMON_FIELDS.SELECT_QUARTER' | translate"
+              (onChange)="onFilterChange()"
+              styleClass="w-full"
+            appendTo="body"></p-select>
+          </div>
+          <div class="col-12 md:col-4 flex align-items-end">
+            <button pButton pRipple type="button"
+              icon="pi pi-refresh"
+              [label]="'COMMON.REFRESH' | translate"
+              (click)="loadReport()"
+              [loading]="loading"
+            class="p-button-action-outlined w-full"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PDF row-limit notice — shown only when data is large enough to risk truncation -->
+@if (report && report.entities && report.entities.length >= 100) {
+  <div class="grid no-print">
+    <div class="col-12">
+      <p-message severity="info" [text]="'REPORTS.REPORT_SUBPAGES.PDF_EXPORT_LIMIT_NOTE' | translate" styleClass="w-full mb-2"></p-message>
+    </div>
+  </div>
+}
+
+<!-- The chosen quarter had no finance rows, so these figures belong to another one. -->
+@if (report && report.periodSubstituted) {
+  <div class="grid no-print">
+    <div class="col-12">
+      <p-message severity="warn" [text]="periodSubstitutedMessage" styleClass="w-full mb-2"></p-message>
+    </div>
+  </div>
+}
+
+<!-- Key figures, so the filters give immediate feedback without re-rendering the PDF.
+The report itself is the Jasper document below. -->
+@if (report) {
+  <div class="grid no-print">
+    <div class="col-12">
+      <div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+        <div class="flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+          <span class="font-semibold text-700">
+            {{ 'REPORTS.QUARTERLY_FINANCIAL.SUMMARY_TITLE' | translate }}: {{ shownPeriodLabel }}
+          </span>
+          <span class="text-500 text-sm">
+            {{ 'REPORTS.QUARTERLY_FINANCIAL.ENTITY' | translate }}: {{ report.entityCount }}
+          </span>
+        </div>
+        <div class="grid text-center">
+          <div class="col-6 md:col-3">
+            <div class="text-500 text-sm mb-1">{{ 'REPORTS.QUARTERLY_FINANCIAL.SUMMARY.RECEIVED_AMOUNT' | translate }}</div>
+            <div class="text-xl font-bold text-primary">{{ report.totalReceivedAmount | number:'1.0-0' }}</div>
+          </div>
+          <div class="col-6 md:col-3">
+            <div class="text-500 text-sm mb-1">{{ 'REPORTS.QUARTERLY_FINANCIAL.SUMMARY.DISBURSED_AMOUNT' | translate }}</div>
+            <div class="text-xl font-bold text-primary">{{ report.totalDisbursedAmount | number:'1.0-0' }}</div>
+          </div>
+          <div class="col-6 md:col-3">
+            <div class="text-500 text-sm mb-1">{{ 'REPORTS.QUARTERLY_FINANCIAL.SUMMARY.REMAINING_AMOUNT' | translate }}</div>
+            <div class="text-xl font-bold text-primary">{{ report.totalRemainingAmount | number:'1.0-0' }}</div>
+          </div>
+          <div class="col-6 md:col-3">
+            <div class="text-500 text-sm mb-1">{{ 'REPORTS.QUARTERLY_FINANCIAL.SUMMARY.DISBURSEMENT_RATIO' | translate }}</div>
+            <div class="text-xl font-bold text-primary">{{ report.disbursementRatio | number:'1.2-2' }}%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Loading Overlay -->
+@if (loading) {
+  <div class="loading-overlay no-print">
+    <p-progressSpinner></p-progressSpinner>
+  </div>
+}
+
+<!-- Jasper PDF Report Viewer -->
+<div class="card mt-3 no-print">
+  <!-- Heading leads this row too; see the comment on the page header above. -->
+  <div class="flex align-items-center mb-3 flex-wrap gap-2">
+    <div class="flex align-items-center gap-2 flex-1">
+      <i class="pi pi-file-pdf" style="font-size:1.4rem;color:#6b2737"></i>
+      <h4 class="m-0" style="color:#6b2737">{{ 'REPORTS.VIEWER.GENERATE_REPORT' | translate }}</h4>
+    </div>
+    <div class="flex align-items-center gap-3 flex-wrap">
+      <div class="flex align-items-center gap-2">
+        <span class="font-semibold text-sm">{{ 'REPORTS.VIEWER.LANGUAGE' | translate }}:</span>
+        <p-selectButton [options]="reportLangOptions"
+          [(ngModel)]="selectedLang" optionLabel="label" optionValue="value">
+        </p-selectButton>
+      </div>
+      <p-button icon="pi pi-refresh"
+        [label]="'REPORTS.VIEWER.GENERATE_REPORT' | translate"
+        [loading]="reportLoading"
+        (onClick)="generateReport()">
+      </p-button>
+    </div>
+  </div>
+  <app-report-viewer
+    [pdfApiPath]="pdfApiPath" [pdfQuery]="pdfQuery" [loadTrigger]="loadTrigger"
+    [loading]="reportLoading"
+    [filename]="reportFilename">
+  </app-report-viewer>
+</div>
+

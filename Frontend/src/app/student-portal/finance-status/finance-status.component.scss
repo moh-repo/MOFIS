@@ -1,0 +1,101 @@
+:host {
+  --fs-ink:    var(--p-ink, #10243b);
+  --fs-muted:  var(--p-muted, #64748b);
+  --fs-line:   var(--p-line, #e3e9f0);
+  --fs-accent: var(--p-accent, #2f7fd8);
+  --fs-ok:     #1f8a53;
+  --fs-wait:   #b7791f;
+}
+
+.fs-alert { border-radius: 8px; }
+
+/* ── Status banner ─────────────────────────────────────────────
+   White with a coloured edge rather than a full amber or green wash. The
+   status is one fact about the record, and tinting the whole strip made it
+   read as a warning about the page. */
+.fs-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  background: #fff;
+  border: 1px solid var(--fs-line);
+  border-inline-start: 4px solid var(--fs-wait);
+  border-radius: 10px;
+
+  &--received { border-inline-start-color: var(--fs-ok); }
+}
+
+.fs-status-icon {
+  font-size: 26px;
+  flex-shrink: 0;
+  color: var(--fs-wait);
+
+  .fs-status-banner--received & { color: var(--fs-ok); }
+}
+
+.fs-status-label {
+  margin: 0 0 2px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--fs-muted);
+}
+
+.fs-status-value {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--fs-ink);
+}
+
+/* ── Detail cards ──────────────────────────────────────────────
+   One treatment for all of them; the received amount is the figure that
+   matters, so it is the one that gets size. */
+.fs-info-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  height: 100%;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--fs-line);
+  border-radius: 10px;
+  box-sizing: border-box;
+
+  &--blue { border-inline-start: 3px solid var(--fs-accent); }
+}
+
+.fs-info-icon {
+  font-size: 17px;
+  color: var(--fs-muted);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.fs-info-label {
+  margin: 0 0 3px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--fs-muted);
+}
+
+.fs-info-val {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fs-ink);
+  font-variant-numeric: tabular-nums;
+
+  &--large {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+}
+
+/* No RTL block: the shell's dir="rtl" already puts each icon on the right of
+   its text. A `row-reverse` on top sent it back to the left. */

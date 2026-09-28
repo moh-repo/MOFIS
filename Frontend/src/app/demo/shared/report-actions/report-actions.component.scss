@@ -1,0 +1,36 @@
+.report-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Print sits between two outlined buttons and the green Export; a solid
+   sky-blue with a firm white label keeps it readable on the white card and
+   on the tinted report headers alike. Lives here rather than relying on the
+   theme's `info` tokens so a future preset change cannot wash it out again. */
+:host ::ng-deep .report-actions__print.p-button {
+    background: #0ea5e9;
+    border-color: #0ea5e9;
+    color: #ffffff;
+    font-weight: 600;
+
+    .p-button-label,
+    .p-button-icon {
+        color: #ffffff;
+    }
+
+    &:not(:disabled):hover {
+        background: #0284c7;
+        border-color: #0284c7;
+    }
+
+    &:not(:disabled):active {
+        background: #0369a1;
+        border-color: #0369a1;
+    }
+
+    &:focus-visible {
+        box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #7dd3fc;
+    }
+}

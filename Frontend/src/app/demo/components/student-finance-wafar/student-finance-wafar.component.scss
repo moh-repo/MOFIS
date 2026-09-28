@@ -1,0 +1,1177 @@
+.student-finance-wafar-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  .page-hero {
+    padding: 2rem;
+    border-radius: 1.25rem;
+    background: linear-gradient(135deg, rgba(49, 130, 206, 0.12), rgba(76, 81, 191, 0.08));
+    box-shadow: 0 18px 40px -24px rgba(15, 23, 42, 0.45);
+
+    .hero-content {
+      .hero-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+
+        .hero-badge {
+          align-self: flex-start;
+          padding: 0.25rem 0.75rem;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          background: rgba(15, 118, 110, 0.1);
+          color: #0f766e;
+        }
+
+        .hero-title {
+          margin: 0;
+          font-size: 1.9rem;
+          font-weight: 700;
+          color: var(--surface-900);
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+
+          i {
+            font-size: 1.6rem;
+            color: var(--primary-color);
+          }
+        }
+
+        .hero-subtitle {
+          margin: 0;
+          max-width: 38rem;
+          color: var(--surface-600);
+          line-height: 1.6;
+        }
+      }
+
+      .hero-actions {
+        button {
+          min-width: 10rem;
+          font-weight: 600;
+        }
+      }
+    }
+
+    /* Statistics summary — structure is shared
+       (assets/layout/styles/_summary-cards.scss); only the palette is local,
+       because the colours are tied to what these four figures mean.
+
+       The hues are the ones the page already used; what changed is that each
+       is declared once as --summary-accent and read by the edge bar, the icon
+       tile and the hover border, instead of being set on the icon alone. */
+    .summary-cards {
+      margin-top: 1.75rem;
+    }
+
+    .summary-card {
+      &.records {
+        --summary-accent: #1e88e5;
+        .summary-icon { background: linear-gradient(135deg, #42a5f5, #1e88e5); }
+      }
+
+      &.amount {
+        --summary-accent: #2e7d32;
+        .summary-icon { background: linear-gradient(135deg, #4caf50, #2e7d32); }
+      }
+
+      &.average {
+        --summary-accent: #0277bd;
+        .summary-icon { background: linear-gradient(135deg, #29b6f6, #0277bd); }
+      }
+
+      &.countries {
+        --summary-accent: #6a1b9a;
+        .summary-icon { background: linear-gradient(135deg, #ab47bc, #6a1b9a); }
+      }
+    }
+  }
+
+  .filters-card {
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+    border: 1px solid var(--surface-border);
+    box-shadow: 0 12px 28px -24px rgba(15, 23, 42, 0.35);
+
+    .filters-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+
+      .filters-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 700;
+        color: var(--surface-800);
+
+        i {
+          font-size: 1.05rem;
+          color: var(--primary-color);
+        }
+      }
+
+      .filters-header-end {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+
+        .filters-meta {
+          font-size: 0.875rem;
+          color: var(--text-color-secondary);
+        }
+      }
+    }
+
+    .filters-row {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-end;
+      flex-wrap: wrap;
+
+      .filter-field {
+        flex: 1;
+        min-width: 180px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+
+        .filter-label {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: var(--text-color-secondary);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .p-input-icon-left,
+        input.p-inputtext,
+        p-select,
+        .p-select {
+          width: 100%;
+        }
+      }
+    }
+  }
+
+  .table-card {
+    border-radius: 1.25rem;
+    border: 1px solid var(--surface-border);
+    box-shadow: 0 14px 34px -26px rgba(15, 23, 42, 0.45);
+    overflow: hidden;
+
+    .table-caption {
+      font-weight: 600;
+      color: var(--surface-700);
+
+      .table-caption-active {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(251, 191, 36, 0.15);
+        color: #b45309;
+        font-size: 0.85rem;
+      }
+    }
+
+    .amount-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.08);
+      color: #0f766e;
+      font-weight: 600;
+
+      i {
+        font-size: 0.95rem;
+      }
+
+      small {
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.06em;
+      }
+    }
+
+    .empty-state {
+      max-width: 20rem;
+      margin: 0 auto;
+      text-align: center;
+
+      i {
+        color: var(--surface-400);
+      }
+    }
+  }
+
+  .field-label {
+    font-weight: 600;
+    color: var(--surface-600);
+    margin-bottom: 0.25rem;
+  }
+
+  .field-value {
+    background: var(--surface-100);
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    color: var(--surface-800);
+    word-break: break-word;
+  }
+
+  .amount-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(15, 118, 110, 0.08);
+    color: #0f766e;
+    font-weight: 600;
+
+    small {
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+    }
+  }
+
+  .p-tag.status-tag {
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.25rem 0.9rem;
+    text-transform: capitalize;
+  }
+
+  .finance-dialog__content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: flex-end;
+  }
+
+  .finance-dialog__summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: flex-end;
+
+    .summary-pill {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      padding: 0.75rem 1.1rem;
+      border-radius: 1rem;
+      min-width: 12rem;
+      background: rgba(226, 232, 240, 0.6);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      box-shadow: 0 10px 24px -20px rgba(15, 23, 42, 0.4);
+      text-align: right;
+
+      &.primary {
+        background: rgba(59, 130, 246, 0.1);
+        border-color: rgba(59, 130, 246, 0.25);
+        color: #1d4ed8;
+      }
+
+      &.success {
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.22);
+        color: #047857;
+      }
+
+      &.neutral {
+        background: rgba(148, 163, 184, 0.12);
+        border-color: rgba(148, 163, 184, 0.28);
+        color: #475569;
+      }
+
+      &.accent {
+        background: rgba(192, 132, 252, 0.12);
+        border-color: rgba(192, 132, 252, 0.22);
+        color: #6d28d9;
+      }
+
+      .pill-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .pill-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        display: flex;
+        align-items: baseline;
+        gap: 0.35rem;
+
+        small {
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          color: inherit;
+          opacity: 0.9;
+        }
+      }
+    }
+  }
+
+  .finance-dialog__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .section-card {
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    box-shadow: 0 14px 34px -28px rgba(15, 23, 42, 0.45);
+
+    &__header {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-weight: 700;
+      color: var(--surface-800);
+      margin-bottom: 1.25rem;
+
+      i {
+        font-size: 1.1rem;
+        color: var(--primary-color);
+      }
+    }
+
+    &__grid {
+      display: grid;
+      gap: 1rem;
+
+      &.formgrid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      &.detail-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+    }
+  }
+
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.85rem 1rem;
+    border-radius: 1rem;
+    background: rgba(248, 250, 252, 0.85);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+
+    .detail-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--surface-500);
+    }
+
+    .detail-value {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--surface-800);
+      word-break: break-word;
+    }
+
+    .p-tag {
+      margin-top: 0.15rem;
+    }
+    text-align: right;
+  }
+
+  .finance-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+
+    &__header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      align-items: flex-end;
+      text-align: right;
+
+      .finance-view__tag {
+        align-self: flex-end;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(59, 130, 246, 0.12);
+        color: #1d4ed8;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h3 {
+        margin: 0;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--surface-900);
+      }
+
+      p {
+        margin: 0;
+        color: var(--surface-500);
+        font-weight: 600;
+      }
+    }
+
+    &__chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: flex-end;
+
+      .chip {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 0.75rem 1.1rem;
+        border-radius: 1rem;
+        min-width: 11rem;
+        background: rgba(226, 232, 240, 0.6);
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        direction: rtl;
+        text-align: right;
+
+        &.amount {
+          background: rgba(16, 185, 129, 0.12);
+          border-color: rgba(16, 185, 129, 0.22);
+          color: #047857;
+        }
+
+        &.status {
+          background: rgba(59, 130, 246, 0.12);
+          border-color: rgba(59, 130, 246, 0.25);
+          color: #1d4ed8;
+        }
+
+        .chip-label {
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        .chip-value {
+          font-size: 1.1rem;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+      }
+    }
+  }
+}
+
+:host-context(.rtl) .student-finance-wafar-page {
+  text-align: right;
+
+  .page-hero {
+    .hero-content {
+      .hero-text {
+        /*
+         * No `align-items: flex-end`, and no `align-self` on the badge.
+         * `.hero-text` is a *column*, so align-items works on its cross axis —
+         * the inline one — and under `direction: rtl` that axis is reversed:
+         * `flex-end` is the left. The pair was written as though it were the
+         * right, and it put the title 770px from the edge it reads from.
+         * Stretched children with the block's own `text-align: right` land where
+         * they should without either.
+         */
+
+        /*
+         * No `flex-direction: row-reverse`. `direction: rtl` already reverses a
+         * flex row — its first child is placed at the right edge without help —
+         * so a row-reverse on top of it is a second flip that undoes the first
+         * and puts the wallet on the left of the title. The `margin-left: 0`
+         * that came with it compensated for nothing: `.hero-title` separates
+         * its children with `gap`, not a margin.
+         */
+
+        .hero-subtitle {
+          text-align: right;
+        }
+      }
+
+      .hero-actions {
+        justify-content: flex-end;
+      }
+    }
+  }
+
+  /*
+   * No `flex-direction: row-reverse` on the rows below (the filters title and its
+   * end, the caption's active chip, the amount chip). `direction: rtl` already runs
+   * them from the right; reversing on top put the icon back on the left of its text
+   * and the Clear button before the count (round-5 Phase 7).
+   */
+  .filters-card {
+    .filters-header {
+      .filters-header-end {
+        .filters-meta {
+          text-align: right;
+        }
+      }
+    }
+
+    .filters-row {
+      .p-input-icon-left {
+        direction: rtl;
+
+        i {
+          right: 0.75rem;
+          left: auto;
+        }
+
+        input {
+          padding-left: 1rem;
+          padding-right: 2.5rem;
+        }
+      }
+    }
+  }
+
+  .table-card {
+    th,
+    td {
+      text-align: right;
+    }
+  }
+
+  .field-label,
+  .field-value {
+    text-align: right;
+  }
+
+  .amount-chip {
+    direction: rtl;
+  }
+
+  .p-tag.status-tag {
+    direction: rtl;
+  }
+
+  // Enhanced Dialog RTL Support
+  .finance-dialog__summary-strip {
+    .summary-chip {
+      flex-direction: row-reverse;
+      text-align: right;
+
+      i {
+        margin-left: 1rem;
+        margin-right: 0;
+      }
+
+      .chip-content {
+        align-items: flex-end;
+      }
+    }
+  }
+
+  .finance-view__header-card {
+    text-align: right;
+    direction: rtl;
+
+    .header-card__badge {
+      flex-direction: row-reverse;
+
+      i {
+        margin-left: 0.5rem;
+        margin-right: 0;
+      }
+    }
+
+    .header-card__subtitle {
+      flex-direction: row-reverse;
+      justify-content: center;
+
+      i {
+        margin-left: 0.5rem;
+        margin-right: 0;
+      }
+    }
+  }
+
+  .finance-view__chips-strip {
+    .view-chip {
+      flex-direction: row-reverse;
+      text-align: right;
+
+      i {
+        margin-left: 1rem;
+        margin-right: 0;
+      }
+
+      .chip-content {
+        align-items: flex-end;
+      }
+    }
+  }
+
+  .section-card {
+    &__header {
+      flex-direction: row-reverse;
+      text-align: right;
+
+      i {
+        margin-left: 0.75rem;
+        margin-right: 0;
+      }
+    }
+
+    &__grid {
+      &.detail-grid {
+        .detail-item {
+          text-align: right;
+        }
+      }
+
+      &.formgrid {
+        .field {
+          label {
+            text-align: right;
+
+            .text-red-500 {
+              margin-left: 0;
+              margin-right: 0.25rem;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Enhanced Dialog Styles
+::ng-deep {
+  .finance-form-dialog,
+  .finance-view-dialog {
+    .p-dialog-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 12px 12px 0 0;
+      padding: 1.5rem 2rem;
+      
+      .p-dialog-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+      
+      .p-dialog-header-icon {
+        color: white;
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+      }
+    }
+    
+    .p-dialog-content {
+      padding: 0;
+      background: #f8fafc;
+    }
+    
+    .p-dialog-footer {
+      padding: 1.5rem 2rem;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+    }
+  }
+
+  // RTL Support for Dialog Header (when body/layout has dir=rtl)
+  [dir="rtl"] {
+    .finance-form-dialog,
+    .finance-view-dialog {
+      .p-dialog-header {
+        .p-dialog-header-icons {
+          order: -1;
+        }
+      }
+    }
+  }
+
+  // RTL for modal forms when dialog has .rtl class (dialogs append to body)
+  .finance-form-dialog.rtl,
+  .finance-view-dialog.rtl {
+    .p-dialog-content {
+      direction: rtl;
+      text-align: right;
+    }
+    .p-dialog-header {
+      .p-dialog-header-icons {
+        order: -1;
+      }
+    }
+  }
+
+  // RTL layout for modal content (dir="rtl" + .wafar-dialog-rtl set in template when Arabic)
+  //
+  // No `flex-direction: row-reverse`, icon margins or `align-items: flex-end` on the
+  // chips and headers below (round-5 Phase 7). `direction: rtl` already puts each icon
+  // at the right of its text; reversing on top moved it back to the left, the margins
+  // then spaced it from the chip's edge instead of its text (`gap` spaces it in both
+  // languages), and `flex-end` in a column under RTL is the left edge, so the labels
+  // hugged the left.
+  .wafar-dialog-rtl,
+  .finance-dialog__content[dir="rtl"],
+  .finance-view[dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+
+    .finance-dialog__content {
+      align-items: flex-start;
+    }
+    .finance-dialog__summary-strip {
+      flex-direction: row;
+      flex-wrap: wrap;
+      .summary-chip {
+        text-align: right;
+      }
+    }
+    .finance-dialog__form {
+      direction: rtl;
+      text-align: right;
+    }
+    .section-card__header {
+      text-align: right;
+    }
+    .section-card__grid.formgrid .field label {
+      text-align: right;
+    }
+    .section-card__grid.detail-grid .detail-item,
+    .detail-item .detail-label,
+    .detail-item .detail-value {
+      text-align: right;
+    }
+    .finance-view__header-card {
+      text-align: right;
+    }
+    .finance-view__chips-strip .view-chip {
+      text-align: right;
+    }
+    .p-inputtext,
+    .p-inputnumber-input,
+    .p-select .p-select-label,
+    .p-textarea,
+    input,
+    textarea {
+      text-align: right;
+    }
+    .p-select-dropdown {
+      order: -1;
+    }
+    .p-datepicker .p-inputtext {
+      text-align: right;
+    }
+    .p-datepicker-panel {
+      direction: rtl;
+    }
+  }
+}
+
+// Enhanced Summary Strip for Form Dialog
+.finance-dialog__summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: white;
+  border-bottom: 2px solid #e2e8f0;
+  
+  .summary-chip {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    
+    i {
+      font-size: 1.75rem;
+      opacity: 0.9;
+    }
+    
+    .chip-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      flex: 1;
+    }
+    
+    .chip-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.8;
+    }
+    
+    .chip-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      
+      small {
+        font-size: 0.85rem;
+        font-weight: 500;
+        opacity: 0.7;
+      }
+    }
+    
+    &.primary {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      color: #1565c0;
+      border-color: #90caf9;
+      
+      i {
+        color: #1976d2;
+      }
+    }
+    
+    &.success {
+      background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+      color: #2e7d32;
+      border-color: #81c784;
+      
+      i {
+        color: #388e3c;
+      }
+    }
+    
+    &.info {
+      background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+      color: #0277bd;
+      border-color: #7dd3fc;
+      
+      i {
+        color: #0288d1;
+      }
+    }
+    
+    &.accent {
+      background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+      color: #6a1b9a;
+      border-color: #ce93d8;
+      
+      i {
+        color: #7b1fa2;
+      }
+    }
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+
+// Enhanced View Dialog Header Card
+.finance-view__header-card {
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  
+  .header-card__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+    
+    i {
+      font-size: 1rem;
+    }
+  }
+  
+  .header-card__title {
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+  }
+  
+  .header-card__subtitle {
+    margin: 0;
+    font-size: 1rem;
+    opacity: 0.9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    
+    i {
+      font-size: 0.9rem;
+    }
+  }
+}
+
+// Enhanced Chips Strip for View Dialog
+.finance-view__chips-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  
+  .view-chip {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: 12px;
+    border: 2px solid;
+    transition: all 0.3s ease;
+    
+    i {
+      font-size: 1.75rem;
+    }
+    
+    .chip-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      flex: 1;
+    }
+    
+    .chip-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.7;
+    }
+    
+    .chip-value {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    
+    &.amount {
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      color: #047857;
+      border-color: #6ee7b7;
+      
+      i {
+        color: #059669;
+      }
+    }
+    
+    &.status {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      color: #1e40af;
+      border-color: #93c5fd;
+      
+      i {
+        color: #2563eb;
+      }
+    }
+    
+    &.country {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      color: #92400e;
+      border-color: #fcd34d;
+      
+      i {
+        color: #b45309;
+      }
+    }
+    
+    &.date {
+      background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+      color: #9f1239;
+      border-color: #f9a8d4;
+      
+      i {
+        color: #be123c;
+      }
+    }
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+
+// Enhanced Section Cards
+.finance-dialog__content,
+.finance-view {
+  .section-card {
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    &__header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.25rem 1.5rem;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-bottom: 2px solid #e2e8f0;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #334155;
+      
+      i {
+        font-size: 1.3rem;
+        color: #667eea;
+      }
+    }
+    
+    &__grid {
+      padding: 1.5rem;
+      
+      &.formgrid {
+        .field {
+          margin-bottom: 1rem;
+          
+          label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #475569;
+            
+            .text-red-500 {
+              margin-left: 0.25rem;
+            }
+          }
+          
+          .p-error {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+          }
+        }
+      }
+      
+      &.detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1.5rem;
+        
+        .detail-item {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          
+          .detail-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+          }
+          
+          .detail-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .finance-dialog__summary-strip {
+    flex-direction: column;
+    
+    .summary-chip {
+      min-width: 100%;
+    }
+  }
+  
+  .finance-view__chips-strip {
+    grid-template-columns: 1fr;
+  }
+  
+  .section-card__grid.detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ─── Pending-approval notice ─────────────────────────────────────────────────
+// Shown when the record already has an undecided approval request, so a second
+// one would be rejected by the workflow.
+
+.wafar-pending {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1rem 1.15rem;
+  margin-bottom: 1.15rem;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-inline-start: 4px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+
+  > i {
+    font-size: 1.25rem;
+    color: #d97706;
+    margin-top: 0.1rem;
+  }
+}
+
+.wafar-pending__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+
+  strong {
+    color: var(--text-color);
+  }
+
+  span,
+  small {
+    color: var(--text-color-secondary);
+  }
+
+  small {
+    font-size: 0.78rem;
+  }
+}

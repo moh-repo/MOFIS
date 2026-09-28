@@ -1,0 +1,656 @@
+<!--
+  Shared section states. A section is a card that is either loading, unavailable
+  (a failed fetch — most often a permission revoked after /sections answered),
+  or showing its content. The two fixed states live here once.
+-->
+<ng-template #sectionLoading>
+  <div class="flex justify-content-center align-items-center dashboard-section-empty">
+    <p-progressSpinner [style]="{width: '40px', height: '40px'}" styleClass="custom-spinner" strokeWidth="4"></p-progressSpinner>
+  </div>
+</ng-template>
+<!-- A failed fetch that was not a refusal: the data exists, it just did not
+     arrive. It used to share "not available to you" with a revoked permission,
+     which sent readers to ask for access they already had (QA B9, N7). -->
+<ng-template #sectionFailed let-code>
+  <div class="flex flex-column align-items-center justify-content-center text-center text-500 dashboard-section-empty dashboard-failed">
+    <i class="pi pi-exclamation-triangle text-3xl text-orange-400 mb-2"></i>
+    <span>{{ 'DASHBOARD.SECTION_LOAD_FAILED' | translate }}</span>
+    <button pButton type="button" class="p-button-text p-button-sm mt-2" icon="pi pi-refresh"
+            [label]="'COMMON.RETRY' | translate" (click)="retrySection(code)"></button>
+  </div>
+</ng-template>
+<ng-template #sectionUnavailable>
+  <div class="flex flex-column align-items-center justify-content-center text-center text-500 dashboard-section-empty dashboard-unavailable">
+    <i class="pi pi-eye-slash text-3xl text-300 mb-2"></i>
+    <span>{{ 'DASHBOARD.SECTION_UNAVAILABLE' | translate }}</span>
+  </div>
+</ng-template>
+
+<div class="grid">
+  <!-- Welcome banner: shortcuts to the pages the reader may open. -->
+  <div class="col-12">
+    <div class="card mb-0 border-round-xl surface-ground border-1 surface-border">
+      <div class="flex flex-column lg:flex-row lg:align-items-center lg:justify-content-between gap-4">
+        <div>
+          <h4 class="m-0 text-900">{{ 'DASHBOARD.WELCOME_TITLE' | translate }}</h4>
+          <p class="mt-2 mb-0 text-600 line-height-3">{{ 'DASHBOARD.WELCOME_SUBTITLE' | translate }}</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a *hasPermission="'STUDENTS.VIEW'" pButton routerLink="/students" [label]="'NAVIGATION.STUDENTS' | translate" icon="pi pi-users" class="p-button-outlined"></a>
+          <a *hasPermission="'FINANCE.VIEW'" pButton routerLink="/finance" [label]="'NAVIGATION.FINANCE' | translate" icon="pi pi-money-bill" class="p-button-outlined"></a>
+          <a *hasPermission="'APPROVALS.VIEW'" pButton routerLink="/approvals/pending" [label]="'NAVIGATION.PENDING_APPROVALS' | translate" icon="pi pi-clock" class="p-button-outlined"></a>
+          <a *hasPermission="'REPORTS.VIEW'" pButton routerLink="/reports/list" [label]="'NAVIGATION.REPORTS' | translate" icon="pi pi-chart-bar" class="p-button-outlined"></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  @if (sectionsLoading) {
+    <div class="col-12">
+      <div class="card">
+        <ng-container *ngTemplateOutlet="sectionLoading"></ng-container>
+      </div>
+    </div>
+  } @else if (sectionsError || visible.size === 0) {
+    <div class="col-12">
+      <div class="card">
+        <ng-container *ngTemplateOutlet="sectionUnavailable"></ng-container>
+      </div>
+    </div>
+  }
+
+  <!-- ── Students ─────────────────────────────────────────────────────── -->
+  <ng-container *hasPermission="permissionsFor('DASHBOARD_STUDENTS')">
+    @if (isVisible('DASHBOARD_STUDENTS')) {
+      <div class="col-12" data-section="DASHBOARD_STUDENTS">
+        <div class="card">
+          <div class="dashboard-section-head flex align-items-center justify-content-between gap-2 mb-2">
+            <h5 class="m-0">{{ 'DASHBOARD.SECTIONS.STUDENTS' | translate }}</h5>
+            <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded p-button-text p-button-plain"
+                    (click)="loadStudents()" [disabled]="students.loading"
+                    [pTooltip]="'COMMON.REFRESH' | translate" [attr.aria-label]="'COMMON.REFRESH' | translate"></button>
+          </div>
+
+          @if (students.loading) {
+            <ng-container *ngTemplateOutlet="sectionLoading"></ng-container>
+          } @else if (students.error && !students.forbidden) {
+            <ng-container *ngTemplateOutlet="sectionFailed; context: { $implicit: 'DASHBOARD_STUDENTS' }"></ng-container>
+          } @else if (students.error || !students.data) {
+            <ng-container *ngTemplateOutlet="sectionUnavailable"></ng-container>
+          } @else {
+            <div class="summary-cards summary-cards--cols-4 mt-0">
+              <div class="summary-card students-total">
+                <div class="summary-icon"><i class="pi pi-users"></i></div>
+                <div class="summary-content">
+                  <span class="summary-label">{{ 'DASHBOARD.TOTAL_STUDENTS' | translate }}</span>
+                  <span class="summary-value">{{ students.data.total | number }}</span>
+                </div>
+              </div>
+              <div class="summary-card students-active">
+                <div class="summary-icon"><i class="pi pi-user"></i></div>
+                <div class="summary-content">
+                  <span class="summary-label">{{ 'DASHBOARD.ACTIVE_STUDENTS' | translate }}</span>
+                  <span class="summary-value">{{ students.data.active | number }}</span>
+                </div>
+              </div>
+              <div class="summary-card students-new">
+                <div class="summary-icon"><i class="pi pi-user-plus"></i></div>
+                <div class="summary-content">
+                  <span class="summary-label">{{ 'DASHBOARD.NEW_THIS_MONTH' | translate }}</span>
+                  <span class="summary-value">{{ students.data.newThisMonth | number }}</span>
+                </div>
+              </div>
+              <div class="summary-card students-inactive">
+                <div class="summary-icon"><i class="pi pi-user-minus"></i></div>
+                <div class="summary-content">
+                  <span class="summary-label">{{ 'DASHBOARD.NOT_ACTIVE' | translate }}</span>
+                  <span class="summary-value">{{ students.data.notActive | number }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-3 mt-3 text-sm text-600">
+              <span>
+                <i class="pi pi-star text-primary me-1"></i>
+                {{ 'DASHBOARD.NEW_STATUS' | translate }}: <strong class="text-900">{{ students.data.newStatus | number }}</strong>
+              </span>
+              <span>
+                <i class="pi pi-pause-circle text-orange-500 me-1"></i>
+                {{ 'DASHBOARD.SUSPENDED' | translate }}: <strong class="text-900">{{ students.data.suspended | number }}</strong>
+              </span>
+            </div>
+
+            <div class="grid mt-2">
+              <div class="col-12 xl:col-6">
+                <h6 class="mt-2 mb-1">{{ 'DASHBOARD.REGISTRATIONS_TREND' | translate }}</h6>
+                <p class="text-600 text-sm mt-0 mb-2">{{ 'DASHBOARD.REGISTRATIONS_TREND_HINT' | translate }}</p>
+                @if (monthlyStudentsChartData) {
+                  <button type="button" class="dashboard-chart-open"
+                    (click)="expandChart('DASHBOARD.REGISTRATIONS_TREND', 'line', monthlyStudentsChartData, monthlyStudentsChartOptions)"
+                    [pTooltip]="'DASHBOARD.EXPAND_CHART' | translate"
+                    [attr.aria-label]="'DASHBOARD.EXPAND_CHART' | translate">
+                    <p-chart type="line" [data]="monthlyStudentsChartData" [options]="monthlyStudentsChartOptions" [style]="{'height': '260px'}"></p-chart>
+                  </button>
+                } @else {
+                  <div class="text-500 text-sm py-6 text-center">{{ 'DASHBOARD.NO_TREND_DATA' | translate }}</div>
+                }
+              </div>
+              <div class="col-12 md:col-6 xl:col-3">
+                <h6 class="mt-2 mb-3">{{ 'DASHBOARD.ENROLLMENT_BY_YEAR' | translate }}</h6>
+                @if (delegationYearChartData) {
+                  <button type="button" class="dashboard-chart-open"
+                    (click)="expandChart('DASHBOARD.ENROLLMENT_BY_YEAR', 'bar', delegationYearChartData, delegationYearChartOptions)"
+                    [pTooltip]="'DASHBOARD.EXPAND_CHART' | translate"
+                    [attr.aria-label]="'DASHBOARD.EXPAND_CHART' | translate">
+                    <p-chart type="bar" [data]="delegationYearChartData" [options]="delegationYearChartOptions" [style]="{'height': '260px'}"></p-chart>
+                  </button>
+                } @else {
+                  <div class="text-500 text-sm py-6 text-center">{{ 'DASHBOARD.NO_TREND_DATA' | translate }}</div>
+                }
+              </div>
+              <div class="col-12 md:col-6 xl:col-3">
+                <h6 class="mt-2 mb-3">{{ 'DASHBOARD.STUDENTS_BY_STATUS' | translate }}</h6>
+                @if (statusChartData) {
+                  <button type="button" class="dashboard-chart-open"
+                    (click)="expandChart('DASHBOARD.STUDENTS_BY_STATUS', 'doughnut', statusChartData, statusChartOptions)"
+                    [pTooltip]="'DASHBOARD.EXPAND_CHART' | translate"
+                    [attr.aria-label]="'DASHBOARD.EXPAND_CHART' | translate">
+                    <p-chart type="doughnut" [data]="statusChartData" [options]="statusChartOptions" [style]="{'height': '260px'}"></p-chart>
+                  </button>
+                } @else {
+                  <div class="text-500 text-sm py-6 text-center">{{ 'DASHBOARD.NO_TREND_DATA' | translate }}</div>
+                }
+              </div>
+            </div>
+
+            @if (canViewStudents()) {
+              <h6 class="mt-3 mb-2">{{ 'DASHBOARD.RECENT_STUDENTS' | translate }}</h6>
+              @if (recentStudentsLoading) {
+                <ng-container *ngTemplateOutlet="sectionLoading"></ng-container>
+              } @else {
+                <p-table [value]="recentStudents" [paginator]="false" responsiveLayout="scroll">
+                  <ng-template pTemplate="header">
+                    <tr>
+                      <th>{{ 'STUDENTS.ID' | translate }}</th>
+                      <th pSortableColumn="studentName">{{ 'STUDENTS.NAME' | translate }} <p-sortIcon field="studentName"></p-sortIcon></th>
+                      <th>{{ 'STUDENTS.MAJOR' | translate }}</th>
+                      <th>{{ 'DASHBOARD.ADDED_DATE' | translate }}</th>
+                      <th>{{ 'COMMON.VIEW' | translate }}</th>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="body" let-student>
+                    <tr>
+                      <td style="width: 10%; min-width: 4rem;">{{student.studentId}}</td>
+                      <td style="width: 30%; min-width: 8rem;">{{student.studentName || '—'}}</td>
+                      <td style="width: 25%; min-width: 8rem;">{{ majorOf(student) }}</td>
+                      <td style="width: 20%; min-width: 8rem;">{{student.studentMidate | date:'short'}}</td>
+                      <td style="width: 15%;">
+                        <a pButton pRipple [routerLink]="['/student-add/edit', student.studentId]" icon="pi pi-external-link" class="p-button-text p-button-icon-only" [title]="'DASHBOARD.VIEW_STUDENT' | translate"></a>
+                      </td>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="emptymessage">
+                    <tr>
+                      <td colspan="5" class="text-center text-500">
+                        <div class="flex flex-column align-items-center py-4">
+                          <i class="pi pi-users text-4xl text-300 mb-3"></i>
+                          <span class="text-500">{{ 'DASHBOARD.NO_STUDENTS_FOUND' | translate }}</span>
+                          <small class="text-400 mt-2">{{ 'DASHBOARD.ADD_STUDENTS_MESSAGE' | translate }}</small>
+                        </div>
+                      </td>
+                    </tr>
+                  </ng-template>
+                </p-table>
+              }
+            }
+          }
+        </div>
+      </div>
+    }
+  </ng-container>
+
+  <!-- ── Finance ──────────────────────────────────────────────────────── -->
+  <ng-container *hasPermission="permissionsFor('DASHBOARD_FINANCE')">
+    @if (isVisible('DASHBOARD_FINANCE')) {
+      <div class="col-12" data-section="DASHBOARD_FINANCE">
+        <div class="card">
+          <div class="dashboard-section-head flex align-items-center justify-content-between gap-2 mb-2">
+            <h5 class="m-0">{{ 'DASHBOARD.SECTIONS.FINANCE' | translate }}</h5>
+            <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded p-button-text p-button-plain"
+                    (click)="loadFinance()" [disabled]="finance.loading"
+                    [pTooltip]="'COMMON.REFRESH' | translate" [attr.aria-label]="'COMMON.REFRESH' | translate"></button>
+          </div>
+
+          @if (finance.loading) {
+            <ng-container *ngTemplateOutlet="sectionLoading"></ng-container>
+          } @else if (finance.error && !finance.forbidden) {
+            <ng-container *ngTemplateOutlet="sectionFailed; context: { $implicit: 'DASHBOARD_FINANCE' }"></ng-container>
+          } @else if (finance.error || !finance.data) {
+            <ng-container *ngTemplateOutlet="sectionUnavailable"></ng-container>
+          } @else {
+            <div class="summary-cards summary-cards--cols-4 mt-0">
+              <div class="summary-card finance-total">
+                <div class="summary-icon"><i class="pi pi-wallet"></i></div>
+                <div class="summary-content">
+                  <span class="summary-label">{{ 'DASHBOARD.TOTAL_DISBURSED' | translate }}</span>
+                  <span class="summary-value">{{ finance.data.totalDisbursed | number:'1.0-0' }}</span>
+                </div>
+              </div>
+              <div class="summary-card finance-average">
+                <div class="summary-icon"><i class="pi pi-chart-line"></i></div>
+                <div class="summary-content">
+                  <span class="summary-label">{{ 'DASHBOARD.AVERAGE_DISBURSEMENT' | translate }}</span>
+                  <span class="summary-value">{{ finance.data.averageDisbursement | number:'1.0-0' }}</span>
+                </div>
+              </div>
+              <div class="summary-card finance-wafar" [class.negative]="finance.data.wafar.currentBalance < 0">
+                <div class="summary-icon"><i class="pi pi-briefcase"></i></div>
+                <div class="summary-content">
+                  <span class="summary-label">{{ 'DASHBOARD.WAFAR_BALANCE' | translate }}</span>
+                  <span class="summary-value">{{ finance.data.wafar.currentBalance | number:'1.0-0' }}</span>
+                  <span class="summary-meta">
+                    {{ 'DASHBOARD.WAFAR_DEPOSITS' | translate }}: {{ finance.data.wafar.totalDeposits | number:'1.0-0' }}
+                    · {{ 'DASHBOARD.WAFAR_SPENT' | translate }}: {{ finance.data.wafar.totalSpent | number:'1.0-0' }}
+                  </span>
+                </div>
+              </div>
+              <div class="summary-card finance-pending">
+                <div class="summary-icon"><i class="pi pi-hourglass"></i></div>
+                <div class="summary-content">
+                  <span class="summary-label">{{ 'DASHBOARD.WAFAR_PENDING' | translate }}</span>
+                  <span class="summary-value">{{ finance.data.wafar.pendingAmount | number:'1.0-0' }}</span>
+                  <span class="summary-meta">{{ finance.data.wafar.transactionCount | number }} {{ 'WAFAR.TRANSACTIONS' | translate }}</span>
+                </div>
+              </div>
+            </div>
+
+            <h6 class="mt-4 mb-3">{{ 'DASHBOARD.DISBURSEMENT_BY_YEAR' | translate }}</h6>
+            @if (disbursementChartData) {
+              <button type="button" class="dashboard-chart-open"
+                (click)="expandChart('DASHBOARD.DISBURSEMENT_BY_YEAR', 'bar', disbursementChartData, disbursementChartOptions)"
+                [pTooltip]="'DASHBOARD.EXPAND_CHART' | translate"
+                [attr.aria-label]="'DASHBOARD.EXPAND_CHART' | translate">
+                <p-chart type="bar" [data]="disbursementChartData" [options]="disbursementChartOptions" [style]="{'height': '260px'}"></p-chart>
+              </button>
+            } @else {
+              <div class="text-500 text-sm py-6 text-center">{{ 'DASHBOARD.NO_TREND_DATA' | translate }}</div>
+            }
+          }
+        </div>
+      </div>
+    }
+  </ng-container>
+
+  <!-- ── Approvals ────────────────────────────────────────────────────── -->
+  <ng-container *hasPermission="permissionsFor('DASHBOARD_APPROVALS')">
+    @if (isVisible('DASHBOARD_APPROVALS')) {
+      <div class="col-12 xl:col-6" data-section="DASHBOARD_APPROVALS">
+        <div class="card h-full">
+          <div class="dashboard-section-head flex align-items-center justify-content-between gap-2 mb-2">
+            <h5 class="m-0">{{ 'DASHBOARD.SECTIONS.APPROVALS' | translate }}</h5>
+            <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded p-button-text p-button-plain"
+                    (click)="loadApprovals()" [disabled]="approvals.loading"
+                    [pTooltip]="'COMMON.REFRESH' | translate" [attr.aria-label]="'COMMON.REFRESH' | translate"></button>
+          </div>
+
+          @if (approvals.loading) {
+            <ng-container *ngTemplateOutlet="sectionLoading"></ng-container>
+          } @else if (approvals.error && !approvals.forbidden) {
+            <ng-container *ngTemplateOutlet="sectionFailed; context: { $implicit: 'DASHBOARD_APPROVALS' }"></ng-container>
+          } @else if (approvals.error || !approvals.data) {
+            <ng-container *ngTemplateOutlet="sectionUnavailable"></ng-container>
+          } @else {
+            <div class="grid">
+              <div class="col-12 md:col-6">
+                <a routerLink="/approvals/pending" class="summary-card approvals-pending no-underline">
+                  <div class="summary-icon"><i class="pi pi-inbox"></i></div>
+                  <div class="summary-content">
+                    <span class="summary-label">{{ 'DASHBOARD.PENDING_APPROVALS' | translate }}</span>
+                    <span class="summary-value">{{ approvals.data.pendingTotal | number }}</span>
+                    <span class="summary-meta text-primary">{{ 'DASHBOARD.OPEN_APPROVAL_QUEUE' | translate }}</span>
+                  </div>
+                </a>
+              </div>
+              <div class="col-12 md:col-6">
+                <div class="summary-card approvals-mine">
+                  <div class="summary-icon"><i class="pi pi-user-edit"></i></div>
+                  <div class="summary-content">
+                    <span class="summary-label">{{ 'DASHBOARD.MY_PENDING' | translate }}</span>
+                    <span class="summary-value">{{ approvals.data.myPending | number }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h6 class="mt-3 mb-2">{{ 'DASHBOARD.PENDING_BY_TYPE' | translate }}</h6>
+            @if (approvals.data.byEntityType.length) {
+              <ul class="dashboard-kv">
+                @for (row of approvals.data.byEntityType; track $index) {
+                  <li>
+                    <span class="text-700">{{ codeName(row) }}</span>
+                    <span class="font-semibold text-900">{{ row.count | number }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <div class="text-500 text-sm py-3 text-center">{{ 'DASHBOARD.NO_TREND_DATA' | translate }}</div>
+            }
+          }
+        </div>
+      </div>
+    }
+  </ng-container>
+
+  <!-- ── Alert cases ──────────────────────────────────────────────────── -->
+  <ng-container *hasPermission="permissionsFor('DASHBOARD_ALERTS')">
+    @if (isVisible('DASHBOARD_ALERTS')) {
+      <div class="col-12 xl:col-6" data-section="DASHBOARD_ALERTS">
+        <div class="card h-full">
+          <div class="dashboard-section-head flex align-items-center justify-content-between gap-2 mb-2">
+            <h5 class="m-0">{{ 'DASHBOARD.SECTIONS.ALERTS' | translate }}</h5>
+            <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded p-button-text p-button-plain"
+                    (click)="loadAlertCases()" [disabled]="alertCases.loading"
+                    [pTooltip]="'COMMON.REFRESH' | translate" [attr.aria-label]="'COMMON.REFRESH' | translate"></button>
+          </div>
+
+          @if (alertCases.loading) {
+            <ng-container *ngTemplateOutlet="sectionLoading"></ng-container>
+          } @else if (alertCases.error && !alertCases.forbidden) {
+            <ng-container *ngTemplateOutlet="sectionFailed; context: { $implicit: 'DASHBOARD_ALERTS' }"></ng-container>
+          } @else if (alertCases.error || !alertCases.data) {
+            <ng-container *ngTemplateOutlet="sectionUnavailable"></ng-container>
+          } @else {
+            <a routerLink="/alert-events" class="summary-card alerts-open no-underline">
+              <div class="summary-icon"><i class="pi pi-exclamation-circle"></i></div>
+              <div class="summary-content">
+                <span class="summary-label">{{ 'DASHBOARD.OPEN_CASES' | translate }}</span>
+                <span class="summary-value">{{ alertCases.data.totalOpen | number }}</span>
+                <span class="summary-meta">
+                  {{ 'ALERT_EVENTS.STATUS.ACKNOWLEDGED' | translate }}: {{ alertCases.data.totalAcknowledged | number }}
+                  · {{ 'ALERT_EVENTS.STATUS.RESOLVED' | translate }}: {{ alertCases.data.totalResolved | number }}
+                  · {{ 'ALERT_EVENTS.TOTAL' | translate }}: {{ alertCases.data.totalAll | number }}
+                </span>
+              </div>
+            </a>
+
+            <h6 class="mt-3 mb-2">{{ 'DASHBOARD.OPEN_BY_SEVERITY' | translate }}</h6>
+            <!-- The legend is LU_ALERT_SEVERITY itself: every active row, in table order, zero counts included. -->
+            <ul class="dashboard-kv dashboard-severity-legend">
+              @for (row of alertCases.data.bySeverity || []; track row.code) {
+                <li>
+                  <p-tag [value]="codeName(row)" [severity]="tagSeverity(row.uiSeverity)"
+                         [icon]="row.icon ? 'pi ' + row.icon : undefined"></p-tag>
+                  <span class="font-semibold text-900">{{ row.count | number }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    }
+  </ng-container>
+
+  <!-- ── Countries ────────────────────────────────────────────────────── -->
+  <ng-container *hasPermission="permissionsFor('DASHBOARD_COUNTRIES')">
+    @if (isVisible('DASHBOARD_COUNTRIES')) {
+      <div class="col-12 xl:col-6" data-section="DASHBOARD_COUNTRIES">
+        <div class="card h-full">
+          <div class="dashboard-section-head flex align-items-center justify-content-between gap-2 mb-2">
+            <h5 class="m-0">{{ 'DASHBOARD.SECTIONS.COUNTRIES' | translate }}</h5>
+            <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded p-button-text p-button-plain"
+                    (click)="loadCountries()" [disabled]="countries.loading"
+                    [pTooltip]="'COMMON.REFRESH' | translate" [attr.aria-label]="'COMMON.REFRESH' | translate"></button>
+          </div>
+
+          @if (countries.loading) {
+            <ng-container *ngTemplateOutlet="sectionLoading"></ng-container>
+          } @else if (countries.error && !countries.forbidden) {
+            <ng-container *ngTemplateOutlet="sectionFailed; context: { $implicit: 'DASHBOARD_COUNTRIES' }"></ng-container>
+          } @else if (countries.error || !countries.data) {
+            <ng-container *ngTemplateOutlet="sectionUnavailable"></ng-container>
+          } @else if (topCountriesChartData) {
+            <button type="button" class="dashboard-chart-open"
+              (click)="expandChart('DASHBOARD.SECTIONS.COUNTRIES', 'bar', topCountriesChartData, topCountriesChartOptions)"
+              [pTooltip]="'DASHBOARD.EXPAND_CHART' | translate"
+              [attr.aria-label]="'DASHBOARD.EXPAND_CHART' | translate">
+              <p-chart type="bar" [data]="topCountriesChartData" [options]="topCountriesChartOptions" [style]="{'height': '300px'}"></p-chart>
+            </button>
+          } @else {
+            <div class="text-500 text-sm py-6 text-center">{{ 'DASHBOARD.NO_TREND_DATA' | translate }}</div>
+          }
+        </div>
+      </div>
+    }
+  </ng-container>
+
+  <!-- ── Users ────────────────────────────────────────────────────────── -->
+  <ng-container *hasPermission="permissionsFor('DASHBOARD_USERS')">
+    @if (isVisible('DASHBOARD_USERS')) {
+      <div class="col-12 xl:col-6" data-section="DASHBOARD_USERS">
+        <div class="card h-full">
+          <div class="dashboard-section-head flex align-items-center justify-content-between gap-2 mb-2">
+            <h5 class="m-0">{{ 'DASHBOARD.SECTIONS.USERS' | translate }}</h5>
+            <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded p-button-text p-button-plain"
+                    (click)="loadUsers()" [disabled]="users.loading"
+                    [pTooltip]="'COMMON.REFRESH' | translate" [attr.aria-label]="'COMMON.REFRESH' | translate"></button>
+          </div>
+
+          @if (users.loading) {
+            <ng-container *ngTemplateOutlet="sectionLoading"></ng-container>
+          } @else if (users.error && !users.forbidden) {
+            <ng-container *ngTemplateOutlet="sectionFailed; context: { $implicit: 'DASHBOARD_USERS' }"></ng-container>
+          } @else if (users.error || !users.data) {
+            <ng-container *ngTemplateOutlet="sectionUnavailable"></ng-container>
+          } @else {
+            <p class="text-600 text-sm mt-0 mb-3 dashboard-users-scope">
+              <i class="pi pi-info-circle me-1"></i>
+              @if (users.data.scoped) {
+                {{ 'DASHBOARD.USERS_SCOPE_COUNTRY' | translate }}
+              } @else {
+                {{ 'DASHBOARD.USERS_SCOPE_ALL' | translate }}
+              }
+            </p>
+            <div class="grid">
+              <div class="col-12 md:col-6">
+                <div class="summary-card users-total">
+                  <div class="summary-icon"><i class="pi pi-users"></i></div>
+                  <div class="summary-content">
+                    <span class="summary-label">{{ 'DASHBOARD.REGISTERED_USERS' | translate }}</span>
+                    <span class="summary-value">{{ users.data.total | number }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12 md:col-6">
+                <div class="summary-card users-new">
+                  <div class="summary-icon"><i class="pi pi-user-plus"></i></div>
+                  <div class="summary-content">
+                    <span class="summary-label">{{ 'DASHBOARD.NEW_THIS_MONTH' | translate }}</span>
+                    <span class="summary-value">{{ users.data.newThisMonth | number }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <h6 class="mt-3 mb-2">{{ 'DASHBOARD.CHART_NEW_USERS' | translate }}</h6>
+            @if (monthlyUsersChartData) {
+              <button type="button" class="dashboard-chart-open"
+                (click)="expandChart('DASHBOARD.CHART_NEW_USERS', 'line', monthlyUsersChartData, monthlyUsersChartOptions)"
+                [pTooltip]="'DASHBOARD.EXPAND_CHART' | translate"
+                [attr.aria-label]="'DASHBOARD.EXPAND_CHART' | translate">
+                <p-chart type="line" [data]="monthlyUsersChartData" [options]="monthlyUsersChartOptions" [style]="{'height': '220px'}"></p-chart>
+              </button>
+            } @else {
+              <div class="text-500 text-sm py-6 text-center">{{ 'DASHBOARD.NO_TREND_DATA' | translate }}</div>
+            }
+          }
+        </div>
+      </div>
+    }
+  </ng-container>
+
+  <!-- ── Current quarter ──────────────────────────────────────────────── -->
+  <ng-container *hasPermission="permissionsFor('DASHBOARD_QUARTER')">
+    @if (isVisible('DASHBOARD_QUARTER')) {
+      <div class="col-12 xl:col-6" data-section="DASHBOARD_QUARTER">
+        <div class="card h-full">
+          <div class="dashboard-section-head flex align-items-center justify-content-between gap-2 mb-2">
+            <h5 class="m-0">{{ 'DASHBOARD.SECTIONS.QUARTER' | translate }}</h5>
+            <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded p-button-text p-button-plain"
+                    (click)="loadQuarter()" [disabled]="quarter.loading"
+                    [pTooltip]="'COMMON.REFRESH' | translate" [attr.aria-label]="'COMMON.REFRESH' | translate"></button>
+          </div>
+
+          @if (quarter.loading) {
+            <ng-container *ngTemplateOutlet="sectionLoading"></ng-container>
+          } @else if (quarter.error && !quarter.forbidden) {
+            <ng-container *ngTemplateOutlet="sectionFailed; context: { $implicit: 'DASHBOARD_QUARTER' }"></ng-container>
+          } @else if (quarter.error || !quarter.data) {
+            <ng-container *ngTemplateOutlet="sectionUnavailable"></ng-container>
+          } @else if (!quarter.data.present) {
+            <div class="flex flex-column align-items-center justify-content-center text-center text-500 dashboard-section-empty">
+              <i class="pi pi-calendar-times text-3xl text-300 mb-2"></i>
+              <span>{{ 'DASHBOARD.NO_OPEN_QUARTER' | translate }}</span>
+            </div>
+          } @else {
+            <div class="flex flex-wrap align-items-center gap-2 mb-3">
+              <span class="text-500 text-sm">{{ 'DASHBOARD.CURRENT_QUARTER' | translate }}</span>
+              <span class="text-900 font-semibold text-lg">{{ quarterDisplayName }}</span>
+              <span class="text-600">{{ quarter.data.quarterYear }} / Q{{ quarter.data.quarterNumber }}</span>
+              <p-tag [value]="(quarter.data.quarterClosed ? 'DASHBOARD.QUARTER_CLOSED' : 'DASHBOARD.QUARTER_OPEN') | translate"
+                     [severity]="quarter.data.quarterClosed ? 'danger' : 'success'"
+                     [icon]="quarter.data.quarterClosed ? 'pi pi-lock' : 'pi pi-unlock'"></p-tag>
+              @if (quarter.data.countryId == null) {
+                <p-tag [value]="'DASHBOARD.QUARTER_GLOBAL' | translate" severity="info" icon="pi pi-globe"></p-tag>
+              }
+            </div>
+
+            <div class="summary-cards summary-cards--cols-3 mt-0">
+              <div class="summary-card quarter-budget">
+                <div class="summary-icon"><i class="pi pi-wallet"></i></div>
+                <div class="summary-content">
+                  <span class="summary-label">{{ 'DASHBOARD.QUARTER_BUDGET' | translate }}</span>
+                  <span class="summary-value">{{ quarter.data.budgetAmount == null ? '—' : (quarter.data.budgetAmount | number:'1.0-0') }}</span>
+                </div>
+              </div>
+              <div class="summary-card quarter-paid">
+                <div class="summary-icon"><i class="pi pi-check-circle"></i></div>
+                <div class="summary-content">
+                  <span class="summary-label">{{ 'DASHBOARD.QUARTER_PAID' | translate }}</span>
+                  <span class="summary-value">{{ quarter.data.paidAmount == null ? '—' : (quarter.data.paidAmount | number:'1.0-0') }}</span>
+                </div>
+              </div>
+              <div class="summary-card quarter-students">
+                <div class="summary-icon"><i class="pi pi-users"></i></div>
+                <div class="summary-content">
+                  <span class="summary-label">{{ 'DASHBOARD.QUARTER_STUDENTS' | translate }}</span>
+                  <span class="summary-value">{{ quarter.data.quarterStudentCount | number }}</span>
+                </div>
+              </div>
+            </div>
+
+            @if (quarter.data.quarterPayDate) {
+              <div class="text-sm text-600 mt-3">
+                {{ 'OPERATIONS.MOHE_QUARTER.FORM.PAY_DATE' | translate }}: <strong class="text-900">{{ quarter.data.quarterPayDate | date:'mediumDate' }}</strong>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    }
+  </ng-container>
+
+  <!-- ── System notices ───────────────────────────────────────────────── -->
+  <ng-container *hasPermission="permissionsFor('DASHBOARD_NOTICES')">
+    @if (isVisible('DASHBOARD_NOTICES')) {
+      <div class="col-12" data-section="DASHBOARD_NOTICES">
+        <div class="card">
+          <div class="dashboard-section-head flex align-items-center justify-content-between gap-2 mb-1">
+            <h5 class="m-0">{{ 'DASHBOARD.SECTIONS.NOTICES' | translate }}</h5>
+            <button pButton type="button" icon="pi pi-refresh" class="p-button-rounded p-button-text p-button-plain"
+                    (click)="loadNotices()" [disabled]="notices.loading"
+                    [pTooltip]="'COMMON.REFRESH' | translate" [attr.aria-label]="'COMMON.REFRESH' | translate"></button>
+          </div>
+          <p class="text-600 text-sm mt-0 mb-3 dashboard-notices-scope">
+            <i class="pi pi-globe me-1"></i>{{ 'DASHBOARD.NOTICES_NOT_COUNTRY_SPECIFIC' | translate }}
+          </p>
+
+          @if (notices.loading) {
+            <ng-container *ngTemplateOutlet="sectionLoading"></ng-container>
+          } @else if (notices.error && !notices.forbidden) {
+            <ng-container *ngTemplateOutlet="sectionFailed; context: { $implicit: 'DASHBOARD_NOTICES' }"></ng-container>
+          } @else if (notices.error || !notices.data) {
+            <ng-container *ngTemplateOutlet="sectionUnavailable"></ng-container>
+          } @else {
+            <!-- One notice row. Type icon/colour and priority come resolved from the notice's own code rows. -->
+            <ng-template #noticeRow let-alert>
+              <li class="flex align-items-center gap-3 py-2 border-bottom-1 surface-border dashboard-notice">
+                <p-tag [severity]="tagSeverity(alert.type?.uiSeverity)" [rounded]="true" styleClass="dashboard-notice-type"
+                       [icon]="alert.type?.icon ? 'pi ' + alert.type.icon : undefined"
+                       [value]="refName(alert.type)"></p-tag>
+                <div class="flex flex-column flex-1">
+                  <span class="text-900 font-medium line-height-3">{{ (alert | inLanguage:'alertTitle') || '—' }}</span>
+                  <span class="text-700 text-sm line-height-3">{{ (alert | inLanguage:'alertMessage') || '—' }}</span>
+                  <span class="text-500 text-xs mt-1">{{ timeAgo(alert.createdDate) || '—' }}</span>
+                </div>
+                <div class="flex flex-column align-items-end gap-1">
+                  <p-tag [severity]="tagSeverity(alert.priority?.uiSeverity)" styleClass="dashboard-notice-priority"
+                         [value]="refName(alert.priority)"></p-tag>
+                  <!-- Its status: an approval notice is resolved once the request is decided (QA H2). -->
+                  @if (alert.status) {
+                    <p-tag [severity]="tagSeverity(alert.status.uiSeverity)" styleClass="dashboard-notice-status"
+                           [value]="refName(alert.status)"></p-tag>
+                  }
+                </div>
+              </li>
+            </ng-template>
+
+            <span class="block text-600 font-medium mb-3">{{ 'DASHBOARD.TODAY' | translate }} ({{todayAlerts.length}} {{ 'DASHBOARD.ALERTS' | translate }})</span>
+            <ul class="p-0 mx-0 mt-0 mb-4 list-none">
+              @for (alert of todayAlerts; track alert.alertId) {
+                <ng-container *ngTemplateOutlet="noticeRow; context: { $implicit: alert }"></ng-container>
+              }
+              @if (todayAlerts.length === 0) {
+                <li class="flex align-items-center py-4">
+                  <div class="w-full text-center text-500">
+                    <i class="pi pi-bell text-2xl mb-2"></i>
+                    <div>{{ 'DASHBOARD.NO_ALERTS_TODAY' | translate }}</div>
+                  </div>
+                </li>
+              }
+            </ul>
+            <span class="block text-600 font-medium mb-3">{{ 'DASHBOARD.YESTERDAY' | translate }} ({{yesterdayAlerts.length}} {{ 'DASHBOARD.ALERTS' | translate }})</span>
+            <ul class="p-0 m-0 list-none">
+              @for (alert of yesterdayAlerts; track alert.alertId) {
+                <ng-container *ngTemplateOutlet="noticeRow; context: { $implicit: alert }"></ng-container>
+              }
+              @if (yesterdayAlerts.length === 0) {
+                <li class="flex align-items-center py-4">
+                  <div class="w-full text-center text-500">
+                    <i class="pi pi-bell text-2xl mb-2"></i>
+                    <div>{{ 'DASHBOARD.NO_ALERTS_YESTERDAY' | translate }}</div>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    }
+  </ng-container>
+</div>
+
+<!--
+  Any chart opened at full size. The dashboard draws its charts in cards a few
+  hundred pixels wide, where a dense axis (twelve months, ten countries) cannot
+  be read; clicking one shows the same data — the same objects, so the two can
+  never disagree — with room for its labels.
+-->
+<p-dialog [visible]="!!expandedChart" (visibleChange)="onExpandedVisibleChange($event)"
+  [modal]="true" [dismissableMask]="true" [draggable]="false" [resizable]="false"
+  styleClass="dashboard-chart-dialog" [style]="{width: '92vw', maxWidth: '1100px'}"
+  [breakpoints]="{'960px': '96vw'}"
+  [header]="(expandedChart?.titleKey || '') | translate">
+  @if (expandedChart) {
+    <p-chart [type]="expandedChart.type" [data]="expandedChart.data" [options]="expandedChart.options"
+      [style]="{'height': '60vh'}"></p-chart>
+  }
+</p-dialog>

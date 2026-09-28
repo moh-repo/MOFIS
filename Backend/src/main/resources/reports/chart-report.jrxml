@@ -1,0 +1,599 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE jasperReport PUBLIC "-//JasperReports//DTD Report Design//EN"
+  "http://jasperreports.sourceforge.net/dtds/jasperreport.dtd">
+<!--
+  The report behind the eight visualisation pages.
+
+  One template serves all of them because what they have in common is the whole
+  shape of the thing: a page heading, then a run of cards, each card a picture
+  with a table of numbers under it. Only the numbers differ, so the rows are
+  flattened to a fixed width (ChartReportRow) and the report groups on the chart
+  index — the group header draws one card's picture and its column headings, the
+  detail band draws that card's rows, and each card starts a fresh page.
+
+  Landscape, unlike every other report here, because a chart drawn for a browser
+  window is wider than it is tall; printing one onto portrait A4 would either
+  shrink it to a third of the page or crop it.
+
+  Columns that a given card does not use are simply not printed: their headings
+  are blank, and both the heading and the cells test the same field. That is what
+  lets a two-column pie chart and a seven-column trend table share the layout
+  without either looking padded.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
+    http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+  name="chart-report"
+  pageWidth="842" pageHeight="595"
+  orientation="Landscape"
+  columnWidth="802" leftMargin="20" rightMargin="20"
+  topMargin="10" bottomMargin="15"
+  whenNoDataType="AllSectionsNoDetail">
+
+  <!-- Designed right-to-left; JasperReportService compiles a mirrored copy for English. -->
+  <property name="mohe.mirror.for.ltr" value="true"/>
+
+  <style name="defaultStyle" isDefault="true" fontName="Cairo" fontSize="9"/>
+
+  <parameter name="IS_RTL"       class="java.lang.Boolean"><defaultValueExpression><![CDATA[Boolean.TRUE]]></defaultValueExpression></parameter>
+  <parameter name="LANG"         class="java.lang.String"><defaultValueExpression><![CDATA["ar"]]></defaultValueExpression></parameter>
+  <parameter name="LOGO_IMAGE"   class="java.io.InputStream"/>
+  <parameter name="TITLE_01"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_02"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_03"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_01_AR"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_02_AR"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_03_AR"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_01_EN"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_02_EN"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_03_EN"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="REPORT_TITLE" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="REPORT_DATE"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="FOOTER_TEXT"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="PRINTED_BY"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_GENERATED" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_PAGE"      class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_OF"        class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_SIGNATORY" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_COUNT"    class="java.lang.Integer"><defaultValueExpression><![CDATA[0]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_1"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_1"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_2"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_2"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_3"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_3"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_4"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_4"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_5"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_5"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+
+  <field name="chartIndex"    class="java.lang.Integer"/>
+  <field name="chartTitle"    class="java.lang.String"/>
+  <field name="chartSubtitle" class="java.lang.String"/>
+  <field name="chartImage"    class="java.lang.Object"/>
+  <field name="hasData"       class="java.lang.Boolean"/>
+  <field name="h0" class="java.lang.String"/>
+  <field name="h1" class="java.lang.String"/>
+  <field name="h2" class="java.lang.String"/>
+  <field name="h3" class="java.lang.String"/>
+  <field name="h4" class="java.lang.String"/>
+  <field name="h5" class="java.lang.String"/>
+  <field name="h6" class="java.lang.String"/>
+  <field name="c0" class="java.lang.String"/>
+  <field name="c1" class="java.lang.String"/>
+  <field name="c2" class="java.lang.String"/>
+  <field name="c3" class="java.lang.String"/>
+  <field name="c4" class="java.lang.String"/>
+  <field name="c5" class="java.lang.String"/>
+  <field name="c6" class="java.lang.String"/>
+
+  <variable name="ROW_NUMBER" class="java.lang.Integer" resetType="Group" resetGroup="ChartGroup" calculation="Count">
+    <variableExpression><![CDATA[$F{chartIndex}]]></variableExpression>
+    <initialValueExpression><![CDATA[0]]></initialValueExpression>
+  </variable>
+
+  <group name="ChartGroup" isStartNewPage="true">
+    <groupExpression><![CDATA[$F{chartIndex}]]></groupExpression>
+    <groupHeader>
+      <band height="278" splitType="Prevent">
+
+        <!-- Card heading -->
+        <textField textAdjust="StretchHeight">
+          <reportElement x="0" y="0" width="802" height="18" forecolor="#3a1422"/>
+          <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+            <font fontName="Cairo" size="11" isBold="true"/>
+          </textElement>
+          <textFieldExpression><![CDATA[$F{chartTitle} != null ? $F{chartTitle} : ""]]></textFieldExpression>
+        </textField>
+        <textField>
+          <reportElement x="0" y="18" width="802" height="12" forecolor="#7a3040">
+            <printWhenExpression><![CDATA[$F{chartSubtitle} != null && !$F{chartSubtitle}.isEmpty()]]></printWhenExpression>
+          </reportElement>
+          <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+            <font fontName="Cairo" size="8"/>
+          </textElement>
+          <textFieldExpression><![CDATA[$F{chartSubtitle}]]></textFieldExpression>
+        </textField>
+
+        <!--
+          The card as the reader saw it. RetainShape rather than FillFrame: a chart
+          stretched to the box would misstate the very proportions it exists to show.
+        -->
+        <image scaleImage="RetainShape" hAlign="Center" vAlign="Middle" onErrorType="Blank">
+          <reportElement x="0" y="34" width="802" height="218">
+            <printWhenExpression><![CDATA[$F{chartImage} != null]]></printWhenExpression>
+          </reportElement>
+          <imageExpression><![CDATA[$F{chartImage}]]></imageExpression>
+        </image>
+
+        <!-- Column headings, drawn only for the columns this card actually uses. -->
+        <rectangle>
+          <reportElement x="0" y="256" width="802" height="22" backcolor="#722030" forecolor="#722030">
+            <printWhenExpression><![CDATA[$F{hasData}]]></printWhenExpression>
+          </reportElement>
+          <graphicElement><pen lineWidth="0.0"/></graphicElement>
+        </rectangle>
+        <textField>
+          <reportElement x="602" y="256" width="200" height="22" forecolor="#FFFFFF">
+            <printWhenExpression><![CDATA[$F{hasData}]]></printWhenExpression>
+          </reportElement>
+          <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+            <font fontName="Cairo" size="8" isBold="true"/>
+          </textElement>
+          <textFieldExpression><![CDATA[$F{h0}]]></textFieldExpression>
+        </textField>
+        <textField>
+          <reportElement x="502" y="256" width="100" height="22" forecolor="#FFFFFF">
+            <printWhenExpression><![CDATA[$F{hasData} && $F{h1} != null && !$F{h1}.isEmpty()]]></printWhenExpression>
+          </reportElement>
+          <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+            <font fontName="Cairo" size="8" isBold="true"/>
+          </textElement>
+          <textFieldExpression><![CDATA[$F{h1}]]></textFieldExpression>
+        </textField>
+        <textField>
+          <reportElement x="402" y="256" width="100" height="22" forecolor="#FFFFFF">
+            <printWhenExpression><![CDATA[$F{hasData} && $F{h2} != null && !$F{h2}.isEmpty()]]></printWhenExpression>
+          </reportElement>
+          <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+            <font fontName="Cairo" size="8" isBold="true"/>
+          </textElement>
+          <textFieldExpression><![CDATA[$F{h2}]]></textFieldExpression>
+        </textField>
+        <textField>
+          <reportElement x="302" y="256" width="100" height="22" forecolor="#FFFFFF">
+            <printWhenExpression><![CDATA[$F{hasData} && $F{h3} != null && !$F{h3}.isEmpty()]]></printWhenExpression>
+          </reportElement>
+          <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+            <font fontName="Cairo" size="8" isBold="true"/>
+          </textElement>
+          <textFieldExpression><![CDATA[$F{h3}]]></textFieldExpression>
+        </textField>
+        <textField>
+          <reportElement x="202" y="256" width="100" height="22" forecolor="#FFFFFF">
+            <printWhenExpression><![CDATA[$F{hasData} && $F{h4} != null && !$F{h4}.isEmpty()]]></printWhenExpression>
+          </reportElement>
+          <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+            <font fontName="Cairo" size="8" isBold="true"/>
+          </textElement>
+          <textFieldExpression><![CDATA[$F{h4}]]></textFieldExpression>
+        </textField>
+        <textField>
+          <reportElement x="102" y="256" width="100" height="22" forecolor="#FFFFFF">
+            <printWhenExpression><![CDATA[$F{hasData} && $F{h5} != null && !$F{h5}.isEmpty()]]></printWhenExpression>
+          </reportElement>
+          <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+            <font fontName="Cairo" size="8" isBold="true"/>
+          </textElement>
+          <textFieldExpression><![CDATA[$F{h5}]]></textFieldExpression>
+        </textField>
+        <textField>
+          <reportElement x="2" y="256" width="100" height="22" forecolor="#FFFFFF">
+            <printWhenExpression><![CDATA[$F{hasData} && $F{h6} != null && !$F{h6}.isEmpty()]]></printWhenExpression>
+          </reportElement>
+          <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+            <font fontName="Cairo" size="8" isBold="true"/>
+          </textElement>
+          <textFieldExpression><![CDATA[$F{h6}]]></textFieldExpression>
+        </textField>
+      </band>
+    </groupHeader>
+  </group>
+
+  <pageHeader>
+    <band height="70" splitType="Stretch">
+      <textField>
+        <reportElement x="610" y="4" width="192" height="16" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="10" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TITLE_01_AR} != null && !$P{TITLE_01_AR}.isEmpty() ? $P{TITLE_01_AR} : $P{TITLE_01}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="610" y="20" width="192" height="14" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TITLE_02_AR}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="610" y="34" width="192" height="13" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TITLE_03_AR}]]></textFieldExpression>
+      </textField>
+
+      <image scaleImage="RetainShape" hAlign="Center" vAlign="Middle" onErrorType="Blank">
+        <reportElement x="371" y="2" width="60" height="50">
+          <printWhenExpression><![CDATA[$P{LOGO_IMAGE} != null]]></printWhenExpression>
+        </reportElement>
+        <imageExpression><![CDATA[$P{LOGO_IMAGE}]]></imageExpression>
+      </image>
+
+      <textField>
+        <reportElement x="0" y="4" width="192" height="16" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="9" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TITLE_01_EN}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="0" y="20" width="192" height="14" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="7"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TITLE_02_EN}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="0" y="34" width="192" height="13" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="7"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TITLE_03_EN}]]></textFieldExpression>
+      </textField>
+
+      <rectangle>
+        <reportElement x="0" y="52" width="802" height="2" backcolor="#c4922a" forecolor="#c4922a"/>
+        <graphicElement><pen lineWidth="0.0"/></graphicElement>
+      </rectangle>
+      <textField textAdjust="StretchHeight">
+        <reportElement x="0" y="56" width="802" height="14" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="12" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{REPORT_TITLE} != null && !$P{REPORT_TITLE}.isEmpty() ? $P{REPORT_TITLE} : $P{TITLE_02}]]></textFieldExpression>
+      </textField>
+    </band>
+  </pageHeader>
+
+  <detail>
+    <band height="18" splitType="Stretch">
+      <printWhenExpression><![CDATA[$F{hasData}]]></printWhenExpression>
+      <rectangle>
+        <reportElement x="0" y="0" width="802" height="18" backcolor="#fdf4f6" forecolor="#fdf4f6">
+          <printWhenExpression><![CDATA[$V{ROW_NUMBER} % 2 == 0]]></printWhenExpression>
+        </reportElement>
+        <graphicElement><pen lineWidth="0.0"/></graphicElement>
+      </rectangle>
+      <line><reportElement x="0" y="17" width="802" height="1" forecolor="#e8c0c8"/></line>
+
+      <textField textAdjust="StretchHeight">
+        <reportElement x="602" y="0" width="200" height="18"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{c0}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="502" y="0" width="100" height="18">
+          <printWhenExpression><![CDATA[$F{h1} != null && !$F{h1}.isEmpty()]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{c1}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="402" y="0" width="100" height="18">
+          <printWhenExpression><![CDATA[$F{h2} != null && !$F{h2}.isEmpty()]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{c2}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="302" y="0" width="100" height="18">
+          <printWhenExpression><![CDATA[$F{h3} != null && !$F{h3}.isEmpty()]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{c3}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="202" y="0" width="100" height="18">
+          <printWhenExpression><![CDATA[$F{h4} != null && !$F{h4}.isEmpty()]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{c4}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="102" y="0" width="100" height="18">
+          <printWhenExpression><![CDATA[$F{h5} != null && !$F{h5}.isEmpty()]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{c5}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="2" y="0" width="100" height="18">
+          <printWhenExpression><![CDATA[$F{h6} != null && !$F{h6}.isEmpty()]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{c6}]]></textFieldExpression>
+      </textField>
+    </band>
+  </detail>
+
+  <pageFooter>
+    <band height="34" splitType="Stretch">
+      <line><reportElement x="0" y="0" width="802" height="1" forecolor="#c4922a"/></line>
+      <textField textAdjust="StretchHeight">
+        <reportElement x="0" y="4" width="802" height="12" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{FOOTER_TEXT} != null && !$P{FOOTER_TEXT}.isEmpty()]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{FOOTER_TEXT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="0" y="18" width="400" height="12" forecolor="#7a3040"/>
+        <textElement textAlignment="Left" verticalAlignment="Middle">
+          <font fontName="Cairo" size="7"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_GENERATED} + ": " + $P{REPORT_DATE} + ($P{PRINTED_BY} != null && !$P{PRINTED_BY}.isEmpty() ? "  |  " + $P{PRINTED_BY} : "")]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="602" y="18" width="200" height="12" forecolor="#7a3040"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_PAGE} + " " + $V{PAGE_NUMBER}]]></textFieldExpression>
+      </textField>
+    </band>
+  </pageFooter>
+
+  <!--
+    Signatories, when the settings row names any. A chart report is a working
+    document and V111 seeds SIG_COUNT at 0, so normally nothing prints here — but
+    the settings screen offers the field for every report, and a template that
+    ignored it would make that field a silent no-op on these eight pages.
+  -->
+  <lastPageFooter>
+    <band height="116" splitType="Stretch">
+      <rectangle>
+        <reportElement x="642" y="2" width="160" height="70" backcolor="#fefaf5" forecolor="#d4a870">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 1]]></printWhenExpression>
+        </reportElement>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement>
+      </rectangle>
+      <textField>
+        <reportElement x="642" y="5" width="160" height="11" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 1]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_SIGNATORY}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="642" y="18" width="160" height="12" forecolor="#3a1422">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 1]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_NAME_1}]]></textFieldExpression>
+      </textField>
+      <line>
+        <reportElement x="652" y="48" width="140" height="1" forecolor="#c4922a">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 1]]></printWhenExpression>
+        </reportElement>
+      </line>
+      <textField>
+        <reportElement x="642" y="52" width="160" height="11" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 1]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_1}]]></textFieldExpression>
+      </textField>
+      <rectangle>
+        <reportElement x="482" y="2" width="160" height="70" backcolor="#fefaf5" forecolor="#d4a870">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 2]]></printWhenExpression>
+        </reportElement>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement>
+      </rectangle>
+      <textField>
+        <reportElement x="482" y="5" width="160" height="11" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 2]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_SIGNATORY}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="482" y="18" width="160" height="12" forecolor="#3a1422">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 2]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_NAME_2}]]></textFieldExpression>
+      </textField>
+      <line>
+        <reportElement x="492" y="48" width="140" height="1" forecolor="#c4922a">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 2]]></printWhenExpression>
+        </reportElement>
+      </line>
+      <textField>
+        <reportElement x="482" y="52" width="160" height="11" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 2]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_2}]]></textFieldExpression>
+      </textField>
+      <rectangle>
+        <reportElement x="322" y="2" width="160" height="70" backcolor="#fefaf5" forecolor="#d4a870">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 3]]></printWhenExpression>
+        </reportElement>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement>
+      </rectangle>
+      <textField>
+        <reportElement x="322" y="5" width="160" height="11" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 3]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_SIGNATORY}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="322" y="18" width="160" height="12" forecolor="#3a1422">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 3]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_NAME_3}]]></textFieldExpression>
+      </textField>
+      <line>
+        <reportElement x="332" y="48" width="140" height="1" forecolor="#c4922a">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 3]]></printWhenExpression>
+        </reportElement>
+      </line>
+      <textField>
+        <reportElement x="322" y="52" width="160" height="11" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 3]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_3}]]></textFieldExpression>
+      </textField>
+      <rectangle>
+        <reportElement x="162" y="2" width="160" height="70" backcolor="#fefaf5" forecolor="#d4a870">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 4]]></printWhenExpression>
+        </reportElement>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement>
+      </rectangle>
+      <textField>
+        <reportElement x="162" y="5" width="160" height="11" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 4]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_SIGNATORY}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="162" y="18" width="160" height="12" forecolor="#3a1422">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 4]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_NAME_4}]]></textFieldExpression>
+      </textField>
+      <line>
+        <reportElement x="172" y="48" width="140" height="1" forecolor="#c4922a">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 4]]></printWhenExpression>
+        </reportElement>
+      </line>
+      <textField>
+        <reportElement x="162" y="52" width="160" height="11" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 4]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_4}]]></textFieldExpression>
+      </textField>
+      <rectangle>
+        <reportElement x="2" y="2" width="160" height="70" backcolor="#fefaf5" forecolor="#d4a870">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 5]]></printWhenExpression>
+        </reportElement>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement>
+      </rectangle>
+      <textField>
+        <reportElement x="2" y="5" width="160" height="11" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 5]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_SIGNATORY}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="2" y="18" width="160" height="12" forecolor="#3a1422">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 5]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_NAME_5}]]></textFieldExpression>
+      </textField>
+      <line>
+        <reportElement x="12" y="48" width="140" height="1" forecolor="#c4922a">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 5]]></printWhenExpression>
+        </reportElement>
+      </line>
+      <textField>
+        <reportElement x="2" y="52" width="160" height="11" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 5]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_5}]]></textFieldExpression>
+      </textField>
+      <line><reportElement x="0" y="82" width="802" height="1" forecolor="#c4922a"/></line>
+      <textField textAdjust="StretchHeight">
+        <reportElement x="0" y="86" width="802" height="12" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{FOOTER_TEXT} != null && !$P{FOOTER_TEXT}.isEmpty()]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{FOOTER_TEXT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="0" y="100" width="400" height="12" forecolor="#7a3040"/>
+        <textElement textAlignment="Left" verticalAlignment="Middle">
+          <font fontName="Cairo" size="7"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_GENERATED} + ": " + $P{REPORT_DATE} + ($P{PRINTED_BY} != null && !$P{PRINTED_BY}.isEmpty() ? "  |  " + $P{PRINTED_BY} : "")]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="602" y="100" width="200" height="12" forecolor="#7a3040"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_PAGE} + " " + $V{PAGE_NUMBER}]]></textFieldExpression>
+      </textField>
+    </band>
+  </lastPageFooter>
+</jasperReport>

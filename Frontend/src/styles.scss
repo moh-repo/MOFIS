@@ -1,0 +1,678 @@
+@import "leaflet/dist/leaflet.css";
+/* You can add global styles to this file, and also import other style files */
+
+$gutter: 1rem; //for primeflex grid system
+
+/* Must precede layout.scss and every component style: they read these tokens. */
+@import "assets/layout/styles/legacy-theme-vars";
+
+@import "assets/layout/styles/layout/layout.scss";
+
+/* Shared list-page filter layout; see the partial for why it is global. */
+@import "assets/layout/styles/filter-bar";
+
+/* Shared list-page summary band; structure only, palettes stay per page. */
+@import "assets/layout/styles/summary-cards";
+@import "assets/layout/styles/detail-dialog";
+@import "assets/layout/styles/ums-admin";
+@import "assets/layout/styles/cell-note";
+@import "assets/layout/styles/approval-detail";
+@import "assets/layout/styles/student-quick-edit-dialog";
+/* The student portal's add, view and edit windows (nzWrapClassName="sp-dialog"). */
+@import "assets/layout/styles/student-portal-dialog";
+
+/* PrimeNG — since v18 the component CSS is generated from the Aura preset at
+   runtime (see providePrimeNG in app.module.ts); primeng/resources no longer exists. */
+@import "../node_modules/primeflex/primeflex.scss";
+@import "../node_modules/primeicons/primeicons.css";
+
+/* NG-ZORRO */
+@import "../node_modules/ng-zorro-antd/ng-zorro-antd.min.css";
+
+/* ng-zorro's RTL rule for the labels of a vertical form never matches. It is
+   written `.ant-form-rtl .ant-form-vertical …`, a descendant selector, but
+   nz-form puts both classes on the same element. What matches instead is the
+   horizontal form's `.ant-form-rtl .ant-form-item-label { text-align: left }`,
+   so in Arabic every label above a field sat at the field's left edge: the
+   portal's sign-in and Documents forms, its Inquiries and Info-requests dialogs,
+   and the UMS admin dialogs. Measured in student-portal/portal-direction.spec.ts. */
+.ant-form-vertical.ant-form-rtl .ant-form-item:not(.ant-form-item-horizontal) .ant-form-item-label {
+  text-align: right;
+}
+
+
+/* ── `p-fluid` compatibility ──────────────────────────────────────────────
+   Up to v17, `p-fluid` was a plain CSS class PrimeNG styled globally, and 33 of
+   this app's templates put it on a wrapper to make the form controls inside span
+   their column. In v18 it became a <p-fluid> component (with a [fluid] input on
+   individual controls) and the class stopped being styled at all, so every one of
+   those forms silently lost its full-width layout.
+
+   Rather than restructure 33 templates, this restores the v17 behaviour for the
+   v18 class names. Deliberately omitted: v17 also set `width: 1%` on inputgroup
+   children as a flex-basis, which is the bug finance-form.component.scss works
+   around. v21 dropped that rule, so it is not reproduced here. */
+.p-fluid {
+  .p-inputtext,
+  .p-textarea,
+  .p-select,
+  .p-datepicker,
+  .p-multiselect,
+  .p-treeselect,
+  .p-cascadeselect,
+  .p-autocomplete,
+  .p-inputnumber,
+  .p-inputmask,
+  .p-password {
+    width: 100%;
+  }
+
+  .p-button {
+    width: 100%;
+  }
+
+  .p-button-icon-only {
+    width: 3rem;
+  }
+
+  /* Inside an input group the buttons are adornments, so they keep their own
+     width and the control takes the remaining space. */
+  .p-inputgroup {
+    .p-button {
+      width: auto;
+    }
+
+    .p-button.p-button-icon-only {
+      width: 3rem;
+    }
+
+    > .p-inputwrapper,
+    > .p-component {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+  }
+}
+
+/* ── `p-input-icon-left` / `p-input-icon-right` compatibility ─────────────
+   Same story as p-fluid above. Up to v17 these were plain CSS classes PrimeNG
+   styled globally: the wrapper went position:relative, the icon was pulled out
+   of flow and pinned inside the field, and the input took padding on that side
+   so the text could not run under it. v18 replaced them with <p-iconfield> and
+   <p-inputicon> and stopped styling the classes at all.
+
+   41 usages across 27 templates still use them — a search box on nearly every
+   list page in the app. With no styles behind them the wrapper was a plain
+   inline span, so the icon rendered as a loose glyph *beside* the field
+   instead of inside it, and the input had no padding reserved. Nothing in the
+   compiler can see that, which is why it survived the upgrade unnoticed.
+
+   Physical properties, not logical ones, and deliberately so: assets/styles/
+   rtl.css already mirrors both classes with `.rtl … { left: auto; right: … }`
+   and is loaded after this file. Logical properties here would flip once for
+   `dir` and once more for those rules, landing back where they started. The
+   `.rtl` selectors also outrank these, so the mirroring still wins. */
+.p-input-icon-left,
+.p-input-icon-right {
+  position: relative;
+  display: inline-block;
+
+  > i,
+  > svg {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-color-secondary);
+    /* No icon in these wrappers is interactive, so let the click through to
+       the field underneath rather than swallowing it on the padding. */
+    pointer-events: none;
+  }
+}
+
+.p-input-icon-left > i {
+  left: 0.75rem;
+}
+
+.p-input-icon-left > .p-inputtext,
+.p-input-icon-left > input {
+  padding-left: 2.5rem;
+}
+
+.p-input-icon-right > i {
+  right: 0.75rem;
+}
+
+.p-input-icon-right > .p-inputtext,
+.p-input-icon-right > input {
+  padding-right: 2.5rem;
+}
+
+/* v17 did this too: inside a fluid form the wrapper has to become a block or
+   the field it wraps cannot span the column. */
+.p-fluid .p-input-icon-left,
+.p-fluid .p-input-icon-right,
+.p-input-icon-left.w-full,
+.p-input-icon-right.w-full {
+  display: block;
+  width: 100%;
+}
+
+/* ── Tooltip: size the box to its text so PrimeNG can flip it ─────────────
+   PrimeNG appends every pTooltip to <body> as an absolutely positioned box
+   with an inline `width: fit-content`, and its theme puts `word-break:
+   break-word` on the text. When the target sits at the right edge of the
+   viewport (the per-chart "Download as PNG" button in the second column of
+   every Graphs & Charts page) the default `right` placement leaves only a
+   few pixels beside it: fit-content shrinks the box into that gap and
+   break-word then splits the words, so the tooltip renders as
+   "Down / load / as / PNG". Because the squeezed box now *fits*, the
+   directive's isOutOfBounds() stays false and its fallback chain
+   (right → left → top → bottom) never moves the tooltip to the other side.
+
+   `max-content` gives the box its natural width regardless of the room left
+   beside the target, so the overflow is detected and the tooltip flips to the
+   side where it fits. The theme's max-width (12.5rem) still caps long text,
+   which then wraps at word boundaries. `!important` is required because the
+   directive sets the width inline. */
+.p-tooltip {
+  width: max-content !important;
+}
+
+/* ── RTL: reverse flex rows so first item appears on the right ────────── */
+/* Targets any flex row that uses justify-content-between inside an RTL container.
+   [attr.dir="rtl"] is set on the layout-wrapper and on individual component roots.
+
+   Read the comment before writing a header row against this. Under
+   `direction: rtl` a flex row already runs right to left on its own, so
+   `justify-content-between` puts the FIRST child at the right edge and the last
+   at the left — the mirror image of English, which is what is wanted. This rule
+   then reverses the row a second time and undoes that, putting the first child
+   back on the left. It is a double flip, and it is why the page heading on
+   /approvals/pending sat on the left in Arabic.
+
+   The rule is kept because ~250 rows across the application were laid out
+   against it and have their DOM order written to suit; unpicking it belongs in
+   a pass of its own. Rows that want the true mirror opt out simply by not
+   carrying the class: `flex align-items-center` with `flex-1` on the first
+   child separates the two ends identically and matches nothing here. The page
+   headings across Approvals, Requests, Alerts and Notifications are written
+   that way — see src/app/demo/components/page-headings.spec.ts, which measures
+   where the heading lands in both directions. */
+[dir="rtl"] .flex.justify-content-between,
+[dir="rtl"] .flex.justify-content-end {
+  flex-direction: row-reverse;
+}
+
+/* RTL: fix p-table so column order is reversed (right-to-left) */
+[dir="rtl"] .p-datatable table {
+  direction: rtl;
+}
+
+/* …and the counterpart, without which the rule above is one-way.
+   It is keyed on an *ancestor*, so a table carrying `dir="ltr"` — every
+   `p-table` in this application binds the attribute from
+   `translationService.isRTL()` — was still turned around by any outer element
+   that said rtl, and nothing put it back: the columns ran right to left inside
+   a page that read left to right, which is what was reported on /students in
+   English. `direction` is inherited, so the table cannot simply be left to work
+   it out; what the page put on the table is what decides.
+   Measured in src/app/demo/components/students/students-table-direction.spec.ts. */
+.p-datatable[dir="ltr"] table,
+.p-datatable[dir="ltr"] .p-paginator,
+.p-datatable[dir="ltr"] .p-tag,
+.p-datatable[dir="ltr"] .p-badge {
+  direction: ltr;
+}
+
+/* RTL: fix PrimeNG paginator alignment */
+[dir="rtl"] .p-paginator {
+  direction: rtl;
+}
+
+/* RTL: fix PrimeNG tag/badge that uses inline-flex */
+[dir="rtl"] .p-tag,
+[dir="rtl"] .p-badge {
+  direction: rtl;
+}
+
+/* ── RTL: clear ("×") icon on inputs that support [showClear] ─────────────────
+   The theme pins these icons with a hardcoded `right` offset and reserves matching
+   space with `padding-right` on the label. Under RTL the value is right-aligned, so
+   the icon lands on top of it while the space it reserved sits unused on the far
+   side. Mirror both: icon to the left edge, reserved padding to the left.
+
+   PrimeNG 18 dropped the `-clearable` marker classes these rules used to hang off,
+   so each selector now keys off the clear-icon element itself, which is only
+   rendered when the input is clearable. The offsets below were matched to the v17
+   prebuilt theme.css, which no longer exists — re-check them visually in Arabic
+   against the Aura preset. */
+[dir="rtl"] {
+  /* Icon sits inboard of a trigger/toggle button */
+  .p-select .p-select-clear-icon,
+  .p-multiselect .p-multiselect-clear-icon,
+  p-treeselect .p-treeselect-clear-icon,
+  p-cascadeselect .p-cascadeselect-clear-icon {
+    right: auto;
+    left: 3rem;
+  }
+
+  /* Plain inputs — no trailing button */
+  p-autocomplete .p-autocomplete-clear-icon,
+  p-inputmask .p-inputmask-clear-icon,
+  p-inputnumber .p-inputnumber-clear-icon {
+    right: auto;
+    left: 0.75rem;
+  }
+
+  /* Same inputs once a trailing button is present */
+  p-autocomplete .p-autocomplete-dropdown ~ .p-autocomplete-clear-icon,
+  p-datepicker .p-datepicker-dropdown ~ .p-datepicker-clear-icon {
+    right: auto;
+    left: 3.75rem;
+  }
+
+  /* Move the space reserved for the icon to the side it now occupies, so long
+     values are clipped by the icon instead of running underneath it. */
+  .p-select:has(.p-select-clear-icon) .p-select-label {
+    padding-right: 0.75rem;
+    padding-left: 1.75rem;
+  }
+
+  .p-multiselect:has(.p-multiselect-clear-icon) .p-multiselect-label-container {
+    padding-right: 0;
+    padding-left: 1.75rem;
+  }
+
+  p-cascadeselect:has(.p-cascadeselect-clear-icon) .p-cascadeselect-label {
+    padding-right: 0.75rem;
+    padding-left: 1.75rem;
+  }
+
+  p-autocomplete:has(.p-autocomplete-clear-icon) .p-inputtext,
+  p-datepicker:has(.p-datepicker-clear-icon) .p-inputtext,
+  p-inputmask:has(.p-inputmask-clear-icon) .p-inputtext {
+    padding-right: 0.75rem;
+    padding-left: 2.5rem;
+  }
+
+  /* ── Grouped input corners ────────────────────────────────────────────────
+     The theme rounds a group's :first-child on the left and its :last-child on the
+     right. RTL reverses which end each child renders at, so the group's outer corners
+     came out square while the seam between input and button was rounded. Mirror both
+     ends: the first child (rendered at the right) rounds right, the last (rendered at
+     the left) rounds left. */
+  /* Selector shapes mirror the theme's own so each rule out-specifies its counterpart. */
+  .p-inputgroup .p-inputgroup-addon:first-child,
+  .p-inputgroup button:first-child,
+  .p-inputgroup input:first-child,
+  .p-inputgroup > .p-inputwrapper:first-child > .p-component,
+  .p-inputgroup > .p-inputwrapper:first-child > .p-component > .p-inputtext,
+  .p-inputgroup .p-float-label:first-child input,
+  .p-datepicker > .p-inputtext,
+  p-autocomplete > .p-inputtext {
+    border-radius: 0 6px 6px 0;
+  }
+
+  .p-inputgroup .p-inputgroup-addon:last-child,
+  .p-inputgroup button:last-child,
+  .p-inputgroup input:last-child,
+  .p-inputgroup > .p-inputwrapper:last-child > .p-component,
+  .p-inputgroup > .p-inputwrapper:last-child > .p-component > .p-inputtext,
+  .p-inputgroup .p-float-label:last-child input,
+  .p-datepicker > .p-datepicker-dropdown,
+  p-autocomplete > .p-autocomplete-dropdown {
+    border-radius: 6px 0 0 6px;
+  }
+
+  /* A lone child is both first and last, so restore all four corners. */
+  .p-inputgroup .p-inputgroup-addon:only-child,
+  .p-inputgroup button:only-child,
+  .p-inputgroup input:only-child,
+  .p-inputgroup > .p-inputwrapper:only-child > .p-component,
+  .p-inputgroup > .p-inputwrapper:only-child > .p-component > .p-inputtext {
+    border-radius: 6px;
+  }
+
+  /* The theme strips the seam border from the addon that follows an input. RTL puts the
+     addon on the other side, so the seam to strip is the right-hand one. */
+  .p-inputgroup > .p-component + .p-inputgroup-addon,
+  .p-inputgroup > .p-inputwrapper > .p-inputtext + .p-inputgroup-addon,
+  .p-inputgroup > .p-float-label > .p-component + .p-inputgroup-addon {
+    border-left: 1px solid var(--surface-border);
+    border-right: 0 none;
+  }
+}
+
+/* ── Refresh / Clear-filter button — outlined secondary action style ── */
+.p-button.p-button-action-outlined {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+
+  .p-button-label {
+    color: #475569;
+    font-weight: 500;
+  }
+
+  .p-button-icon {
+    color: #0891b2;
+  }
+
+  &:enabled:hover,
+  &:not(:disabled):hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+
+    .p-button-label { color: #334155; }
+    .p-button-icon  { color: #0e7490; }
+  }
+
+  &:enabled:active,
+  &:not(:disabled):active {
+    background: #e2e8f0;
+    border-color: #64748b;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  &:focus {
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #cbd5e1 !important;
+  }
+}
+
+/* ── Filled PrimeNG buttons — restore contrast ─────────────────────────────
+   ng-zorro sets `button { color: inherit }` (unlayered), which overrides the
+   layered theme and leaves dark body text on solid primary/severity backgrounds. */
+button.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(.p-button-action-outlined):not(.p-button-search):not(.p-button-secondary),
+.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(.p-button-action-outlined):not(.p-button-search):not(.p-button-secondary) {
+  color: #ffffff;
+
+  .p-button-label,
+  .p-button-icon,
+  .p-button-icon-left,
+  .p-button-icon-right {
+    color: #ffffff;
+  }
+}
+
+/* Filled `secondary` is the exception: Aura paints it on a near-white surface
+   (surface-100), so the white text above made it vanish — the reports' Print
+   button and every dialog's Cancel were label-less on a pale grey pill. Dark
+   text on the light surface, light text on the dark one. */
+button.p-button.p-button-secondary:not(.p-button-outlined):not(.p-button-text):not(.p-button-link),
+.p-button.p-button-secondary:not(.p-button-outlined):not(.p-button-text):not(.p-button-link) {
+  color: #334155;
+  border-color: #cbd5e1;
+
+  .p-button-label,
+  .p-button-icon,
+  .p-button-icon-left,
+  .p-button-icon-right {
+    color: #334155;
+  }
+
+  &:not(:disabled):hover {
+    color: #0f172a;
+    border-color: #94a3b8;
+
+    .p-button-label,
+    .p-button-icon,
+    .p-button-icon-left,
+    .p-button-icon-right {
+      color: #0f172a;
+    }
+  }
+
+  .app-dark & {
+    color: #e2e8f0;
+    border-color: #475569;
+
+    .p-button-label,
+    .p-button-icon,
+    .p-button-icon-left,
+    .p-button-icon-right {
+      color: #e2e8f0;
+    }
+  }
+}
+
+/* Select/toggle groups — the reports' Arabic/English switch, and every other
+   p-selectButton. PrimeNG 18+ renders these as p-togglebutton rather than
+   p-button, and marks the selected one with p-togglebutton-checked in place of
+   the old p-highlight.
+
+   Aura paints the checked option as a white pill (surface-0 on the inner
+   .p-togglebutton-content) with dark text. The earlier version of this block
+   forced that text to white, so the selected language vanished into its own
+   pill and only the pale unselected label was legible — the switch read as
+   "not clear". The selected option is therefore painted as a solid primary pill
+   here, which is where the white text belongs, and the unselected labels are
+   darkened so both are readable at a glance. */
+.p-selectbutton .p-togglebutton:not(.p-togglebutton-checked),
+.p-togglebutton:not(.p-togglebutton-checked) {
+  color: #374151;
+
+  .p-togglebutton-label,
+  .p-togglebutton-icon,
+  .p-togglebutton-icon-left,
+  .p-togglebutton-icon-right {
+    color: #374151;
+  }
+
+  &:not(.p-disabled):hover {
+    color: #111827;
+
+    .p-togglebutton-label,
+    .p-togglebutton-icon,
+    .p-togglebutton-icon-left,
+    .p-togglebutton-icon-right {
+      color: #111827;
+    }
+  }
+
+  .app-dark & {
+    color: #cbd5e1;
+
+    .p-togglebutton-label,
+    .p-togglebutton-icon,
+    .p-togglebutton-icon-left,
+    .p-togglebutton-icon-right {
+      color: #cbd5e1;
+    }
+
+    &:not(.p-disabled):hover {
+      color: #f1f5f9;
+
+      .p-togglebutton-label,
+      .p-togglebutton-icon,
+      .p-togglebutton-icon-left,
+      .p-togglebutton-icon-right {
+        color: #f1f5f9;
+      }
+    }
+  }
+}
+
+.p-selectbutton .p-togglebutton.p-togglebutton-checked,
+.p-togglebutton.p-togglebutton-checked {
+  color: #ffffff;
+
+  /* The checked background lives on the inner content element, not the root. */
+  .p-togglebutton-content {
+    background: var(--primary-color, #6366f1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  }
+
+  .p-togglebutton-label,
+  .p-togglebutton-icon,
+  .p-togglebutton-icon-left,
+  .p-togglebutton-icon-right {
+    color: #ffffff;
+    font-weight: 600;
+  }
+}
+
+/* Outlined / text variants — use severity colors instead of inherited body text */
+button.p-button.p-button-outlined:not(.p-button-action-outlined),
+.p-button.p-button-outlined:not(.p-button-action-outlined) {
+  color: var(--primary-color, #6366f1);
+
+  .p-button-label,
+  .p-button-icon {
+    color: inherit;
+  }
+
+  &.p-button-secondary { color: #64748b; }
+  &.p-button-success   { color: #22c55e; }
+  &.p-button-info      { color: #0ea5e9; }
+  &.p-button-warning   { color: #f97316; }
+  &.p-button-help      { color: #a855f7; }
+  &.p-button-danger    { color: #ef4444; }
+}
+
+button.p-button.p-button-text,
+.p-button.p-button-text {
+  color: var(--primary-color, #6366f1);
+
+  .p-button-label,
+  .p-button-icon {
+    color: inherit;
+  }
+
+  &.p-button-secondary { color: #64748b; }
+  &.p-button-success   { color: #22c55e; }
+  &.p-button-info      { color: #0ea5e9; }
+  &.p-button-warning   { color: #f97316; }
+  &.p-button-help      { color: #a855f7; }
+  &.p-button-danger    { color: #ef4444; }
+}
+
+/* ── Search button — consistent "search action" style across all pages ── */
+.p-button.p-button-search {
+  background: #4f46e5 !important;
+  border-color: #4f46e5 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+
+  .p-button-icon,
+  .p-button-label {
+    color: #ffffff !important;
+  }
+
+  &:enabled:hover,
+  &:not(:disabled):hover {
+    background: #4338ca !important;
+    border-color: #4338ca !important;
+    color: #ffffff !important;
+  }
+
+  &:enabled:active,
+  &:not(:disabled):active {
+    background: #3730a3 !important;
+    border-color: #3730a3 !important;
+  }
+
+  &:focus {
+    box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #4f46e5 !important;
+  }
+}
+
+/* ── Student Portal — global overrides for Ng-Zorro layout internals ── */
+
+/* 1. Make nz-layout a full-viewport flex column */
+.portal-layout.ant-layout {
+  height: 100vh !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* 2. Allow nz-header to be as tall as its content (remove the fixed 64px) */
+.portal-layout .ant-layout-header {
+  height: auto !important;
+  line-height: normal !important;
+  padding: 0 !important;      /* our component controls padding */
+  flex-shrink: 0 !important;
+}
+
+/* 3. nz-content scrolls within the remaining space */
+.portal-layout .ant-layout-content {
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}
+
+/* ── Student Portal — shared page header (global so encapsulation doesn't block it) ── */
+.sp-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(135deg, #1890ff 0%, #096dd9 55%, #004fc4 100%);
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin-bottom: 20px;
+  box-shadow: 0 3px 12px rgba(24, 144, 255, 0.25);
+
+  &__left {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    line-height: 1.3;
+    [nz-icon] { font-size: 20px; opacity: 0.9; }
+  }
+
+  &__sub {
+    margin: 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.4;
+  }
+
+  &__action {
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    color: #fff !important;
+    border-radius: 7px !important;
+    font-size: 13px !important;
+    height: 32px !important;
+    line-height: 30px !important;
+    &:hover {
+      background: rgba(255, 255, 255, 0.25) !important;
+      border-color: #fff !important;
+    }
+  }
+
+  @media (max-width: 575px) {
+    padding: 14px 16px;
+    border-radius: 8px;
+    &__title { font-size: 16px; }
+  }
+}
+
+.portal-rtl {
+  .sp-page-header__title {
+    flex-direction: row-reverse;
+  }
+
+  .sp-page-header__left {
+    align-items: flex-end;
+    text-align: right;
+  }
+}

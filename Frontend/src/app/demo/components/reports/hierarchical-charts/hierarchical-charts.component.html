@@ -1,0 +1,141 @@
+<p-toast></p-toast>
+
+<div class="page-wrapper" id="hierarchical-charts-print-area" [ngClass]="{ 'rtl-layout': isRTL(), 'ltr-layout': !isRTL() }">
+  <div class="page-hero card surface-0 border-none shadow-none">
+    <div class="page-hero__content">
+      <span class="page-hero__icon surface-100 border-round-xl">
+        <i class="pi pi-sitemap"></i>
+      </span>
+      <div>
+        <h2 class="page-hero__title">{{ 'HIERARCHY_CHARTS.TITLE' | translate }}</h2>
+        <p class="page-hero__subtitle">{{ 'HIERARCHY_CHARTS.SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+    <div class="page-hero__actions">
+      <button pButton pRipple type="button"
+        [icon]="isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+        class="p-button-text"
+        [label]="'COMMON.BACK' | translate"
+      (click)="goBack()"></button>
+      <button pButton pRipple type="button"
+        icon="pi pi-refresh"
+        class="p-button-primary"
+        [label]="'COMMON.REFRESH' | translate"
+        (click)="refresh()"
+      [loading]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-eye" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.PREVIEW_CHARTS_PDF' | translate"
+      (click)="previewChartsPdf()" [disabled]="loading || !!exportAction"
+      [loading]="exportAction === 'preview'"></button>
+      <button pButton pRipple type="button" icon="pi pi-print" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.PRINT' | translate"
+      (click)="printCharts()" [disabled]="loading || !!exportAction"
+      [loading]="exportAction === 'print'"></button>
+      <button pButton pRipple type="button" icon="pi pi-file-pdf" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.EXPORT_PDF' | translate"
+      (click)="downloadChartsPdf()" [disabled]="loading || !!exportAction"
+      [loading]="exportAction === 'pdf'"></button>
+      <button pButton pRipple type="button" icon="pi pi-images" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_IMAGES' | translate"
+      (click)="downloadChartImages()" [disabled]="loading || !!exportAction"
+      [loading]="exportAction === 'images'"></button>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card primary">
+      <div class="stat-card__label">{{ 'HIERARCHY_CHARTS.SUMMARY.ORGANIZATION_TITLE' | translate }}</div>
+      <div class="stat-card__value">{{ organizationSummary.total | number:'1.0-0' }}</div>
+      <div class="stat-card__hint">
+        {{ 'HIERARCHY_CHARTS.SUMMARY.TOP_SEGMENT' | translate }}:
+        <strong>{{ organizationSummary.topLabel }}</strong>
+      </div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-card__label">{{ 'HIERARCHY_CHARTS.SUMMARY.LOCATION_TITLE' | translate }}</div>
+      <div class="stat-card__value">{{ locationSummary.total | number:'1.0-0' }}</div>
+      <div class="stat-card__hint">
+        {{ 'HIERARCHY_CHARTS.SUMMARY.TOP_SEGMENT' | translate }}:
+        <strong>{{ locationSummary.topLabel }}</strong>
+      </div>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-card__label">{{ 'HIERARCHY_CHARTS.SUMMARY.ACADEMIC_TITLE' | translate }}</div>
+      <div class="stat-card__value">{{ academicSummary.total | number:'1.0-0' }}</div>
+      <div class="stat-card__hint">
+        {{ 'HIERARCHY_CHARTS.SUMMARY.TOP_SEGMENT' | translate }}:
+        <strong>{{ academicSummary.topLabel }}</strong>
+      </div>
+    </div>
+  </div>
+
+  @if (organizationData.length) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'HIERARCHY_CHARTS.SECTIONS.ORGANIZATION_TITLE' | translate }}</h3>
+          <p>{{ 'HIERARCHY_CHARTS.SECTIONS.ORGANIZATION_DESCRIPTION' | translate }}</p>
+        </div>
+        <p-tag severity="info"
+          [value]="( 'HIERARCHY_CHARTS.SUMMARY.TOP_SEGMENT' | translate ) + ': ' + organizationSummary.topLabel">
+        </p-tag>
+      </div>
+      <div class="chart-card__body">
+        <p-organizationChart [value]="organizationData"
+          selectionMode="none"
+          [collapsible]="true"
+          styleClass="hierarchy-chart">
+        </p-organizationChart>
+      </div>
+    </div>
+  }
+
+  @if (locationData.length) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'HIERARCHY_CHARTS.SECTIONS.LOCATION_TITLE' | translate }}</h3>
+          <p>{{ 'HIERARCHY_CHARTS.SECTIONS.LOCATION_DESCRIPTION' | translate }}</p>
+        </div>
+        <p-tag severity="success"
+          [value]="( 'HIERARCHY_CHARTS.SUMMARY.TOP_SEGMENT' | translate ) + ': ' + locationSummary.topLabel">
+        </p-tag>
+      </div>
+      <div class="chart-card__body">
+        <p-organizationChart [value]="locationData"
+          selectionMode="single"
+          [collapsible]="true"
+          styleClass="hierarchy-chart location-chart">
+        </p-organizationChart>
+      </div>
+    </div>
+  }
+
+  @if (academicData.length) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'HIERARCHY_CHARTS.SECTIONS.ACADEMIC_TITLE' | translate }}</h3>
+          <p>{{ 'HIERARCHY_CHARTS.SECTIONS.ACADEMIC_DESCRIPTION' | translate }}</p>
+        </div>
+        <p-tag severity="warn"
+          [value]="( 'HIERARCHY_CHARTS.SUMMARY.TOP_SEGMENT' | translate ) + ': ' + academicSummary.topLabel">
+        </p-tag>
+      </div>
+      <div class="chart-card__body">
+        <p-organizationChart [value]="academicData"
+          selectionMode="none"
+          [collapsible]="true"
+          styleClass="hierarchy-chart academic-chart">
+        </p-organizationChart>
+      </div>
+    </div>
+  }
+</div>
+
+@if (loading) {
+  <div class="loading-overlay">
+    <p-progressSpinner></p-progressSpinner>
+  </div>
+}
+

@@ -1,0 +1,232 @@
+﻿<div class="financial-data-form-container">
+
+  <!-- ─── Filter & Action Bar ─────────────────────────────────────────────── -->
+  <div class="filter-section no-print">
+    <div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+      <!-- Header Section. `flex-1` on the leading block, not
+           `justify-content-between`: under `direction: rtl` a flex row already
+           runs right to left, and the global rule in styles.scss reverses every
+           `.flex.justify-content-between` again, which put the heading back on
+           the left and the actions on the right in Arabic. See
+           src/app/demo/components/page-headings.spec.ts. -->
+      <div class="flex align-items-center mb-4 flex-wrap gap-2">
+        <div class="flex align-items-center gap-3 flex-1">
+          <i class="pi pi-filter text-primary" style="font-size: 2rem"></i>
+          <div>
+            <h3 class="m-0 text-primary">{{ 'REPORTS.FINANCIAL_REPORTS.FINANCIAL_DATA_FORM' | translate }}</h3>
+            <p class="text-600 mt-1 mb-0">{{ 'REPORTS.FINANCIAL_REPORTS.FINANCIAL_DATA_FORM_DESC' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <app-report-actions
+            pdfApiPath="/api/reports/financial-data-form/export-report"
+            [query]="reportQuery()"
+            baseFilename="financial-data-form">
+          </app-report-actions>
+          <p-button
+            [icon]="showCharts ? 'pi pi-chart-bar' : 'pi pi-chart-pie'"
+            [label]="(showCharts ? 'REPORTS.FINANCIAL_DATA_FORM.HIDE_CHARTS' : 'REPORTS.FINANCIAL_DATA_FORM.SHOW_CHARTS') | translate"
+            severity="warn"
+            styleClass="p-button-outlined"
+            (onClick)="toggleCharts()"
+            [disabled]="financialData.length === 0">
+          </p-button>
+        </div>
+      </div>
+
+      <!-- Filters row -->
+      <div class="grid">
+        <div class="col-12 md:col-3">
+          <label class="block mb-2 font-semibold">{{ 'REPORTS.COMMON_FIELDS.YEAR' | translate }}</label>
+          <p-select [options]="years" [(ngModel)]="selectedYear"
+            [placeholder]="'REPORTS.COMMON_FIELDS.SELECT_YEAR' | translate"
+            [showClear]="false" (onChange)="onFilterChange()" styleClass="w-full"
+            appendTo="body">
+          </p-select>
+        </div>
+        <div class="col-12 md:col-3">
+          <label class="block mb-2 font-semibold">{{ 'REPORTS.COMMON_FIELDS.QUARTER' | translate }}</label>
+          <p-select [options]="quarterOptions" [(ngModel)]="selectedQuarter"
+            optionLabel="label" optionValue="value"
+            [placeholder]="'REPORTS.COMMON_FIELDS.SELECT_QUARTER' | translate"
+            [showClear]="false" (onChange)="onFilterChange()" styleClass="w-full"
+            appendTo="body">
+          </p-select>
+        </div>
+        <div class="col-12 md:col-4">
+          <label class="block mb-2 font-semibold">{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</label>
+          <p-select [options]="countries" [(ngModel)]="selectedCountry"
+            optionLabel="label" optionValue="value"
+            [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_COUNTRIES' | translate"
+            [showClear]="true" (onChange)="onFilterChange()" styleClass="w-full"
+            appendTo="body">
+          </p-select>
+        </div>
+        <div class="col-12 md:col-2 flex align-items-end">
+          <p-button icon="pi pi-refresh"
+            [label]="'REPORTS.REPORT_SUBPAGES.CLEAR_FILTERS' | translate"
+            severity="secondary" (onClick)="clearFilters()" styleClass="w-full">
+          </p-button>
+        </div>
+      </div>
+
+      <!-- Summary strip -->
+      @if (financialData.length > 0) {
+        <div class="summary-strip mt-3">
+          <div class="summary-card">
+            <i class="pi pi-users summary-icon" style="color:#4CAF50"></i>
+            <div>
+              <div class="summary-label">{{ 'REPORTS.REPORT_SUBPAGES.TOTAL_STUDENTS' | translate }}</div>
+              <div class="summary-value" style="color:#4CAF50">{{ financialData.length | number }}</div>
+            </div>
+          </div>
+          <div class="summary-card">
+            <i class="pi pi-dollar summary-icon" style="color:#0066cc"></i>
+            <div>
+              <div class="summary-label">{{ 'REPORTS.COMMON_FIELDS.TOTAL' | translate }}</div>
+              <div class="summary-value" style="color:#0066cc">{{ totalAmount | number:'1.2-2' }} USD</div>
+            </div>
+          </div>
+          <div class="summary-card">
+            <i class="pi pi-calendar summary-icon" style="color:#FF9800"></i>
+            <div>
+              <div class="summary-label">{{ 'REPORTS.COMMON_FIELDS.QUARTER' | translate }} / {{ 'REPORTS.COMMON_FIELDS.YEAR' | translate }}</div>
+              <div class="summary-value" style="color:#FF9800">{{ selectedQuarter ? getQuarterLabel(selectedQuarter) : '' }} — {{ selectedYear }}</div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- ─── ECharts Charts Section ──────────────────────────────────────────── -->
+  @if (showCharts && financialData.length > 0) {
+    <div class="charts-section no-print">
+      <div class="grid">
+        <div class="col-12 md:col-8">
+          <div class="card">
+            <div class="flex align-items-center gap-2 mb-3">
+              <i class="pi pi-chart-bar text-primary"></i>
+              <h4 class="m-0">{{ 'REPORTS.COMMON_FIELDS.AMOUNT' | translate }} {{ 'REPORTS.COMMON_FIELDS.MAJOR' | translate }}</h4>
+            </div>
+            <div echarts [options]="barChartOptions" style="height: 320px; width: 100%;"></div>
+          </div>
+        </div>
+        <div class="col-12 md:col-4">
+          <div class="card">
+            <div class="flex align-items-center gap-2 mb-3">
+              <i class="pi pi-chart-pie text-primary"></i>
+              <h4 class="m-0">{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</h4>
+            </div>
+            <div echarts [options]="pieChartOptions" style="height: 320px; width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ─── AG Grid Interactive Table ──────────────────────────────────────── -->
+  @if (financialData.length > 0) {
+    <div class="aggrid-section no-print">
+      <div class="card">
+        <!-- Toolbar -->
+        <!-- Heading leads this row too; see the comment on the page header above. -->
+        <div class="flex align-items-center mb-3 flex-wrap gap-2">
+          <div class="flex align-items-center gap-2 flex-1">
+            <i class="pi pi-table text-primary"></i>
+            <h4 class="m-0">{{ 'REPORTS.FINANCIAL_DATA_FORM.INTERACTIVE_DATA_TABLE' | translate }}</h4>
+            <p-tag [value]="financialData.length + ' ' + ('REPORTS.COMMON_FIELDS.RECORDS' | translate)" severity="secondary"></p-tag>
+          </div>
+          <!-- Quick filter -->
+          <span class="p-input-icon-left">
+            <i class="pi pi-search"></i>
+            <input
+              pInputText
+              type="text"
+              [(ngModel)]="gridQuickFilter"
+              (ngModelChange)="onGridQuickFilter()"
+              [placeholder]="'REPORTS.FINANCIAL_DATA_FORM.SEARCH' | translate"
+              style="width: 240px;">
+          </span>
+        </div>
+        <!-- Grid. One pass per language: `localeText` and `enableRtl` are read only
+             when the grid is created, so a language switch re-creates it (R5-14). -->
+        @for (lang of gridLanguage; track lang) {
+          <ag-grid-angular
+            class="ag-theme-alpine"
+            style="height: 500px; width: 100%;"
+            [columnDefs]="columnDefs"
+            [rowData]="financialData"
+            [defaultColDef]="defaultColDef"
+            [pagination]="true"
+            [paginationPageSize]="20"
+            [animateRows]="true"
+            theme="legacy"
+            [rowSelection]="rowSelection"
+            [suppressCellFocus]="true"
+            [enableRtl]="isRtl"
+            [localeText]="gridLocaleText"
+            (gridReady)="onGridReady($event)"
+            (firstDataRendered)="onFirstDataRendered()">
+          </ag-grid-angular>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ─── Empty State ─────────────────────────────────────────────────────── -->
+  @if (financialData.length === 0 && !loading) {
+    <div class="empty-state no-print">
+      <div class="card text-center p-5">
+        <i class="pi pi-inbox text-400" style="font-size: 4rem"></i>
+        <h4 class="text-700 mt-4 mb-2">{{ 'REPORTS.NO_DATA' | translate }}</h4>
+        <p class="text-600">{{ 'REPORTS.REPORT_SUBPAGES.NO_DATA_FOUND' | translate }}</p>
+      </div>
+    </div>
+  }
+
+  <!-- ─── Loading State ───────────────────────────────────────────────────── -->
+  @if (loading) {
+    <div class="loading-state no-print">
+      <div class="card text-center p-5">
+        <p-progressSpinner strokeWidth="4" styleClass="w-5rem h-5rem"></p-progressSpinner>
+        <h4 class="text-700 mt-4 mb-2">{{ 'COMMON.LOADING' | translate }}</h4>
+      </div>
+    </div>
+  }
+
+  <!-- ─── Jasper PDF Report Viewer ─────────────────────────────────────── -->
+  <div class="card mt-3 no-print">
+    <!-- Heading leads this row too; see the comment on the page header above. -->
+    <div class="flex align-items-center mb-3 flex-wrap gap-2">
+      <div class="flex align-items-center gap-2 flex-1">
+        <i class="pi pi-file-pdf" style="font-size:1.4rem;color:#6b2737"></i>
+        <h4 class="m-0" style="color:#6b2737">{{ 'REPORTS.VIEWER.GENERATE_REPORT' | translate }}</h4>
+      </div>
+      <div class="flex align-items-center gap-3 flex-wrap">
+        <div class="flex align-items-center gap-2">
+          <span class="font-semibold text-sm">{{ 'REPORTS.VIEWER.LANGUAGE' | translate }}:</span>
+          <p-selectButton [options]="reportLangOptions"
+            [(ngModel)]="selectedLang" optionLabel="label" optionValue="value">
+          </p-selectButton>
+        </div>
+        <p-button icon="pi pi-play"
+          [label]="'REPORTS.VIEWER.GENERATE_REPORT' | translate"
+          [loading]="reportLoading"
+          [disabled]="!selectedYear || !selectedQuarter"
+          (onClick)="generateReport()">
+        </p-button>
+      </div>
+    </div>
+    <app-report-viewer
+      [pdfApiPath]="pdfApiPath"
+      [pdfQuery]="pdfQuery"
+      [loadTrigger]="loadTrigger"
+      [loading]="reportLoading"
+      [filename]="'financial-data-form-q' + selectedQuarter + '-' + selectedYear + '.pdf'">
+    </app-report-viewer>
+  </div>
+
+</div>
+
+<p-toast></p-toast>

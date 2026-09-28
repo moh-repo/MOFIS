@@ -1,0 +1,64 @@
+<div class="university-reports-page" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="grid">
+    <div class="col-12">
+      <div class="card">
+        <!-- Header Section. `flex-1` on the leading block, not
+             `justify-content-between`: under `direction: rtl` a flex row already
+             runs right to left, and the global rule in styles.scss reverses every
+             `.flex.justify-content-between` again, which put the heading back on
+             the left and the actions on the right in Arabic. See
+             src/app/demo/components/page-headings.spec.ts. -->
+        <div class="flex align-items-center mb-4">
+          <div class="flex align-items-center gap-3 flex-1">
+            <i class="pi pi-building text-primary" style="font-size: 2rem"></i>
+            <div>
+              <h3 class="m-0 text-primary">{{ 'REPORTS.UNIVERSITY_REPORTS.TITLE' | translate }}</h3>
+              <p class="text-600 mt-1 mb-0">{{ 'REPORTS.UNIVERSITY_REPORTS.SUBTITLE' | translate }}</p>
+            </div>
+          </div>
+          <p-button
+            [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+            [label]="'REPORTS.REPORT_SUBPAGES.BACK_TO_REPORTS' | translate"
+            [outlined]="true"
+            routerLink="/reports/list" />
+          </div>
+          <p-divider />
+          <div class="grid">
+            @for (report of reportTypes; track report) {
+              <div class="col-12 md:col-6 lg:col-4">
+                <div class="surface-card border-round p-4 shadow-2 h-full hover:shadow-4 transition-duration-300"
+                  [ngClass]="{'cursor-pointer': report.implemented}"
+                  (click)="navigateToReport(report)">
+                  <div class="flex align-items-center gap-3 mb-3">
+                    <div class="flex align-items-center justify-content-center border-circle"
+                      [ngClass]="'bg-' + report.color + '-100'"
+                      style="width: 3.5rem; height: 3.5rem;">
+                      <i [class]="'pi ' + report.icon + ' text-' + report.color + '-600'" style="font-size: 1.5rem"></i>
+                    </div>
+                    <div class="flex-1">
+                      <h5 class="m-0 text-900">{{ report.title }}</h5>
+                      <p class="text-500 text-sm m-0 mt-1">{{ report.titleAr }}</p>
+                    </div>
+                  </div>
+                  <p class="text-600 line-height-3 m-0 mt-3">{{ report.description }}</p>
+                  <div class="mt-3 pt-3 border-top-1 surface-border">
+                    @if (report.implemented) {
+                      <span class="text-primary font-semibold text-sm">
+                        <i class="pi pi-eye mr-2"></i>{{ 'REPORTS.REPORT_SUBPAGES.VIEW_REPORT' | translate }}
+                      </span>
+                    }
+                    @if (!report.implemented) {
+                      <span class="text-500 text-sm">
+                        <i class="pi pi-clock mr-2"></i>{{ 'REPORTS.REPORT_SUBPAGES.COMING_SOON' | translate }}
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+

@@ -1,0 +1,172 @@
+@if (!readonly) {
+  <div class="sv__docs-toolbar" *hasPermission="'STUDENTS.EDIT'">
+    <button pButton pRipple type="button"
+      [label]="'STUDENTS.ADD_DOCUMENT' | translate" icon="pi pi-upload"
+      class="p-button-sm p-button-outlined"
+      [disabled]="uploadingDocument || !studentId"
+    (click)="openAddDocumentDialog()"></button>
+  </div>
+}
+
+<!-- Hidden input driven by the per-document "Replace file" menu action. Kept at the
+     template's top level so the #replaceFileInput reference stays in scope for the
+     document cards below — a reference declared inside an @if would not be. -->
+<input type="file" #replaceFileInput class="hidden" accept=".pdf,.jpg,.jpeg,.png,.gif"
+  (change)="onReplaceFileSelected($event)" />
+
+@if (loadingDocuments) {
+  <div class="sv__loading">
+    <i class="pi pi-spin pi-spinner"></i>
+    <span>{{ 'COMMON.LOADING' | translate }}</span>
+  </div>
+}
+@if (!loadingDocuments && studentDocuments.length === 0) {
+  <div class="sv__empty">
+    <i class="pi pi-file"></i>
+    {{ 'GENERAL.NO_DATA_AVAILABLE' | translate }}
+  </div>
+}
+@if (!loadingDocuments && studentDocuments.length > 0) {
+  <div class="sv__docs-grid">
+    @for (doc of studentDocuments; track doc) {
+      <div class="sv__doc">
+        <div class="sv__doc-header">
+          <i [class]="getDocumentTypeIcon(doc)" class="sv__doc-icon"></i>
+          <div class="sv__doc-info">
+            <span class="sv__doc-name" [title]="doc.documentName">{{ doc.documentName }}</span>
+            <span class="sv__doc-type" [title]="doc.originalFilename">{{ doc.originalFilename }}</span>
+          </div>
+          @if (!readonly) {
+            <div class="flex-shrink-0" *hasPermission="'STUDENTS.EDIT'">
+              <p-menu #menu [model]="getDocumentMenuItems(doc, replaceFileInput)"
+              [popup]="true" [appendTo]="'body'"></p-menu>
+              <button pButton pRipple icon="pi pi-ellipsis-v"
+                class="p-button-sm p-button-text p-button-rounded"
+              (click)="menu.toggle($event)"
+                    [pTooltip]="'COMMON.ACTIONS' | translate" [attr.aria-label]="'COMMON.ACTIONS' | translate"></button>
+            </div>
+          }
+        </div>
+        <div class="sv__doc-meta">
+          <p-tag [value]="getDocumentTypeLabel(doc.documentType)"
+            [severity]="hasDocumentType(doc.documentType) ? 'info' : 'warning'"
+            styleClass="text-xs"
+          [pTooltip]="'STUDENTS.DOCUMENT_TYPE' | translate"></p-tag>
+          <p-tag [value]="getDocumentFormatLabel(doc)" severity="secondary"
+            styleClass="text-xs"
+          [pTooltip]="'STUDENTS.DOCUMENT_FORMAT' | translate"></p-tag>
+          <span>{{ formatFileSize(doc.fileSize) }}</span>
+          <span>{{ doc.uploadDate | date:'short' }}</span>
+        </div>
+        @if (doc.expiryDate) {
+          <div class="sv__doc-meta">
+            <span><i class="pi pi-calendar-times mr-1"></i>{{ 'STUDENTS.DOCUMENT_EXPIRY' |
+            translate }}: {{ doc.expiryDate | date:'yyyy-MM-dd' }}</span>
+          </div>
+        }
+        <div class="sv__doc-actions">
+          <button pButton pRipple [label]="'COMMON.VIEW' | translate" icon="pi pi-eye"
+            class="p-button-sm p-button-outlined"
+            style="flex: 1"
+          (click)="viewDocument(doc)"></button>
+          <button pButton pRipple icon="pi pi-download"
+            class="p-button-sm p-button-outlined"
+            [pTooltip]="'COMMON.DOWNLOAD' | translate"
+          (click)="downloadDocument(doc)"></button>
+        </div>
+      </div>
+    }
+  </div>
+}
+
+@if (!readonly) {
+  <!-- Edit Document Dialog -->
+  <p-dialog [(visible)]="editDocumentDialog" [style]="{width: '400px'}" [header]="('COMMON.EDIT' | translate)"
+    [modal]="true" class="p-fluid" appendTo="body"
+    [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+    <ng-template pTemplate="content">
+      <div class="field">
+        <label for="documentName" class="font-bold block mb-2">{{ 'STUDENTS.DOCUMENT_NAME' | translate
+        }}</label>
+        <input pInputText id="documentName" [(ngModel)]="newDocumentName" class="w-full"
+          [placeholder]="'COMMON.ENTER' | translate" />
+      </div>
+      <div class="field">
+        <label for="documentType" class="font-bold block mb-2">{{ 'STUDENTS.DOCUMENT_TYPE' | translate
+        }}</label>
+        <p-select inputId="documentType" [options]="documentTypeOptions" [(ngModel)]="newDocumentType"
+          optionLabel="label" optionValue="value" [showClear]="true" [editable]="true"
+        styleClass="w-full" [placeholder]="'STUDENTS.SELECT_TYPE' | translate"></p-select>
+      </div>
+      <div class="field">
+        <label for="documentExpiry" class="font-bold block mb-2">{{ 'STUDENTS.DOCUMENT_EXPIRY' | translate
+        }}</label>
+        <p-datepicker inputId="documentExpiry" [(ngModel)]="newDocumentExpiry" dateFormat="yy-mm-dd"
+        [showIcon]="true" [showClear]="true" appendTo="body" styleClass="w-full"></p-datepicker>
+      </div>
+    </ng-template>
+    <ng-template pTemplate="footer">
+      <div class="flex justify-content-end gap-2">
+        <button pButton pRipple [label]="'COMMON.CANCEL' | translate" icon="pi pi-times"
+        class="p-button-text" (click)="closeEditDocumentDialog()"></button>
+        <button pButton pRipple [label]="'COMMON.SAVE' | translate" icon="pi pi-check"
+        [disabled]="!newDocumentName.trim()" (click)="saveDocumentName()"></button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Add Document Dialog -->
+  <p-dialog [(visible)]="addDocumentDialog" [style]="{width: '460px'}"
+    [header]="('STUDENTS.ADD_DOCUMENT' | translate)" [modal]="true" class="p-fluid" appendTo="body"
+    (onHide)="closeAddDocumentDialog()"
+    [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+    <ng-template pTemplate="content">
+      <div class="field">
+        <label class="font-bold block mb-2">{{ 'STUDENTS.SELECT_FILE' | translate }}</label>
+        <input type="file" #addFileInput class="hidden" accept=".pdf,.jpg,.jpeg,.png,.gif" (change)="onAddDocumentFileSelected($event)" />
+        <div class="flex align-items-center gap-2">
+          <button pButton pRipple type="button" icon="pi pi-paperclip"
+            [label]="'STUDENTS.CHOOSE_FILE' | translate" class="p-button-outlined"
+          (click)="addFileInput.click()"></button>
+          <span class="text-sm text-color-secondary">{{ pendingDocumentFile?.name || ('STUDENTS.NO_FILE_SELECTED' | translate) }}</span>
+        </div>
+      </div>
+      <div class="field">
+        <label for="addDocumentName" class="font-bold block mb-2">{{ 'STUDENTS.DOCUMENT_NAME' | translate
+        }}</label>
+        <input pInputText id="addDocumentName" [(ngModel)]="newDocumentName" class="w-full"
+          [placeholder]="'COMMON.ENTER' | translate" />
+      </div>
+      <div class="field">
+        <label for="addDocumentType" class="font-bold block mb-2">{{ 'STUDENTS.DOCUMENT_TYPE' | translate
+        }}</label>
+        <p-select inputId="addDocumentType" [options]="documentTypeOptions" [(ngModel)]="newDocumentType"
+          optionLabel="label" optionValue="value" [showClear]="true" [editable]="true"
+        styleClass="w-full" [placeholder]="'STUDENTS.SELECT_TYPE' | translate"></p-select>
+      </div>
+      <div class="field">
+        <label for="addDocumentExpiry" class="font-bold block mb-2">{{ 'STUDENTS.DOCUMENT_EXPIRY' |
+        translate }}</label>
+        <p-datepicker inputId="addDocumentExpiry" [(ngModel)]="newDocumentExpiry" dateFormat="yy-mm-dd"
+        [showIcon]="true" [showClear]="true" appendTo="body" styleClass="w-full"></p-datepicker>
+      </div>
+    </ng-template>
+    <ng-template pTemplate="footer">
+      <div class="flex justify-content-end gap-2">
+        <button pButton pRipple [label]="'COMMON.CANCEL' | translate" icon="pi pi-times"
+        class="p-button-text" (click)="closeAddDocumentDialog()"></button>
+        <button pButton pRipple [label]="'STUDENTS.UPLOAD' | translate" icon="pi pi-upload"
+          [disabled]="!pendingDocumentFile || uploadingDocument" [loading]="uploadingDocument"
+        (click)="uploadDocument()"></button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Answers this component's own ConfirmationService (document delete). -->
+  <p-confirmdialog [style]="{width: '440px'}" [baseZIndex]="10000" appendTo="body"
+    [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"
+    [acceptLabel]="'COMMON.YES' | translate"
+    [rejectLabel]="'COMMON.NO' | translate"
+    acceptButtonStyleClass="p-button-danger"
+  rejectButtonStyleClass="p-button-text"></p-confirmdialog>
+}

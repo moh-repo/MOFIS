@@ -1,0 +1,281 @@
+.report-settings-page {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.page-header-card {
+    margin-bottom: 0;
+}
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.page-header__content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.page-header__icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.type-list-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 320px;
+}
+
+.type-list-loading {
+    display: flex;
+    justify-content: center;
+    padding: 2rem 0;
+}
+
+.type-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: calc(100vh - 18rem);
+    overflow-y: auto;
+}
+
+.type-item {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    margin-bottom: 0.5rem;
+    transition: background 0.15s, border-color 0.15s;
+
+    &:hover {
+        background: var(--surface-hover, #f8f9fa);
+        border-color: var(--surface-border, #dee2e6);
+    }
+
+    &.selected {
+        background: #e8f4fd;
+        border-color: #0ea5e9;
+    }
+}
+
+.type-item__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.type-item__text {
+    min-width: 0;
+    flex: 1;
+}
+
+.type-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    word-break: break-word;
+}
+
+.type-code {
+    font-size: 0.75rem;
+    font-family: monospace;
+    display: block;
+    margin-top: 0.15rem;
+}
+
+.type-empty {
+    text-align: center;
+    padding: 1.5rem 1rem;
+}
+
+.editor-card {
+    margin-bottom: 1rem;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0 0 0.75rem;
+
+    i {
+        font-size: 1rem;
+    }
+}
+
+.section-hint {
+    margin: 0 0 1rem;
+}
+
+.title-table {
+    border: 1px solid var(--surface-border, #e2e8f0);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.title-table__header {
+    background: var(--surface-100, #f8fafc);
+    padding: 0.65rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-color-secondary, #64748b);
+    margin: 0;
+}
+
+.title-table__row {
+    padding: 0.65rem 0.75rem;
+    margin: 0;
+    border-top: 1px solid var(--surface-border, #e2e8f0);
+}
+
+.title-table__col-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.slot-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #64748b;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+
+    &.badge-active {
+        background: #0ea5e9;
+        color: #fff;
+    }
+}
+
+.signatory-count-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+:host ::ng-deep .signatory-count-dropdown {
+    width: 5rem;
+    min-width: 5rem;
+}
+
+.signatory-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.signatory-row {
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fafafa;
+
+    &.active-signatory {
+        border-color: #bae6fd;
+        background: #f0f9ff;
+    }
+}
+
+.signatory-row__header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.signatory-row__label {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.field-label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-bottom: 0.5rem;
+}
+
+.empty-state-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3rem 1.5rem;
+    min-height: 280px;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+}
+
+.report-settings-page.rtl-layout {
+    /* No `flex-direction: row-reverse` on the header or its content block. The
+       page carries `dir="rtl"`, so a flex row already runs right to left and
+       `justify-content: space-between` puts the icon-and-title block at the
+       right edge on its own; reversing on top of that put it back on the left
+       and the Add button on the right — the same double mirror the page
+       headings across Approvals, Alerts and Notifications had. This one was
+       written locally rather than inherited from styles.scss, which is why it
+       survived that pass. See page-headings.spec.ts. */
+    .page-header__content {
+        text-align: right;
+    }
+
+    /* The four inner rows that used to be reversed here — .type-item__row,
+       .section-title, .signatory-count-row, .signatory-row__header — are not
+       any more, for the reason above: under `dir="rtl"` they already run right
+       to left, and two of them paired the reversal with `justify-content:
+       flex-end` to put back what the reversal had moved. Nor is .editor-actions
+       re-anchored to flex-start: its buttons sit at the far end of the row in
+       both languages, which is the left in Arabic. */
+
+    .title-table__header,
+    .title-table__row {
+        text-align: right;
+    }
+}
+
+@media (max-width: 991px) {
+    .type-list {
+        max-height: none;
+    }
+
+    .title-table__header {
+        display: none;
+    }
+
+    .title-table__row {
+        padding: 0.75rem;
+    }
+
+    .title-table__col-num {
+        justify-content: flex-start;
+        margin-bottom: 0.35rem;
+    }
+}

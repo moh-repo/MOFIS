@@ -1,0 +1,1407 @@
+<div class="grid" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <!-- Master Panel (Left Side) -->
+  <div [ngClass]="{'col-12': !selectedStudent, 'col-12 lg:col-6': selectedStudent}"
+    class="transition-all transition-duration-500">
+    <div class="card h-full">
+      <!--
+        Title on the leading edge, actions on the trailing edge: left/right under
+        English, right/left under Arabic. `space-between` does that on its own —
+        see the stylesheet for the app-wide rule this header has to cancel.
+      -->
+      <div class="sh-page-header flex justify-content-between align-items-center mb-4">
+        <div class="flex align-items-center gap-3">
+          <!-- gap-3 rather than mr-3: PrimeFlex margins are physical and would
+               sit on the wrong side of the icon under Arabic. -->
+          <i class="pi pi-users text-blue-500 text-2xl"></i>
+          <div>
+            <h5 class="mb-1 text-900">{{ 'STUDENT_HISTORY.TITLE' | translate }}</h5>
+            <small class="text-500">{{ 'STUDENT_HISTORY.SUBTITLE' | translate }}</small>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button pButton pRipple type="button" icon="pi pi-refresh" class="p-button-action-outlined p-button-sm"
+            (click)="refreshData()" [disabled]="loading || isLoadingData"
+            [pTooltip]="'STUDENT_HISTORY.REFRESH_DATA' | translate">
+          </button>
+          <!-- No Add: the archive is the quarter close's record of what was on file,
+               read-only by decision DEC-08 (a). -->
+        </div>
+      </div>
+
+      <!--
+        Filter bar. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+        The grid is the --fluid variant because this panel is full width until
+        a student is selected and half width afterwards, so a column count
+        taken from the viewport would be wrong half the time.
+      -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--fluid">
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterStudentId">
+            <label for="shFilterId">{{ 'STUDENTS.FILTERS.SEARCH_BY_ID' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-hashtag" aria-hidden="true"></i>
+              <input id="shFilterId" pInputText type="text" [(ngModel)]="filterStudentId"
+                (input)="onFilterChange()"
+                [placeholder]="'STUDENTS.FILTERS.SEARCH_BY_ID' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterStudentName">
+            <label for="shFilterName">{{ 'STUDENTS.FILTERS.SEARCH_BY_NAME' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-user" aria-hidden="true"></i>
+              <input id="shFilterName" pInputText type="text" [(ngModel)]="filterStudentName"
+                (input)="onFilterChange()"
+                [placeholder]="'STUDENTS.FILTERS.SEARCH_BY_NAME' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterPassport">
+            <label for="shFilterPassport">{{ 'STUDENTS.FILTERS.SEARCH_BY_PASSPORT' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-id-card" aria-hidden="true"></i>
+              <input id="shFilterPassport" pInputText type="text" [(ngModel)]="filterPassport"
+                (input)="onFilterChange()"
+                [placeholder]="'STUDENTS.FILTERS.SEARCH_BY_PASSPORT' | translate" />
+            </span>
+          </div>
+        </div>
+
+        <!-- Always rendered, disabled when there is nothing to clear. Adding
+             and removing it moved the whole row every time the first character
+             was typed. -->
+        <div class="filter-bar__actions">
+          <button
+            pButton pRipple type="button" icon="pi pi-filter-slash"
+            class="p-button-action-outlined p-button-sm"
+            [label]="'COMMON.CLEAR' | translate"
+            [disabled]="loading || isLoadingData || !(filterStudentId || filterStudentName || filterPassport)"
+            (click)="clearFilters()">
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats Info -->
+      <div class="flex justify-content-between align-items-center mb-3 p-3 border-round"
+        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <div class="flex align-items-center">
+          <i class="pi pi-chart-bar mr-2"></i>
+          <span class="font-medium">{{ 'STUDENT_HISTORY.TOTAL_RECORDS_COUNT' | translate }} {{totalRecords}}</span>
+        </div>
+        <div class="flex align-items-center">
+          <i class="pi pi-eye mr-2"></i>
+          <span class="font-medium">{{ 'STUDENT_HISTORY.SHOWING_COUNT' | translate }} {{students.length}}</span>
+        </div>
+      </div>
+
+      <!--
+        Data Table. Kept mounted, with [loading] for the overlay: it used to sit in
+        an @if on `loading`, so every load destroyed and rebuilt it, the rebuilt
+        table announced page 1 with no sort, and a click on page 2 or on a header
+        was undone at once (live QA STD-005). [first] and the sort are bound for the
+        same reason: the table shows the page and order the component holds.
+      -->
+        <p-table [value]="students" dataKey="id" [paginator]="true" [rows]="pageSize" [totalRecords]="totalRecords"
+          [lazy]="true" (onLazyLoad)="onPageChange($event)" selectionMode="single" [(selection)]="selectedStudent"
+          [loading]="loading" [first]="first" [sortField]="sortField" [sortOrder]="sortDir === 'asc' ? 1 : -1"
+          (onRowSelect)="onRowSelect($event)" (onRowUnselect)="onRowUnselect($event)" responsiveLayout="scroll"
+          [scrollable]="true" [tableStyle]="{'min-width': '100%'}"
+          styleClass="p-datatable-striped p-datatable-gridlines">
+          <ng-template pTemplate="header">
+            <tr>
+              @for (col of cols; track col) {
+                <th [pSortableColumn]="col.field" [style.width]="col.width" class="text-center">
+                  <div class="flex align-items-center justify-content-center">
+                    {{col.header}}
+                    <p-sortIcon [field]="col.field"></p-sortIcon>
+                  </div>
+                </th>
+              }
+              <th class="text-center" style="width: 6rem">{{ 'STUDENT_HISTORY.ACTIONS' | translate }}</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-student>
+            <tr [pSelectableRow]="student" class="cursor-pointer">
+              <!-- The student's id, the one "search by id" searches, not the archive
+                   row's own id (live QA STD-004). -->
+              <td class="text-center">
+                <span class="p-badge p-badge-secondary">{{student.studentId ?? student.id}}</span>
+              </td>
+              <td>
+                <div class="flex align-items-center">
+                  <i class="pi pi-user text-blue-500 mr-2"></i>
+                  <span class="font-medium text-900">{{student.studentName || 'N/A'}}</span>
+                </div>
+              </td>
+              <td>
+                <div class="flex align-items-center">
+                  <i class="pi pi-graduation-cap text-green-500 mr-2"></i>
+                  <span class="text-900">{{student.studentMajorName || 'N/A'}}</span>
+                </div>
+              </td>
+              <!-- The quarter the snapshot was taken in. The added-quarter shown here
+                   before is 0 on almost every archived row. -->
+              <td class="text-center">
+                @if (quarterLabel(student.currentQuarter); as quarter) {
+                  <span class="p-tag p-tag-info">{{ quarter }}</span>
+                } @else {
+                  <span class="text-500">-</span>
+                }
+              </td>
+              <td class="text-right">
+                <span class="font-bold text-green-600">{{student.getFormattedAmount()}}</span>
+              </td>
+              <td class="text-center">
+                <span class="text-900">{{student.getArchiveDateFormatted()}}</span>
+              </td>
+              <td class="text-center">
+                <span class="p-tag"
+                  [ngClass]="student.studentGender === 1 ? 'p-tag-success' : student.studentGender === 2 ? 'p-tag-info' : 'p-tag-secondary'">
+                  {{genderLabel(student.studentGender)}}
+                </span>
+              </td>
+              <td>
+                <div class="flex gap-1 justify-content-center">
+                  <button pButton pRipple icon="pi pi-eye" class="p-button-rounded p-button-info p-button-text"
+                    [pTooltip]="'STUDENT_HISTORY.VIEW_DETAILS' | translate" (click)="viewStudent(student)">
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td [attr.colspan]="cols.length + 1" class="text-center text-500">
+                <div class="flex flex-column align-items-center py-6">
+                  <i class="pi pi-users text-6xl text-300 mb-4"></i>
+                  <h6 class="text-500 mb-2">{{ 'STUDENT_HISTORY.NO_STUDENTS_FOUND' | translate }}</h6>
+                  <small class="text-400">{{ 'STUDENT_HISTORY.ADJUST_SEARCH' | translate }}</small>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+    </div>
+  </div>
+
+  <!-- Detail Panel (Right Side) -->
+  @if (selectedStudent) {
+    <div class="col-12 lg:col-6 transition-all transition-duration-500 fadeinright">
+      <div class="card h-full flex flex-column">
+        <!-- Header Section -->
+        <div>
+          <div class="p-4 flex justify-content-between align-items-center"
+            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px 12px 0 0;">
+            <div class="flex align-items-center flex-1">
+              <div class="sh-detail-avatar flex align-items-center justify-content-center border-circle bg-white-alpha-20 mr-3">
+                @if (viewPhotoUrl) {
+                  <img [src]="viewPhotoUrl" [attr.alt]="selectedStudent.studentName || ''" />
+                }
+                @if (!viewPhotoUrl) {
+                  <i class="pi pi-user text-white text-2xl"></i>
+                }
+              </div>
+              <div class="flex-1">
+                <h4 class="mb-1 text-white font-bold">{{selectedStudent.studentName || 'N/A'}}</h4>
+                <div class="flex align-items-center gap-3 mt-1">
+                  <span class="text-white-alpha-90 text-sm flex align-items-center">
+                    <i class="pi pi-id-card mr-1"></i> ID: {{selectedStudent.id}}
+                  </span>
+                  <span class="text-white-alpha-90 text-sm flex align-items-center">
+                    <i class="pi pi-list mr-1"></i> {{ 'STUDENT_HISTORY.RECORDS_COUNT_LABEL' | translate:{ count: selectedStudentFinancialRecords.length } }}
+                  </span>
+                  <span class="p-tag" [ngClass]="selectedStudent.studentGender === 1 ? 'p-tag-success' : 'p-tag-info'">
+                    {{genderLabel(selectedStudent.studentGender)}}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button pButton icon="pi pi-times" class="p-button-rounded p-button-text p-button-lg" style="color: white;"
+              (click)="selectedStudent = null; selectedDetailedRecord = null;" [pTooltip]="'COMMON.CLOSE' | translate">
+            </button>
+          </div>
+          <div class="p-3">
+            <!-- Comprehensive Student Details -->
+            <div class="mb-3">
+              <p-accordion [multiple]="true" [value]="[0,1,2,3,4,5,6,7,8,9]">
+                <p-accordion-panel [value]="0">
+                  <p-accordion-header>
+                    <div class="flex align-items-center w-full">
+                      <i class="pi pi-chart-line text-purple-600 text-xl mr-2"></i>
+                      <span class="font-semibold">{{ 'STUDENT_QUICK_EDIT.PROGRESS.TITLE' | translate }}</span>
+                    </div>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    @if (progressLoading) {
+                      <div class="flex flex-column gap-2 p-2">
+                        <p-skeleton width="100%" height="1.5rem"></p-skeleton>
+                        <p-skeleton width="80%" height="1.5rem"></p-skeleton>
+                        <p-skeleton width="100%" height="0.75rem"></p-skeleton>
+                      </div>
+                    }
+                    @if (!progressLoading && studentProgress) {
+                      <div class="flex flex-column gap-2 p-2">
+                        <div class="flex align-items-center gap-2 flex-wrap">
+                          <span class="text-600 text-xs font-semibold">{{ 'STUDENT_QUICK_EDIT.PROGRESS.CURRENT_YEAR' | translate }}:</span>
+                          <span>{{ (studentProgress | inLanguage:'currentYearLabel') || '—' }}</span>
+                        </div>
+                        <div class="flex align-items-center gap-2 flex-wrap">
+                          <span class="text-600 text-xs font-semibold">{{ 'STUDENT_QUICK_EDIT.PROGRESS.YEAR_OF' | translate }}:</span>
+                          <span>{{ studentProgress.currentYearOrder != null && studentProgress.totalYears != null ? (studentProgress.currentYearOrder + ' / ' + studentProgress.totalYears) : '—' }}</span>
+                        </div>
+                        @if (studentProgress.progressPercent != null) {
+                          <div class="flex flex-column gap-1">
+                            <p-progressBar [value]="studentProgress.progressPercent" [showValue]="true"></p-progressBar>
+                          </div>
+                        }
+                      </div>
+                    }
+                    @if (!progressLoading && !studentProgress) {
+                      <div class="text-color-secondary p-2">
+                        {{ 'STUDENT_HISTORY.NO_PROGRESS' | translate }}
+                      </div>
+                    }
+                  </p-accordion-content>
+                </p-accordion-panel>
+                <p-accordion-panel [value]="1">
+                  <p-accordion-header>
+                    <div class="flex align-items-center w-full">
+                      <i class="pi pi-list-check text-orange-600 text-xl mr-2"></i>
+                      <span class="font-semibold">{{ 'STUDENT_QUICK_EDIT.YEAR_RESULTS.TITLE' | translate }}</span>
+                    </div>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    @if (yearResultsLoading) {
+                      <div class="flex flex-column gap-2 p-2">
+                        <p-skeleton width="100%" height="1.5rem"></p-skeleton>
+                        <p-skeleton width="80%" height="1.5rem"></p-skeleton>
+                      </div>
+                    }
+                    @if (!yearResultsLoading && yearResults.length) {
+                      <div class="flex flex-column gap-2 p-2">
+                        @for (r of yearResults; track r) {
+                          <div class="flex align-items-center gap-2 flex-wrap">
+                            <span class="text-600 text-xs font-semibold">{{ 'STUDENT_QUICK_EDIT.YEAR_RESULTS.YEAR' | translate }} {{ r.yearNumber }}:</span>
+                            <p-tag [value]="outcomeKey(r) | translate" [severity]="outcomeSeverity(r)"></p-tag>
+                            @if (r.grade) {
+                              <span class="text-500">{{ 'STUDENT_QUICK_EDIT.YEAR_RESULTS.GRADE' | translate }}: {{ r.grade }}</span>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                    @if (!yearResultsLoading && yearResults.length === 0) {
+                      <div class="text-color-secondary p-2">
+                        {{ 'STUDENT_QUICK_EDIT.YEAR_RESULTS.NONE' | translate }}
+                      </div>
+                    }
+                  </p-accordion-content>
+                </p-accordion-panel>
+                <p-accordion-panel [value]="2">
+                  <p-accordion-header>
+                    <div class="flex align-items-center w-full">
+                      <i class="pi pi-user text-blue-600 text-xl mr-2"></i>
+                      <span class="font-semibold">{{ 'STUDENTS.PERSONAL_INFO' | translate }}</span>
+                    </div>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    <div class="grid p-2">
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENTS.NAME' | translate }}</label>
+                          <div class="p-2 bg-blue-50 border-round border-1 border-blue-200 text-900 font-medium">
+                            {{selectedStudent.studentName || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_HISTORY.GENDER' | translate
+                          }}</label>
+                          <div class="sh-field-value">
+                            <span class="p-tag"
+                              [ngClass]="selectedStudent.studentGender === 1 ? 'p-tag-success' : 'p-tag-info'">
+                              {{genderLabel(selectedStudent.studentGender)}}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENTS.STUDENT_FORM.BIRTH_DATE' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.studentBirthdate | date:'mediumDate'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENTS.STUDENT_FORM.BIRTH_PLACE' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.studentBirthdatePlace || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_HISTORY.PASSPORT_NUMBER' |
+                          translate }}</label>
+                          <div class="p-2 bg-blue-50 border-round border-1 border-blue-200 text-900 font-medium">
+                            {{selectedStudent.studentPassportNumber || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_HISTORY.ISSUE_DATE' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.studentPassportIssueDate | date:'mediumDate'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_HISTORY.EXPIRE_DATE' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.studentPassportExpireDate | date:'mediumDate'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.PASSPORT_ISSUE_COUNTRY' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{(countryMap.get(selectedStudent.studentPassportIssueCountryId) ||
+                            selectedStudent.studentPassportIssueCountryId) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </p-accordion-content>
+                </p-accordion-panel>
+                <p-accordion-panel [value]="3">
+                  <p-accordion-header>
+                    <div class="flex align-items-center w-full">
+                      <i class="pi pi-graduation-cap text-green-600 text-xl mr-2"></i>
+                      <span class="font-semibold">{{ 'STUDENTS.ACADEMIC_INFO' | translate }}</span>
+                    </div>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    <div class="grid p-2">
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENTS.MAJOR' | translate
+                          }}</label>
+                          <div class="p-2 bg-green-50 border-round border-1 border-green-200 text-900 font-medium">
+                            {{selectedStudent.studentMajorName || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.STUDENT_MAJOR' |
+                          translate }} ID</label>
+                          <div class="sh-field-value">
+                            {{(majorMap.get(selectedStudent.studentMajorId) || selectedStudent.studentMajorId) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.STUDENT_DEGREE' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{(degreeMap.get(selectedStudent.studentDegreeId) || selectedStudent.studentDegreeId) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_HISTORY.DECISION_YEAR' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.studentDelegationDecisionYear || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.DELEGATE_DECISION_NO' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.studentDelegateDecisionNo || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENTS.STUDENT_FORM.STUDY_YEARS' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.studentStudyNoOfYears || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENTS.STUDENT_FORM.CURRENT_LEVEL'
+                          | translate }}</label>
+                          <div class="sh-field-value">
+                            {{(levelMap.get(selectedStudent.studentCurrentLevelId) || selectedStudent.studentCurrentLevelId)
+                            || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENTS.STATUS' | translate
+                          }}</label>
+                          <div class="sh-field-value">
+                            {{(studyStatusMap.get(selectedStudent.studentStudyStatusId) ||
+                            selectedStudent.studentStudyStatusId) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.STUDY_TYPE' | translate
+                          }}</label>
+                          <div class="sh-field-value">
+                            {{(studyTypeMap.get(selectedStudent.studentStudyTypeId) || selectedStudent.studentStudyTypeId)
+                            || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </p-accordion-content>
+                </p-accordion-panel>
+                <p-accordion-panel [value]="4">
+                  <p-accordion-header>
+                    <div class="flex align-items-center w-full">
+                      <i class="pi pi-map-marker text-orange-600 text-xl mr-2"></i>
+                      <span class="font-semibold">{{ 'STUDENT_ADD.RESIDENCE_INFO' | translate }}</span>
+                    </div>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    <div class="grid p-2">
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.STUDENT_COUNTRY' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{(countryMap.get(selectedStudent.studentCountryId) || selectedStudent.studentCountryId) ||
+                            'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.GOVERNMENT' | translate
+                          }}</label>
+                          <div class="sh-field-value">
+                            {{(govMap.get(selectedStudent.studentGovId) || selectedStudent.studentGovId) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.MUNICIPALITY' | translate
+                          }}</label>
+                          <div class="sh-field-value">
+                            {{(mudMap.get(selectedStudent.studentMudId) || selectedStudent.studentMudId) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </p-accordion-content>
+                </p-accordion-panel>
+                <p-accordion-panel [value]="5">
+                  <p-accordion-header>
+                    <div class="flex align-items-center w-full">
+                      <i class="pi pi-building text-purple-600 text-xl mr-2"></i>
+                      <span class="font-semibold">{{ 'STUDENT_ADD.STUDY_LOCATION_INFO' | translate }}</span>
+                    </div>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    <div class="grid p-2">
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.STUDY_COUNTRY_IN' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{(studyCountryInMap.get(selectedStudent.studyCountryIn) || selectedStudent.studyCountryIn) ||
+                            'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.STUDY_GOV_IN' | translate
+                          }}</label>
+                          <div class="sh-field-value">
+                            {{(studyGovInMap.get(selectedStudent.syudyGovIn) || selectedStudent.syudyGovIn) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.STUDY_UNIVERSITY_IN' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{(studyUniversityInMap.get(selectedStudent.studyUniversityIn) ||
+                            selectedStudent.studyUniversityIn) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.STUDY_COLLEGE_IN' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{(studyCollegeInMap.get(selectedStudent.studyCollegeIn) || selectedStudent.studyCollegeIn) ||
+                            'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.STUDY_EDUCATION_IN' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{(studyEducationInMap.get(selectedStudent.studyEducationIn) ||
+                            selectedStudent.studyEducationIn) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.STUDY_MAJOR_IN' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{(studyMajorInMap.get(selectedStudent.studyMajorIn) || selectedStudent.studyMajorIn) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </p-accordion-content>
+                </p-accordion-panel>
+                <p-accordion-panel [value]="6">
+                  <p-accordion-header>
+                    <div class="flex align-items-center w-full">
+                      <i class="pi pi-dollar text-cyan-600 text-xl mr-2"></i>
+                      <span class="font-semibold">{{ 'FINANCE.TITLE' | translate }}</span>
+                    </div>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    <div class="grid p-2">
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_HISTORY.AMOUNT' | translate
+                          }}</label>
+                          <div
+                            class="p-3 bg-cyan-50 border-round border-1 border-cyan-200 text-green-700 font-bold text-xl">
+                            {{selectedStudent.getFormattedAmount()}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_HISTORY.RECEIPT' | translate
+                          }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.studentFirstReceiptOfDue || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_HISTORY.QUARTER' | translate
+                          }}</label>
+                          <div class="sh-field-value">
+                            <span class="p-tag p-tag-info">{{selectedStudent.studentAddedQuarter || 'N/A'}}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.LAST_QUARTER' | translate
+                          }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.studentLastQuarter || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.CURRENT_QUARTER' | translate }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.currentQuarter || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.UNIVERSITY_FEE' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.studyUniversityFeeId || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_ADD.UNIVERSITY_FEE_STATUS' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{uniFeeStatusLabel(selectedStudent.studyUniversityFeeStatusId)}}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </p-accordion-content>
+                </p-accordion-panel>
+                <p-accordion-panel [value]="7">
+                  <p-accordion-header>
+                    <div class="flex align-items-center w-full">
+                      <i class="pi pi-sitemap text-indigo-600 text-xl mr-2"></i>
+                      <span class="font-semibold">{{ 'LOOKUP_TABLES.MANAGEMENT' | translate }}</span>
+                    </div>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    <div class="grid p-2">
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{
+                          'LOOKUP_TABLES.TABLE_NAMES.STUDENT_AGENCY_TYPE' | translate }}</label>
+                          <div class="sh-field-value">
+                            {{(agencyTypeMap.get(selectedStudent.studentAgencyTypeId) ||
+                            selectedStudent.studentAgencyTypeId) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{
+                          'LOOKUP_TABLES.TABLE_NAMES.STUDENT_MINISTRY_TYPE' | translate }}</label>
+                          <div class="sh-field-value">
+                            {{(ministryTypeMap.get(selectedStudent.studentMinistryTypeId) ||
+                            selectedStudent.studentMinistryTypeId) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{
+                          'LOOKUP_TABLES.TABLE_NAMES.STUDENT_UNIVERSITY_TYPE' | translate }}</label>
+                          <div class="sh-field-value">
+                            {{(universityTypeMap.get(selectedStudent.studentUniversityTypeId) ||
+                            selectedStudent.studentUniversityTypeId) || 'N/A'}}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </p-accordion-content>
+                </p-accordion-panel>
+                <p-accordion-panel [value]="8">
+                  <p-accordion-header>
+                    <div class="flex align-items-center w-full">
+                      <i class="pi pi-database text-pink-600 text-xl mr-2"></i>
+                      <span class="font-semibold">{{ 'STUDENT_HISTORY.ARCHIVE_INFORMATION' | translate }}</span>
+                    </div>
+                  </p-accordion-header>
+                  <p-accordion-content>
+                    <div class="grid p-2">
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_HISTORY.ARCHIVE_DATE_LABEL' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.getArchiveDateFormatted()}}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-12 md:col-6">
+                        <div class="mb-3">
+                          <label class="text-600 text-xs font-semibold mb-1 block">{{ 'STUDENT_HISTORY.ORIGINAL_DATE' |
+                          translate }}</label>
+                          <div class="sh-field-value">
+                            {{selectedStudent.getStudentMidateFormatted()}}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </p-accordion-content>
+                </p-accordion-panel>
+                @if (selectedStudent.studentNote1 || selectedStudent.studentNote2) {
+                  <p-accordion-panel [value]="9">
+                    <p-accordion-header>
+                      <div class="flex align-items-center w-full">
+                        <i class="pi pi-file-edit text-teal-600 text-xl mr-2"></i>
+                        <span class="font-semibold">{{ 'STUDENT_HISTORY.NOTES' | translate }}</span>
+                      </div>
+                    </p-accordion-header>
+                    <p-accordion-content>
+                      <div class="p-2">
+                        @if (selectedStudent.studentNote1) {
+                          <div class="mb-3">
+                            <label class="text-600 text-xs font-semibold mb-2 block">{{ 'STUDENT_HISTORY.NOTE_1' | translate
+                            }}</label>
+                            <div class="p-3 bg-teal-50 border-round border-1 border-teal-200 text-900 white-space-pre-wrap">
+                              {{selectedStudent.studentNote1}}
+                            </div>
+                          </div>
+                        }
+                        @if (selectedStudent.studentNote2) {
+                          <div>
+                            <label class="text-600 text-xs font-semibold mb-2 block">{{ 'STUDENT_HISTORY.NOTE_2' | translate
+                            }}</label>
+                            <div class="p-3 bg-teal-50 border-round border-1 border-teal-200 text-900 white-space-pre-wrap">
+                              {{selectedStudent.studentNote2}}
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </p-accordion-content>
+                  </p-accordion-panel>
+                }
+                @if (archivedProfilePretty) {
+                  <p-accordion-panel [value]="10">
+                    <p-accordion-header>
+                      <div class="flex align-items-center w-full">
+                        <i class="pi pi-database text-purple-600 text-xl mr-2"></i>
+                        <span class="font-semibold">{{ 'STUDENT_HISTORY.ARCHIVED_PROFILE' | translate }}</span>
+                      </div>
+                    </p-accordion-header>
+                    <p-accordion-content>
+                      <div class="p-2">
+                        <p class="text-600 text-sm mb-2">{{ 'STUDENT_HISTORY.ARCHIVED_PROFILE_HINT' | translate }}</p>
+                        <pre class="sh-profile-snapshot">{{ archivedProfilePretty }}</pre>
+                      </div>
+                    </p-accordion-content>
+                  </p-accordion-panel>
+                }
+              </p-accordion>
+            </div>
+            <!-- Changes across quarters -->
+            <div class="mb-3">
+              <div class="p-3 border-round border-1 surface-border surface-card">
+                <div class="flex align-items-center mb-3">
+                  <i class="pi pi-history text-primary mr-2"></i>
+                  <h6 class="m-0 font-bold text-900">{{ 'STUDENT_HISTORY.QUARTER_CHANGES' | translate }}</h6>
+                </div>
+                @if (!quarterChanges.length) {
+                  <div class="text-500 text-sm p-2 flex align-items-center gap-2">
+                    <i class="pi pi-info-circle"></i>
+                    {{ 'STUDENT_HISTORY.NO_QUARTER_CHANGES' | translate }}
+                  </div>
+                }
+                @if (quarterChanges.length) {
+                  <div class="sh-qtimeline">
+                    @for (qc of quarterChanges; track qc) {
+                      <div class="sh-qtimeline__item">
+                        <div class="sh-qtimeline__head">
+                          <span class="sh-qtimeline__badge">{{ qc.fromLabel }}</span>
+                          <i class="pi pi-arrow-right sh-qtimeline__arrow"></i>
+                          <span class="sh-qtimeline__badge sh-qtimeline__badge--to">{{ qc.toLabel }}</span>
+                          <span class="sh-qtimeline__count">{{ qc.changes.length }} {{ 'STUDENT_HISTORY.CHANGES_COUNT' | translate }}</span>
+                        </div>
+                        <ul class="sh-qtimeline__changes">
+                          @for (c of qc.changes; track c) {
+                            <li>
+                              <span class="sh-qtimeline__field">{{ c.label }}</span>
+                              <span class="sh-qtimeline__from">{{ c.from }}</span>
+                              <i class="pi pi-arrow-right sh-qtimeline__sep"></i>
+                              <span class="sh-qtimeline__to">{{ c.to }}</span>
+                            </li>
+                          }
+                        </ul>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+            <!-- All Financial Records Section -->
+            <div class="mb-3">
+              <div class="p-3 border-round border-1 surface-border bg-white">
+                <div class="flex align-items-center justify-content-between mb-3">
+                  <h6 class="text-900 font-bold m-0 flex align-items-center">
+                    <i class="pi pi-list text-indigo-600 mr-2"></i>
+                    {{ 'STUDENT_HISTORY.ALL_RECORDS' | translate }}
+                  </h6>
+                  @if (loadingFinancialRecords) {
+                    <p-progressSpinner [style]="{width: '20px', height: '20px'}"
+                    strokeWidth="3"></p-progressSpinner>
+                  }
+                </div>
+                @if (!loadingFinancialRecords && selectedStudentFinancialRecords.length > 0) {
+                  <div>
+                    <p-table [value]="selectedStudentFinancialRecords" dataKey="id" selectionMode="single"
+                      [(selection)]="selectedDetailedRecord" (onRowSelect)="onDetailedRecordSelect($event.data)"
+                      (onRowUnselect)="selectedDetailedRecord = null" responsiveLayout="scroll"
+                      styleClass="p-datatable-sm p-datatable-striped p-datatable-gridlines">
+                      <ng-template pTemplate="header">
+                        <tr>
+                          <th class="text-center" style="width: 80px">{{ 'STUDENT_HISTORY.ID' | translate }}</th>
+                          <th class="text-center" style="width: 120px">{{ 'STUDENT_HISTORY.QUARTER' | translate }}</th>
+                          <th class="text-right" style="width: 140px">{{ 'STUDENT_HISTORY.AMOUNT' | translate }}</th>
+                          <th class="text-center" style="width: 130px">{{ 'STUDENT_HISTORY.ARCHIVE_DATE_LABEL' | translate
+                          }}</th>
+                          <th class="text-center" style="width: 90px">{{ 'STUDENT_HISTORY.ACTIONS' | translate }}</th>
+                        </tr>
+                      </ng-template>
+                      <ng-template pTemplate="body" let-record>
+                        <tr [pSelectableRow]="record" class="cursor-pointer"
+                          [class.p-highlight]="selectedDetailedRecord?.id === record.id">
+                          <td class="text-center">
+                            <span class="p-badge p-badge-lg"
+                              [ngClass]="selectedDetailedRecord?.id === record.id ? 'p-badge-info' : 'p-badge-secondary'">
+                              {{record.id}}
+                            </span>
+                          </td>
+                          <td class="text-center">
+                            @if (record.studentAddedQuarter) {
+                              <span class="p-tag p-tag-info p-tag-lg">
+                                {{record.studentAddedQuarter}}
+                              </span>
+                            }
+                            @if (!record.studentAddedQuarter) {
+                              <span class="text-500">-</span>
+                            }
+                          </td>
+                          <td class="text-right">
+                            <span class="font-bold text-green-600 text-lg">{{record.getFormattedAmount()}}</span>
+                          </td>
+                          <td class="text-center">
+                            <span class="text-900">{{record.getArchiveDateFormatted()}}</span>
+                          </td>
+                          <td class="text-center">
+                            <button pButton pRipple icon="pi pi-eye" class="p-button-rounded p-button-text p-button-info"
+                              (click)="viewStudent(record); $event.stopPropagation()"
+                              [pTooltip]="'STUDENT_HISTORY.VIEW_DETAILS' | translate">
+                            </button>
+                          </td>
+                        </tr>
+                      </ng-template>
+                      <ng-template pTemplate="emptymessage">
+                        <tr>
+                          <td [attr.colspan]="5" class="text-center text-500 py-4">
+                            <i class="pi pi-inbox text-4xl text-300 mb-2"></i>
+                            <div class="text-sm">{{ 'STUDENT_HISTORY.NO_RECORDS_FOUND' | translate }}</div>
+                          </td>
+                        </tr>
+                      </ng-template>
+                    </p-table>
+                  </div>
+                }
+                @if (!loadingFinancialRecords && selectedStudentFinancialRecords.length === 0) {
+                  <div
+                    class="flex flex-column align-items-center justify-content-center py-5 text-500">
+                    <i class="pi pi-inbox text-5xl text-300 mb-3"></i>
+                    <div class="text-lg font-medium">{{ 'STUDENT_HISTORY.NO_FINANCIAL_RECORDS_MSG' | translate }}</div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+<!-- ═══════════════════════════ VIEW DIALOG ═══════════════════════════
+
+     Layout (styles: .dv-* in assets/layout/styles/_detail-dialog.scss):
+
+       hero     → photo / initials badge, name, id, quarter, gender, major,
+                  study status and archive date; archived allowance on the end side
+       kpis     → allowance / added quarter / last quarter / study years
+       columns  → Personal | Passport, Academic | Study location, Residence | Contact
+       columns  → Finance | Management | Archive
+       section  → live documents of the underlying student (photo + files are
+                  fetched by studentId; deleted students degrade to "no data")
+       section  → notes
+-->
+<p-dialog [(visible)]="viewDialog"
+  [style]="{ width: '1200px', maxWidth: '96vw' }"
+  [header]="'STUDENT_HISTORY.STUDENT_DETAILS' | translate"
+  [modal]="true" [maximizable]="true" styleClass="dv-dialog">
+  <ng-template pTemplate="content">
+    @if (newStudent; as s) {
+      <div class="dv-view">
+
+        <!-- Hero -->
+        <div class="dv-hero">
+          <div class="dv-hero__badge" [class.dv-hero__badge--photo]="!!viewPhotoUrl">
+            @if (viewPhotoUrl) {
+              <img [src]="viewPhotoUrl" [attr.alt]="s.studentName || ''" />
+            } @else {
+              @if (studentInitials(s.studentName); as initials) {
+                {{ initials }}
+              } @else {
+                <i class="pi pi-user"></i>
+              }
+            }
+          </div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">
+              {{ 'STUDENTS.STUDENT_ID' | translate }} · {{ s.studentId || s.id || '—' }}
+            </div>
+            <div class="dv-hero__title">{{ s.studentName || '—' }}</div>
+            <div class="dv-hero__meta">
+              <span class="dv-chip dv-chip--primary">
+                <i class="pi pi-calendar"></i>
+                {{ 'STUDENT_ADD.CURRENT_QUARTER' | translate }}: {{ s.currentQuarter || '—' }}
+              </span>
+              <span class="dv-chip">
+                <i class="pi pi-venus-mars"></i>
+                {{ genderLabel(s.studentGender) }}
+              </span>
+              @if (s.studentMajorName) {
+                <span class="dv-chip">
+                  <i class="pi pi-book"></i>
+                  {{ s.studentMajorName }}
+                </span>
+              }
+              @if (studyStatusMap.get(s.studentStudyStatusId); as statusLabel) {
+                <p-tag severity="info" [rounded]="true" icon="pi pi-flag" [value]="statusLabel"></p-tag>
+              }
+              <span class="dv-chip">
+                <i class="pi pi-clock"></i>
+                {{ 'STUDENT_HISTORY.ARCHIVE_DATE_LABEL' | translate }}: {{ s.archiveDate ? s.getArchiveDateFormatted() : '—' }}
+              </span>
+            </div>
+          </div>
+          <div class="dv-hero__amount">
+            <div class="dv-hero__amount-label">{{ 'STUDENT_HISTORY.AMOUNT' | translate }}</div>
+            <div class="dv-hero__amount-value">{{ s.getFormattedAmount() }}</div>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="dv-kpis dv-kpis--cols-4">
+          <div class="dv-kpi dv-kpi--green">
+            <span class="dv-kpi__icon"><i class="pi pi-wallet"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_HISTORY.AMOUNT' | translate }}</div>
+              <div class="dv-kpi__value">{{ s.getFormattedAmount() }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--blue">
+            <span class="dv-kpi__icon"><i class="pi pi-calendar-plus"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_HISTORY.QUARTER' | translate }}</div>
+              <div class="dv-kpi__value">{{ s.studentAddedQuarter || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--purple">
+            <span class="dv-kpi__icon"><i class="pi pi-history"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_ADD.LAST_QUARTER' | translate }}</div>
+              <div class="dv-kpi__value">{{ s.studentLastQuarter || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--orange">
+            <span class="dv-kpi__icon"><i class="pi pi-graduation-cap"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENTS.STUDENT_FORM.STUDY_YEARS' | translate }}</div>
+              <div class="dv-kpi__value">{{ s.studentStudyNoOfYears || '—' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dv-columns">
+          <!-- Personal -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-user"></i></span>
+              <div class="dv-section__title">{{ 'STUDENTS.PERSONAL_INFO' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENTS.NAME' | translate }}</dt>
+                <dd>{{ s.studentName || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENTS.STUDENT_ID' | translate }}</dt>
+                <dd>{{ s.studentId || s.id || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.GENDER' | translate }}</dt>
+                <dd>{{ genderLabel(s.studentGender) }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_FINANCE_ARCH.AGE' | translate }}</dt>
+                <dd>{{ s.studentAge || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENTS.STUDENT_FORM.BIRTH_DATE' | translate }}</dt>
+                <dd>{{ (s.studentBirthdate | date:'mediumDate') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENTS.STUDENT_FORM.BIRTH_PLACE' | translate }}</dt>
+                <dd>{{ s.studentBirthdatePlace || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Passport -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--orange"><i class="pi pi-id-card"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_HISTORY.PASSPORT_INFORMATION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.PASSPORT_NUMBER' | translate }}</dt>
+                <dd>{{ s.studentPassportNumber || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.ISSUE_DATE' | translate }}</dt>
+                <dd>{{ (s.studentPassportIssueDate | date:'mediumDate') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.EXPIRE_DATE' | translate }}</dt>
+                <dd>{{ (s.studentPassportExpireDate | date:'mediumDate') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.PASSPORT_ISSUE_COUNTRY' | translate }}</dt>
+                <dd>{{ (countryMap.get(s.studentPassportIssueCountryId) || s.studentPassportIssueCountryId) || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Academic -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-graduation-cap"></i></span>
+              <div class="dv-section__title">{{ 'STUDENTS.ACADEMIC_INFO' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENTS.MAJOR' | translate }}</dt>
+                <dd>{{ s.studentMajorName || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDENT_MAJOR' | translate }}</dt>
+                <dd>{{ (majorMap.get(s.studentMajorId) || s.studentMajorId) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDENT_DEGREE' | translate }}</dt>
+                <dd>{{ (degreeMap.get(s.studentDegreeId) || s.studentDegreeId) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.DECISION_YEAR' | translate }}</dt>
+                <dd>{{ s.studentDelegationDecisionYear || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.DELEGATE_DECISION_NO' | translate }}</dt>
+                <dd>{{ s.studentDelegateDecisionNo || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENTS.STUDENT_FORM.STUDY_YEARS' | translate }}</dt>
+                <dd>{{ s.studentStudyNoOfYears || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENTS.STUDENT_FORM.CURRENT_LEVEL' | translate }}</dt>
+                <dd>{{ (levelMap.get(s.studentCurrentLevelId) || s.studentCurrentLevelId) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENTS.STATUS' | translate }}</dt>
+                <dd>{{ (studyStatusMap.get(s.studentStudyStatusId) || s.studentStudyStatusId) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDY_TYPE' | translate }}</dt>
+                <dd>{{ (studyTypeMap.get(s.studentStudyTypeId) || s.studentStudyTypeId) || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Study location -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-building"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_ADD.STUDY_LOCATION_INFO' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDY_COUNTRY_IN' | translate }}</dt>
+                <dd>{{ (studyCountryInMap.get(s.studyCountryIn) || s.studyCountryIn) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDY_GOV_IN' | translate }}</dt>
+                <dd>{{ (studyGovInMap.get(s.syudyGovIn) || s.syudyGovIn) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDY_UNIVERSITY_IN' | translate }}</dt>
+                <dd>{{ (studyUniversityInMap.get(s.studyUniversityIn) || s.studyUniversityIn) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDY_COLLEGE_IN' | translate }}</dt>
+                <dd>{{ (studyCollegeInMap.get(s.studyCollegeIn) || s.studyCollegeIn) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDY_EDUCATION_IN' | translate }}</dt>
+                <dd>{{ (studyEducationInMap.get(s.studyEducationIn) || s.studyEducationIn) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDY_MAJOR_IN' | translate }}</dt>
+                <dd>{{ (studyMajorInMap.get(s.studyMajorIn) || s.studyMajorIn) || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Residence -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-map-marker"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_ADD.RESIDENCE_INFO' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDENT_COUNTRY' | translate }}</dt>
+                <dd>{{ (countryMap.get(s.studentCountryId) || s.studentCountryId) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.GOVERNMENT' | translate }}</dt>
+                <dd>{{ (govMap.get(s.studentGovId) || s.studentGovId) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.MUNICIPALITY' | translate }}</dt>
+                <dd>{{ (mudMap.get(s.studentMudId) || s.studentMudId) || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Contact -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-phone"></i></span>
+              <div class="dv-section__title">{{ 'STUDENTS.CONTACT_INFO' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDENT_EMAIL' | translate }}</dt>
+                <dd>{{ s.studentEmail || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDENT_CELLPHONE' | translate }}</dt>
+                <dd>{{ s.studentCellphone || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDENT_HOME_NUMBER' | translate }}</dt>
+                <dd>{{ s.studentHomeNumber || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.STUDENT_EMERGENCY_CONTACT' | translate }}</dt>
+                <dd>{{ s.studentEmergencyContact || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <div class="dv-columns dv-columns--3">
+          <!-- Finance -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-wallet"></i></span>
+              <div class="dv-section__title">{{ 'FINANCE.TITLE' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.AMOUNT' | translate }}</dt>
+                <dd class="dv-dl__green">{{ s.getFormattedAmount() }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.RECEIPT' | translate }}</dt>
+                <dd>{{ s.studentFirstReceiptOfDue || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.QUARTER' | translate }}</dt>
+                <dd>{{ s.studentAddedQuarter || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.LAST_QUARTER' | translate }}</dt>
+                <dd>{{ s.studentLastQuarter || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.CURRENT_QUARTER' | translate }}</dt>
+                <dd>{{ s.currentQuarter || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.UNIVERSITY_FEE' | translate }}</dt>
+                <dd>{{ s.studyUniversityFeeId || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_ADD.UNIVERSITY_FEE_STATUS' | translate }}</dt>
+                <dd>{{ orDash(uniFeeStatusLabel(s.studyUniversityFeeStatusId)) }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.QUARTER_IS' | translate }}</dt>
+                <dd>{{ s.querterIs || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Management -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-sitemap"></i></span>
+              <div class="dv-section__title">{{ 'LOOKUP_TABLES.MANAGEMENT' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row dv-dl__row--stack">
+                <dt>{{ 'LOOKUP_TABLES.TABLE_NAMES.STUDENT_AGENCY_TYPE' | translate }}</dt>
+                <dd>{{ (agencyTypeMap.get(s.studentAgencyTypeId) || s.studentAgencyTypeId) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row dv-dl__row--stack">
+                <dt>{{ 'LOOKUP_TABLES.TABLE_NAMES.STUDENT_MINISTRY_TYPE' | translate }}</dt>
+                <dd>{{ (ministryTypeMap.get(s.studentMinistryTypeId) || s.studentMinistryTypeId) || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row dv-dl__row--stack">
+                <dt>{{ 'LOOKUP_TABLES.TABLE_NAMES.STUDENT_UNIVERSITY_TYPE' | translate }}</dt>
+                <dd>{{ (universityTypeMap.get(s.studentUniversityTypeId) || s.studentUniversityTypeId) || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Archive -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--orange"><i class="pi pi-history"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_HISTORY.ARCHIVE_INFORMATION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.ARCHIVE_DATE_LABEL' | translate }}</dt>
+                <dd>{{ s.archiveDate ? s.getArchiveDateFormatted() : '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.ORIGINAL_DATE' | translate }}</dt>
+                <dd>{{ s.studentMidate ? s.getStudentMidateFormatted() : '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENTS.DOCUMENT_UPLOAD_DATE' | translate }}</dt>
+                <dd>{{ (s.insertedToArchDate | date:'mediumDate') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.ID' | translate }}</dt>
+                <dd>{{ s.id ?? '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_HISTORY.QUARTER_IS' | translate }}</dt>
+                <dd>{{ s.querterIs || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <!-- Documents -->
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-file"></i></span>
+            <div class="dv-section__title">{{ 'STUDENTS.DOCUMENTS' | translate }}</div>
+            @if (!loadingHistoryDocs && historyDocuments.length) {
+              <span class="dv-section__aside">
+                <p-tag severity="secondary" [rounded]="true" [value]="'' + historyDocuments.length"></p-tag>
+              </span>
+            }
+          </header>
+          @if (loadingHistoryDocs) {
+            <div class="dv-notice dv-notice--muted">
+              <i class="pi pi-spin pi-spinner"></i>
+              <span>{{ 'COMMON.LOADING' | translate }}</span>
+            </div>
+          }
+          @if (!loadingHistoryDocs && !historyDocuments.length) {
+            <p class="dv-notes dv-notes--empty">{{ 'GENERAL.NO_DATA_AVAILABLE' | translate }}</p>
+          }
+          @if (historyDocuments.length) {
+            <p-table [value]="historyDocuments" dataKey="documentId" responsiveLayout="scroll"
+              styleClass="p-datatable-sm p-datatable-striped p-datatable-gridlines">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th>{{ 'STUDENTS.DOCUMENT_NAME' | translate }}</th>
+                  <th>{{ 'STUDENTS.DOCUMENT_TYPE' | translate }}</th>
+                  <th>{{ 'STUDENTS.DOCUMENT_FORMAT' | translate }}</th>
+                  <th>{{ 'STUDENTS.DOCUMENT_SIZE' | translate }}</th>
+                  <th>{{ 'STUDENTS.DOCUMENT_UPLOAD_DATE' | translate }}</th>
+                  <th style="width:4rem"></th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-doc>
+                <tr>
+                  <td>
+                    <span class="flex align-items-center gap-2">
+                      <i [class]="studentDocumentService.getDocumentFormatIcon(doc)" class="text-primary"></i>
+                      <span class="font-medium">{{ doc.documentName }}</span>
+                    </span>
+                  </td>
+                  <td>
+                    @if (documentTypeLabel(doc) !== '—') {
+                      <p-tag [value]="documentTypeLabel(doc)" severity="secondary" styleClass="text-xs"></p-tag>
+                    }
+                    @if (documentTypeLabel(doc) === '—') {
+                      <span class="text-500">—</span>
+                    }
+                  </td>
+                  <td>{{ documentFormatLabel(doc) }}</td>
+                  <td>{{ formatFileSize(doc.fileSize) }}</td>
+                  <td>{{ doc.uploadDate ? (doc.uploadDate | date:'yyyy-MM-dd') : '—' }}</td>
+                  <td class="text-center">
+                    <button pButton pRipple type="button" icon="pi pi-eye"
+                      class="p-button-text p-button-sm" [pTooltip]="'COMMON.VIEW' | translate"
+                      (click)="viewHistoryDocument(doc)"></button>
+                  </td>
+                </tr>
+              </ng-template>
+            </p-table>
+          }
+        </section>
+
+        <!-- Notes -->
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-comment"></i></span>
+            <div class="dv-section__title">{{ 'STUDENT_HISTORY.NOTES' | translate }}</div>
+          </header>
+          @if (s.studentNote1 || s.studentNote2) {
+            @if (s.studentNote1) {
+              <div class="dv-label mb-2">{{ 'STUDENT_HISTORY.NOTE_1' | translate }}</div>
+              <p class="dv-notes" [class.mb-3]="!!s.studentNote2">{{ s.studentNote1 }}</p>
+            }
+            @if (s.studentNote2) {
+              <div class="dv-label mb-2">{{ 'STUDENT_HISTORY.NOTE_2' | translate }}</div>
+              <p class="dv-notes">{{ s.studentNote2 }}</p>
+            }
+          } @else {
+            <p class="dv-notes dv-notes--empty">{{ 'FINANCE.NO_NOTES_AVAILABLE' | translate }}</p>
+          }
+        </section>
+
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint">
+        <i class="pi pi-hashtag"></i>
+        <span>{{ 'STUDENT_HISTORY.ID' | translate }}: {{ newStudent?.id ?? '—' }}</span>
+      </div>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" icon="pi pi-times"
+          class="p-button-text p-button-secondary"
+          [label]="'COMMON.CLOSE' | translate"
+          (click)="hideDialog()"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<p-toast></p-toast>

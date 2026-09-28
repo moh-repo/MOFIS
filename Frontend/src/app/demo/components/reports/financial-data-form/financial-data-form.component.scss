@@ -1,0 +1,425 @@
+/* Financial Data Form Component Styles */
+
+.financial-data-form-container {
+    padding: 1rem;
+}
+
+/* Filter Section */
+.filter-section {
+    margin-bottom: 1rem;
+}
+
+/* Summary Strip */
+.summary-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.summary-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--surface-50, #fafafa);
+    border: 1px solid var(--surface-200, #e0e0e0);
+    border-radius: 8px;
+    padding: 0.75rem 1.25rem;
+    min-width: 180px;
+}
+
+.summary-icon {
+    font-size: 1.5rem;
+}
+
+.summary-label {
+    font-size: 0.78rem;
+    color: var(--text-color-secondary, #777);
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+/* Charts Section */
+.charts-section {
+    margin-bottom: 1rem;
+}
+
+/* AG Grid Section */
+.aggrid-section {
+    margin-bottom: 2rem;
+}
+
+/* Report Document */
+.report-document {
+    background: white;
+    padding: 2rem;
+    margin: 2rem auto;
+    max-width: 1200px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    direction: rtl;
+    font-family: 'Arial', 'Tahoma', sans-serif;
+}
+
+/* Header */
+.report-header {
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #333;
+    padding-bottom: 1rem;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.header-right,
+.header-left {
+    flex: 1;
+}
+
+.header-center {
+    flex: 0 0 auto;
+    padding: 0 2rem;
+}
+
+.header-text-right {
+    text-align: right;
+}
+
+.header-text-left {
+    text-align: left;
+}
+
+.header-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin: 0 0 0.25rem 0;
+    color: #000;
+}
+
+.header-subtitle {
+    font-size: 1rem;
+    margin: 0 0 0.25rem 0;
+    color: #000;
+}
+
+.header-location {
+    font-size: 1rem;
+    margin: 0;
+    color: #000;
+}
+
+.meta-info {
+    font-size: 0.9rem;
+    margin: 0.25rem 0;
+    color: #000;
+}
+
+.logo-container {
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emblem {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.report-title {
+    text-align: center;
+    margin: 1.5rem 0 1rem 0;
+}
+
+.report-title h2 {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #0066cc;
+    margin: 0;
+    border: 2px solid #0066cc;
+    padding: 0.75rem;
+    display: inline-block;
+    border-radius: 4px;
+}
+
+.country-info {
+    text-align: center;
+    margin: 1rem 0;
+    padding: 0.5rem;
+}
+
+.country-info p {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin: 0;
+    color: #000;
+}
+
+/* Table */
+.financial-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+}
+
+.financial-table th,
+.financial-table td {
+    border: 1px solid #000;
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.financial-table thead {
+    background-color: #90EE90;
+}
+
+.header-row th {
+    font-weight: bold;
+    color: #000;
+    background-color: #90EE90;
+}
+
+.sub-header-row th {
+    font-weight: bold;
+    color: #000;
+    background-color: #90EE90;
+}
+
+/* Column widths */
+.col-number {
+    width: 3%;
+}
+
+.col-name-group {
+    width: 25%;
+}
+
+.col-name-three {
+    width: 8%;
+}
+
+.col-name-four {
+    width: 8%;
+}
+
+.col-name-five {
+    width: 9%;
+}
+
+.col-major {
+    width: 12%;
+}
+
+.col-account {
+    width: 10%;
+}
+
+.col-duration {
+    width: 6%;
+}
+
+.col-level {
+    width: 6%;
+}
+
+.col-amount {
+    width: 8%;
+}
+
+.col-signature {
+    width: 8%;
+}
+
+.col-notes {
+    width: 12%;
+}
+
+/* Data rows */
+.data-row {
+    background-color: white;
+}
+
+.data-row:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.data-row td {
+    min-height: 2.5rem;
+}
+
+.amount-cell {
+    font-weight: bold;
+    color: #000;
+    font-family: 'Courier New', monospace;
+}
+
+.signature-cell {
+    background-color: white;
+}
+
+.notes-cell {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+/* Footer row */
+.total-row {
+    background-color: #90EE90;
+    font-weight: bold;
+}
+
+.total-row td {
+    padding: 0.75rem;
+    font-size: 0.95rem;
+}
+
+/* Footer */
+.report-footer {
+    margin-top: 3rem;
+    padding-top: 2rem;
+}
+
+.signature-section {
+    display: flex;
+    justify-content: space-between;
+    gap: 4rem;
+}
+
+.signature-box {
+    flex: 1;
+    text-align: center;
+}
+
+.signature-title {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 3rem;
+    color: #000;
+}
+
+.signature-line {
+    border-bottom: 2px solid #000;
+    width: 60%;
+    margin: 0 auto;
+}
+
+/* Print Styles */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    .report-document {
+        margin: 0;
+        padding: 1rem;
+        box-shadow: none;
+        max-width: 100%;
+    }
+
+    .financial-table {
+        font-size: 0.75rem;
+    }
+
+    .financial-table th,
+    .financial-table td {
+        padding: 0.3rem 0.15rem;
+    }
+
+    .report-header {
+        page-break-after: avoid;
+    }
+
+    .data-row {
+        page-break-inside: avoid;
+    }
+
+    .report-footer {
+        page-break-before: avoid;
+    }
+
+    @page {
+        size: A4 portrait;
+        margin: 1cm;
+    }
+
+    /* Ensure colors print */
+    .header-row th,
+    .sub-header-row th,
+    .total-row {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+/* Empty and Loading States */
+.empty-state,
+.loading-state {
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 1200px) {
+    .report-document {
+        padding: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .financial-table {
+        font-size: 0.75rem;
+    }
+
+    .logo-container {
+        width: 80px;
+        height: 80px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .report-document {
+        padding: 0.5rem;
+    }
+
+    .header-content {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .header-right,
+    .header-left {
+        width: 100%;
+        text-align: center;
+    }
+
+    .header-text-right,
+    .header-text-left {
+        text-align: center;
+    }
+
+    .signature-section {
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .financial-table {
+        font-size: 0.65rem;
+    }
+
+    .financial-table th,
+    .financial-table td {
+        padding: 0.25rem;
+    }
+}
+

@@ -1,0 +1,683 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE jasperReport PUBLIC "-//JasperReports//DTD Report Design//EN"
+  "http://jasperreports.sourceforge.net/dtds/jasperreport.dtd">
+<!--
+  Financial Data Form V2 — "كشوفات المساعدة المالية الربعية".
+
+  Reproduces the issuing department's quarterly statement: bilingual masthead
+  on the right, the report title box with quarter / year / date / entity on the
+  left, the four statutory notes, then one row per student across fourteen
+  columns. Rows arrive grouped by sponsoring entity (the repository orders
+  them so) and the "أول مصرف" cell takes a colour per entity, as the
+  department's sheet does. Five signatories repeat in the page footer.
+
+  OFFICIAL-LAYOUT:SKIP
+  The head and foot are the statement's prescribed layout;
+  scripts/apply_official_layout.py must not overwrite these bands with the
+  shared masthead.
+-->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
+    http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+  name="financial-data-form-v2"
+  pageWidth="595" pageHeight="842"
+  columnWidth="555" leftMargin="20" rightMargin="20"
+  topMargin="12" bottomMargin="12"
+  isSummaryWithPageHeaderAndFooter="true"
+  whenNoDataType="AllSectionsNoDetail">
+
+  <!-- ══ STYLES ══════════════════════════════════════════════════════════ -->
+  <style name="defaultStyle" isDefault="true" fontName="Cairo" fontSize="7"/>
+  <!-- Every table cell: a thin black box, as on the printed sheet -->
+  <style name="cell" mode="Transparent" fontName="Cairo" fontSize="7">
+    <box leftPadding="1" rightPadding="1" topPadding="0" bottomPadding="0">
+      <pen lineWidth="0.5" lineColor="#000000"/>
+    </box>
+  </style>
+  <!-- Column heads: the sheet's peach band -->
+  <style name="head" mode="Opaque" backcolor="#F8CBAD" fontName="Cairo" fontSize="7" isBold="true">
+    <box leftPadding="1" rightPadding="1">
+      <pen lineWidth="0.5" lineColor="#000000"/>
+    </box>
+  </style>
+  <!-- Head boxes (masthead / title block) -->
+  <style name="headBox" mode="Transparent" fontName="Cairo" fontSize="8">
+    <box leftPadding="2" rightPadding="2">
+      <pen lineWidth="0.5" lineColor="#000000"/>
+    </box>
+  </style>
+  <!--
+    "أول مصرف" is colour-coded per sponsoring entity. ENTITY_INDEX counts the
+    entity groups as they start, so each entity takes the next colour of the
+    palette and the colour changes exactly where the group changes.
+  -->
+  <style name="firstReceipt" mode="Opaque" backcolor="#FFFFFF" fontName="Cairo" fontSize="7" isBold="true">
+    <box leftPadding="1" rightPadding="1">
+      <pen lineWidth="0.5" lineColor="#000000"/>
+    </box>
+    <conditionalStyle>
+      <conditionExpression><![CDATA[$V{ENTITY_INDEX} % 6 == 1]]></conditionExpression>
+      <style backcolor="#C6EFCE"/>
+    </conditionalStyle>
+    <conditionalStyle>
+      <conditionExpression><![CDATA[$V{ENTITY_INDEX} % 6 == 2]]></conditionExpression>
+      <style backcolor="#FCE4D6"/>
+    </conditionalStyle>
+    <conditionalStyle>
+      <conditionExpression><![CDATA[$V{ENTITY_INDEX} % 6 == 3]]></conditionExpression>
+      <style backcolor="#F4B6D2"/>
+    </conditionalStyle>
+    <conditionalStyle>
+      <conditionExpression><![CDATA[$V{ENTITY_INDEX} % 6 == 4]]></conditionExpression>
+      <style backcolor="#FFFF00"/>
+    </conditionalStyle>
+    <conditionalStyle>
+      <conditionExpression><![CDATA[$V{ENTITY_INDEX} % 6 == 5]]></conditionExpression>
+      <style backcolor="#BDD7EE"/>
+    </conditionalStyle>
+    <conditionalStyle>
+      <conditionExpression><![CDATA[$V{ENTITY_INDEX} % 6 == 0]]></conditionExpression>
+      <style backcolor="#E4DFEC"/>
+    </conditionalStyle>
+  </style>
+  <style name="totalCell" mode="Opaque" backcolor="#EDEDED" fontName="Cairo" fontSize="9" isBold="true">
+    <box leftPadding="2" rightPadding="2">
+      <pen lineWidth="0.5" lineColor="#000000"/>
+    </box>
+  </style>
+
+  <!-- ══ PARAMETERS ══════════════════════════════════════════════════════ -->
+  <parameter name="IS_RTL"       class="java.lang.Boolean"><defaultValueExpression><![CDATA[Boolean.TRUE]]></defaultValueExpression></parameter>
+  <parameter name="LANG"         class="java.lang.String"><defaultValueExpression><![CDATA["ar"]]></defaultValueExpression></parameter>
+  <parameter name="LOGO_IMAGE"   class="java.io.InputStream"/>
+  <parameter name="TITLE_01"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_02"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_03"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_04"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_05"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_01_AR"  class="java.lang.String"><defaultValueExpression><![CDATA["الجمهورية اليمنية"]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_02_AR"  class="java.lang.String"><defaultValueExpression><![CDATA["وزارة المالية"]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_03_AR"  class="java.lang.String"><defaultValueExpression><![CDATA["الإدارة العامة للبعثات - إدارة مالية البعثات"]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_01_EN"  class="java.lang.String"><defaultValueExpression><![CDATA["Republic of Yemen"]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_02_EN"  class="java.lang.String"><defaultValueExpression><![CDATA["Ministry of Finance"]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_03_EN"  class="java.lang.String"><defaultValueExpression><![CDATA["General Department of Scholarships - Scholarship Finance Department"]]></defaultValueExpression></parameter>
+  <parameter name="REPORT_TITLE" class="java.lang.String"><defaultValueExpression><![CDATA["كشوفات المساعدة المالية الربعية"]]></defaultValueExpression></parameter>
+  <parameter name="PRINTED_BY"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="REPORT_DATE"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="FOOTER_TEXT"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_COUNT"    class="java.lang.Integer"><defaultValueExpression><![CDATA[0]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_1"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_2"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_3"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_4"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_5"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_1"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_2"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_3"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_4"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_5"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+
+  <!-- Filter context -->
+  <parameter name="FILTER_YEAR"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="FILTER_QUARTER" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="QUARTER_LABEL"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="FILTER_COUNTRY" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="ISSUING_ENTITY" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TOTAL_AMOUNT"   class="java.lang.Long"><defaultValueExpression><![CDATA[0L]]></defaultValueExpression></parameter>
+  <parameter name="TOTAL_STUDENTS" class="java.lang.Integer"><defaultValueExpression><![CDATA[0]]></defaultValueExpression></parameter>
+
+  <!-- Column heads (Arabic defaults are the statement's wording) -->
+  <parameter name="COL_ROW_NO"            class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_STUDENT_NAME"      class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_ENTITY"            class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_COUNTRY"           class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_DECISION_YEAR"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_DEGREE"            class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_MAJOR"             class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_DECISION_NO"       class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_STUDY_YEARS"       class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_LEVEL"             class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_FIRST_RECEIPT"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_AMOUNT"            class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_STUDENT_SIGNATURE" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_NOTES"             class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+
+  <!-- Head labels, notes, totals -->
+  <parameter name="LBL_QUARTER"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_YEAR"        class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_YEAR_SUFFIX" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_ENTITY"      class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_COUNTRY"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_NOTES_TITLE" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_NOTE_1"      class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_NOTE_2"      class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_NOTE_3"      class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_NOTE_4"      class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_GRAND_TOTAL" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_STUDENTS"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_GENERATED"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_PAGE"        class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_OF"          class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_SIGNATORY"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_NO_DATA"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+
+  <!-- ══ FIELDS (StudentFinancialDataFormV2) ═════════════════════════════ -->
+  <field name="studentId"                    class="java.lang.Integer"/>
+  <field name="studentName"                  class="java.lang.String"/>
+  <field name="entityName"                   class="java.lang.String"/>
+  <field name="studyCountryInName"           class="java.lang.String"/>
+  <field name="studentDelegationDecisionYear" class="java.lang.String"/>
+  <field name="studentDegreeName"            class="java.lang.String"/>
+  <field name="studentMajorName"             class="java.lang.String"/>
+  <field name="studentDelegateDecisionNo"    class="java.lang.Integer"/>
+  <field name="studentStudyNoOfYears"        class="java.lang.Integer"/>
+  <field name="currentLevelLabel"            class="java.lang.String"/>
+  <field name="studentFirstReceiptOfDue"     class="java.lang.Integer"/>
+  <field name="studentAmount"                class="java.lang.Integer"/>
+  <field name="studentNote1"                 class="java.lang.String"/>
+  <field name="studentNote2"                 class="java.lang.String"/>
+
+  <!-- ══ VARIABLES ═══════════════════════════════════════════════════════ -->
+  <variable name="ROW_NUMBER" class="java.lang.Integer" calculation="Count">
+    <variableExpression><![CDATA[$F{studentId}]]></variableExpression>
+    <initialValueExpression><![CDATA[0]]></initialValueExpression>
+  </variable>
+  <variable name="TOTAL_AMOUNT_SUM" class="java.lang.Long" calculation="Sum">
+    <variableExpression><![CDATA[$F{studentAmount} != null ? $F{studentAmount}.longValue() : 0L]]></variableExpression>
+    <initialValueExpression><![CDATA[0L]]></initialValueExpression>
+  </variable>
+  <!-- 1 for the first sponsoring entity, 2 for the second, ... drives the colour band -->
+  <variable name="ENTITY_INDEX" class="java.lang.Integer" incrementType="Group" incrementGroup="ENTITY_GROUP" calculation="Count">
+    <variableExpression><![CDATA[$F{entityName}]]></variableExpression>
+    <initialValueExpression><![CDATA[0]]></initialValueExpression>
+  </variable>
+
+  <!-- Rows are ordered by entity by the repository; the group only marks where it changes -->
+  <group name="ENTITY_GROUP">
+    <groupExpression><![CDATA[$F{entityName} != null ? $F{entityName} : ""]]></groupExpression>
+  </group>
+
+  <!-- ══ PAGE HEADER: masthead, title block, statutory notes ═════════════ -->
+  <pageHeader>
+    <band height="120" splitType="Stretch">
+      <!-- Page number, top-left as on the sheet -->
+      <textField>
+        <reportElement x="0" y="0" width="120" height="10" forecolor="#000000"/>
+        <textElement textAlignment="Left" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_PAGE} + " " + $V{PAGE_NUMBER}]]></textFieldExpression>
+      </textField>
+
+      <!-- Right: the three masthead lines -->
+      <textField>
+        <reportElement style="headBox" x="300" y="12" width="255" height="16"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="9" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{IS_RTL}
+  ? ($P{TITLE_01_AR} != null && !$P{TITLE_01_AR}.isEmpty() ? $P{TITLE_01_AR} : $P{TITLE_01})
+  : ($P{TITLE_01_EN} != null && !$P{TITLE_01_EN}.isEmpty() ? $P{TITLE_01_EN} : $P{TITLE_01})]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="headBox" x="300" y="28" width="255" height="16"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{IS_RTL}
+  ? ($P{TITLE_02_AR} != null && !$P{TITLE_02_AR}.isEmpty() ? $P{TITLE_02_AR} : $P{TITLE_02})
+  : ($P{TITLE_02_EN} != null && !$P{TITLE_02_EN}.isEmpty() ? $P{TITLE_02_EN} : $P{TITLE_02})]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="headBox" x="300" y="44" width="255" height="16"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{IS_RTL}
+  ? ($P{TITLE_03_AR} != null && !$P{TITLE_03_AR}.isEmpty() ? $P{TITLE_03_AR} : $P{TITLE_03})
+  : ($P{TITLE_03_EN} != null && !$P{TITLE_03_EN}.isEmpty() ? $P{TITLE_03_EN} : $P{TITLE_03})]]></textFieldExpression>
+      </textField>
+
+      <!-- Left: report title, then quarter / year / date, then entity / country -->
+      <textField>
+        <reportElement style="headBox" x="0" y="12" width="296" height="16" mode="Opaque" backcolor="#F2F2F2"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="10" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{REPORT_TITLE} != null && !$P{REPORT_TITLE}.isEmpty() ? $P{REPORT_TITLE} : "كشوفات المساعدة المالية الربعية"]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="headBox" x="196" y="28" width="100" height="16"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_QUARTER} + ": " + ($P{QUARTER_LABEL} != null && !$P{QUARTER_LABEL}.isEmpty() ? $P{QUARTER_LABEL} : $P{FILTER_QUARTER})]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="headBox" x="98" y="28" width="98" height="16"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_YEAR} + " " + $P{FILTER_YEAR} + $P{LBL_YEAR_SUFFIX}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="headBox" x="0" y="28" width="98" height="16"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="7"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{REPORT_DATE}]]></textFieldExpression>
+      </textField>
+      <textField textAdjust="ScaleFont">
+        <reportElement style="headBox" x="148" y="44" width="148" height="16"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_ENTITY} + ": " + $P{ISSUING_ENTITY}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="headBox" x="0" y="44" width="148" height="16"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_COUNTRY} + ": " + $P{FILTER_COUNTRY} + ($P{PRINTED_BY} != null && !$P{PRINTED_BY}.isEmpty() ? "   (" + $P{PRINTED_BY} + ")" : "")]]></textFieldExpression>
+      </textField>
+
+      <!-- Statutory notes -->
+      <textField>
+        <reportElement x="0" y="64" width="555" height="10"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6.5" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_NOTES_TITLE}]]></textFieldExpression>
+      </textField>
+      <textField textAdjust="StretchHeight">
+        <reportElement x="0" y="74" width="555" height="14"/>
+        <textElement textAlignment="Right" verticalAlignment="Top" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_NOTE_1}]]></textFieldExpression>
+      </textField>
+      <textField textAdjust="StretchHeight">
+        <reportElement positionType="Float" x="0" y="88" width="555" height="10"/>
+        <textElement textAlignment="Right" verticalAlignment="Top" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_NOTE_2}]]></textFieldExpression>
+      </textField>
+      <textField textAdjust="StretchHeight">
+        <reportElement positionType="Float" x="0" y="98" width="555" height="10"/>
+        <textElement textAlignment="Right" verticalAlignment="Top" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_NOTE_3}]]></textFieldExpression>
+      </textField>
+      <textField textAdjust="StretchHeight">
+        <reportElement positionType="Float" x="0" y="108" width="555" height="10"/>
+        <textElement textAlignment="Right" verticalAlignment="Top" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_NOTE_4}]]></textFieldExpression>
+      </textField>
+    </band>
+  </pageHeader>
+
+  <!-- ══ COLUMN HEADER ═══════════════════════════════════════════════════
+       RTL order, right to left (x = 555 - cumulative width):
+       م 24 | اسم الطالب 118 | الجهة 22 | الدولة 22 | عام الإيفاد 26 | الدرجة 24 |
+       التخصص 48 | رقم القرار 32 | مدة الدراسة 20 | المستوى الحالي 20 | أول مصرف 30 |
+       المبلغ 38 | توقيع الطالب 45 | ملاحظات 86                                -->
+  <columnHeader>
+    <band height="46" splitType="Stretch">
+      <textField>
+        <reportElement style="head" x="531" y="0" width="24" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="9" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_ROW_NO}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="413" y="0" width="118" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="9" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_STUDENT_NAME}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="391" y="0" width="22" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left" runDirection="RTL">
+          <font fontName="Cairo" size="6.5" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_ENTITY}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="369" y="0" width="22" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left" runDirection="RTL">
+          <font fontName="Cairo" size="6.5" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_COUNTRY}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="343" y="0" width="26" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left" runDirection="RTL">
+          <font fontName="Cairo" size="6.5" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_DECISION_YEAR}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="319" y="0" width="24" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left" runDirection="RTL">
+          <font fontName="Cairo" size="6.5" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_DEGREE}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="271" y="0" width="48" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_MAJOR}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="239" y="0" width="32" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left" runDirection="RTL">
+          <font fontName="Cairo" size="6.5" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_DECISION_NO}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="219" y="0" width="20" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left" runDirection="RTL">
+          <font fontName="Cairo" size="6" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_STUDY_YEARS}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="199" y="0" width="20" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left" runDirection="RTL">
+          <font fontName="Cairo" size="6" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_LEVEL}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="169" y="0" width="30" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left" runDirection="RTL">
+          <font fontName="Cairo" size="6.5" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_FIRST_RECEIPT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="131" y="0" width="38" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_AMOUNT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="86" y="0" width="45" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_STUDENT_SIGNATURE}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="head" x="0" y="0" width="86" height="46"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_NOTES}]]></textFieldExpression>
+      </textField>
+    </band>
+  </columnHeader>
+
+  <!-- ══ DETAIL: one student ═════════════════════════════════════════════ -->
+  <detail>
+    <band height="34" splitType="Prevent">
+      <textField>
+        <reportElement style="cell" stretchType="ContainerHeight" x="531" y="0" width="24" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$V{ROW_NUMBER}]]></textFieldExpression>
+      </textField>
+      <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="413" y="0" width="118" height="34"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{studentName}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="391" y="0" width="22" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{entityName}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="369" y="0" width="22" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{studyCountryInName}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="343" y="0" width="26" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{studentDelegationDecisionYear}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="319" y="0" width="24" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{studentDegreeName}]]></textFieldExpression>
+      </textField>
+      <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="271" y="0" width="48" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{studentMajorName}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="239" y="0" width="32" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{studentDelegateDecisionNo} != null ? String.valueOf($F{studentDelegateDecisionNo}) : ""]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="219" y="0" width="20" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{studentStudyNoOfYears} != null ? String.valueOf($F{studentStudyNoOfYears}) : ""]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="199" y="0" width="20" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{currentLevelLabel}]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement style="firstReceipt" stretchType="ContainerHeight" x="169" y="0" width="30" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" rotation="Left">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{studentFirstReceiptOfDue} != null ? String.valueOf($F{studentFirstReceiptOfDue}) : ""]]></textFieldExpression>
+      </textField>
+      <textField isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="131" y="0" width="38" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{studentAmount} != null ? "$" + String.format("%,d", $F{studentAmount}) : ""]]></textFieldExpression>
+      </textField>
+      <!-- Signature cell: blank for the student to sign, unless a payment-stop flag is recorded -->
+      <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="86" y="0" width="45" height="34" forecolor="#7A0000"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{studentNote2}]]></textFieldExpression>
+      </textField>
+      <textField textAdjust="StretchHeight" isBlankWhenNull="true">
+        <reportElement style="cell" stretchType="ContainerHeight" x="0" y="0" width="86" height="34"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="5.5"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{studentNote1}]]></textFieldExpression>
+      </textField>
+    </band>
+  </detail>
+
+  <!-- ══ SUMMARY: grand total ════════════════════════════════════════════ -->
+  <summary>
+    <band height="22" splitType="Stretch">
+      <textField>
+        <reportElement style="totalCell" x="169" y="0" width="386" height="22"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="10" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_GRAND_TOTAL} + "   (" + $P{LBL_STUDENTS} + ": " + $V{ROW_NUMBER} + ")"]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="totalCell" x="131" y="0" width="38" height="22"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA["$" + String.format("%,d", $V{TOTAL_AMOUNT_SUM})]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement style="totalCell" x="0" y="0" width="131" height="22"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA["$" + String.format("%,d", $V{TOTAL_AMOUNT_SUM})]]></textFieldExpression>
+      </textField>
+    </band>
+  </summary>
+
+  <!-- ══ PAGE FOOTER: five signatories on every page, as on the sheet ════ -->
+  <pageFooter>
+    <band height="60" splitType="Stretch">
+      <!-- Signatory 1 (rightmost, RTL leading edge) -->
+      <textField>
+        <reportElement x="444" y="4" width="111" height="14">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 1]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_NAME_1}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="444" y="18" width="111" height="24">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 1]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Top" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_1}]]></textFieldExpression>
+      </textField>
+      <!-- Signatory 2 -->
+      <textField>
+        <reportElement x="333" y="4" width="111" height="14">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 2]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_NAME_2}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="333" y="18" width="111" height="24">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 2]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Top" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_2}]]></textFieldExpression>
+      </textField>
+      <!-- Signatory 3 -->
+      <textField>
+        <reportElement x="222" y="4" width="111" height="14">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 3]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_NAME_3}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="222" y="18" width="111" height="24">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 3]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Top" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_3}]]></textFieldExpression>
+      </textField>
+      <!-- Signatory 4 -->
+      <textField>
+        <reportElement x="111" y="4" width="111" height="14">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 4]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_NAME_4}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="111" y="18" width="111" height="24">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 4]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Top" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_4}]]></textFieldExpression>
+      </textField>
+      <!-- Signatory 5 (leftmost) -->
+      <textField>
+        <reportElement x="0" y="4" width="111" height="14">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 5]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_NAME_5}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="0" y="18" width="111" height="24">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 5]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Top" runDirection="RTL">
+          <font fontName="Cairo" size="7" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_5}]]></textFieldExpression>
+      </textField>
+
+      <!-- Foot line: settings footer note (right) and issue date / page (left) -->
+      <textField textAdjust="StretchHeight">
+        <reportElement x="278" y="46" width="277" height="12" forecolor="#555555">
+          <printWhenExpression><![CDATA[$P{FOOTER_TEXT} != null && !$P{FOOTER_TEXT}.isEmpty()]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{FOOTER_TEXT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="0" y="46" width="277" height="12" forecolor="#555555"/>
+        <textElement textAlignment="Left" verticalAlignment="Middle">
+          <font fontName="Cairo" size="6"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_GENERATED} + ": " + $P{REPORT_DATE} + "   " + $P{LBL_PAGE} + " " + $V{PAGE_NUMBER}]]></textFieldExpression>
+      </textField>
+    </band>
+  </pageFooter>
+</jasperReport>

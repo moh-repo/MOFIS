@@ -1,0 +1,92 @@
+<p-dialog [(visible)]="visible" [modal]="true" [draggable]="false" [resizable]="false"
+  [closable]="!processing" [dismissableMask]="false" appendTo="body"
+  [style]="{ width: 'min(860px, 96vw)' }"
+  [header]="'PHOTO_CROPPER.TITLE' | translate"
+  (onHide)="onHide()"
+  [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+  <ng-template pTemplate="content">
+    <div class="pc">
+
+      <!-- Framing stage -->
+      <div class="pc__stage">
+        <div class="pc__viewport"
+          #viewport
+          [style.width.px]="viewportWidth"
+          [style.height.px]="viewportHeight"
+          (mousedown)="startDrag($event)"
+          (touchstart)="startDrag($event)"
+          (wheel)="onWheel($event)">
+
+          @if (imageSrc) {
+            <img [src]="imageSrc" class="pc__img"
+              [style.transform]="imageTransform" alt="" draggable="false" />
+          }
+
+          <!-- Head-position guide: oval for the face, line for the eyes -->
+          <div class="pc__guide" aria-hidden="true">
+            <div class="pc__guide-head"></div>
+            <div class="pc__guide-eyes"></div>
+            <div class="pc__guide-shoulders"></div>
+          </div>
+        </div>
+        <p class="pc__hint">
+          <i class="pi pi-arrows-alt"></i>
+          {{ 'PHOTO_CROPPER.DRAG_HINT' | translate }}
+        </p>
+      </div>
+
+      <!-- Controls and previews -->
+      <aside class="pc__side">
+        <div class="pc__previews">
+          <div class="pc__preview-block">
+            <div class="pc__preview pc__preview--round" [ngStyle]="previewStyle(avatarPreviewWidth)"></div>
+            <span class="pc__preview-label">{{ 'PHOTO_CROPPER.PREVIEW_AVATAR' | translate }}</span>
+          </div>
+          <div class="pc__preview-block">
+            <div class="pc__preview pc__preview--card" [ngStyle]="previewStyle(cardPreviewWidth)"></div>
+            <span class="pc__preview-label">{{ 'PHOTO_CROPPER.PREVIEW_CARD' | translate }}</span>
+          </div>
+        </div>
+
+        <div class="pc__control">
+          <label class="pc__control-label" for="pc-zoom">
+            <i class="pi pi-search-plus"></i>
+            {{ 'PHOTO_CROPPER.ZOOM' | translate }}
+          </label>
+          <p-slider inputId="pc-zoom" [(ngModel)]="zoomPercent" [min]="0" [max]="100"
+          (onChange)="onZoomChange()" styleClass="w-full"></p-slider>
+        </div>
+
+        <div class="pc__actions">
+          <button pButton pRipple type="button" icon="pi pi-replay"
+            class="p-button-outlined p-button-sm"
+            [label]="'PHOTO_CROPPER.ROTATE' | translate"
+          (click)="rotate()"></button>
+          <button pButton pRipple type="button" icon="pi pi-refresh"
+            class="p-button-outlined p-button-secondary p-button-sm"
+            [label]="'PHOTO_CROPPER.RESET' | translate"
+          (click)="reset()"></button>
+        </div>
+
+        <ul class="pc__guidelines">
+          <li>{{ 'PHOTO_CROPPER.GUIDE_HEAD' | translate }}</li>
+          <li>{{ 'PHOTO_CROPPER.GUIDE_EYES' | translate }}</li>
+          <li>{{ 'PHOTO_CROPPER.GUIDE_QUALITY' | translate }}</li>
+        </ul>
+      </aside>
+    </div>
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="flex justify-content-end gap-2">
+      <button pButton pRipple type="button" icon="pi pi-times" class="p-button-text"
+        [label]="'COMMON.CANCEL' | translate" [disabled]="processing"
+      (click)="cancel()"></button>
+      <button pButton pRipple type="button" icon="pi pi-check"
+        [label]="'PHOTO_CROPPER.APPLY' | translate"
+        [loading]="processing" [disabled]="!imageSrc || processing"
+      (click)="apply()"></button>
+    </div>
+  </ng-template>
+</p-dialog>

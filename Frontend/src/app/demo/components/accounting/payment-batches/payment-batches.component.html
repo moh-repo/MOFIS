@@ -1,0 +1,408 @@
+<p-toast></p-toast>
+<p-confirmdialog [style]="{ width: '28rem' }"></p-confirmdialog>
+
+<div class="card">
+    <!-- Header. `flex-1` on the icon-and-title block, not
+         `justify-content-between` - see chart-of-accounts.component.html and
+         src/app/demo/components/page-headings.spec.ts. -->
+    <div class="flex align-items-center mb-4 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3 flex-1">
+            <i class="pi pi-money-bill text-primary" style="font-size: 2.5rem"></i>
+            <div>
+                <h2 class="m-0 text-primary">{{ 'ACCOUNTING.BATCHES_TITLE' | translate }}</h2>
+                <p class="text-600 mt-1 mb-0">{{ 'ACCOUNTING.BATCHES_SUBTITLE' | translate }}</p>
+            </div>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+            <button pButton pRipple type="button" icon="pi pi-plus" *hasPermission="'PAYMENT_BATCH.CREATE'"
+                    [label]="'ACCOUNTING.NEW_BATCH' | translate"
+                    [disabled]="selectedQuarterKey == null"
+                    (click)="openNew()"></button>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-4">
+            <div class="filter-bar__field" [class.filter-bar__field--active]="selectedQuarterKey">
+                <label for="batchQuarter">{{ 'ACCOUNTING.QUARTER' | translate }}</label>
+                <p-select inputId="batchQuarter" [options]="quarters" [(ngModel)]="selectedQuarterKey"
+                          optionLabel="label" optionValue="key" optionDisabled="disabled" [filter]="quarters.length > 8" filterBy="label"
+                          [placeholder]="'ACCOUNTING.QUARTER' | translate"
+                          (onChange)="reload()"></p-select>
+            </div>
+            <!-- Only shown when there is a choice: a single-attaché officer's list is already theirs. -->
+            <div class="filter-bar__field" *ngIf="countryOptions.length > 1"
+                 [class.filter-bar__field--active]="selectedCountryId">
+                <label for="batchCountry">{{ 'ACCOUNTING.ATTACHE' | translate }}</label>
+                <p-select inputId="batchCountry" [options]="countryOptions" [(ngModel)]="selectedCountryId"
+                          optionLabel="name" optionValue="id" [showClear]="true" [filter]="true" filterBy="name"
+                          [placeholder]="'ACCOUNTING.ALL_ATTACHES' | translate"
+                          (onChange)="reload()"></p-select>
+            </div>
+        </div>
+    </div>
+
+    <div *ngIf="rows.length > 0" class="flex flex-wrap gap-4 mb-3 text-sm text-color-secondary">
+        <span>{{ 'ACCOUNTING.ENTITLED' | translate }}: <b>{{ entitledTotal | number:'1.2-2' }}</b></span>
+        <span>{{ 'ACCOUNTING.DISBURSED' | translate }}: <b>{{ disbursedTotal | number:'1.2-2' }}</b></span>
+    </div>
+
+    <p-progressSpinner *ngIf="loading" styleClass="w-2rem h-2rem"></p-progressSpinner>
+
+    <p-table *ngIf="!loading" [value]="rows" [scrollable]="true" dataKey="id"
+             [customSort]="true" (sortFunction)="sortTable($event)">
+        <ng-template pTemplate="header">
+            <tr>
+                <th style="width: 6rem" pSortableColumn="batchNo">{{ 'ACCOUNTING.BATCH_NO' | translate }} <p-sortIcon field="batchNo"></p-sortIcon></th>
+                <th pSortableColumn="attache">{{ 'ACCOUNTING.ATTACHE' | translate }} <p-sortIcon field="attache"></p-sortIcon></th>
+                <th pSortableColumn="feeType">{{ 'ACCOUNTING.FEE_TYPE' | translate }} <p-sortIcon field="feeType"></p-sortIcon></th>
+                <th pSortableColumn="currency">{{ 'ACCOUNTING.CURRENCY' | translate }} <p-sortIcon field="currency"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="lineCount">{{ 'ACCOUNTING.LINES' | translate }} <p-sortIcon field="lineCount"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="entitledTotal">{{ 'ACCOUNTING.ENTITLED' | translate }} <p-sortIcon field="entitledTotal"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="disbursedTotal">{{ 'ACCOUNTING.DISBURSED' | translate }} <p-sortIcon field="disbursedTotal"></p-sortIcon></th>
+                <th pSortableColumn="status">{{ 'ACCOUNTING.STATUS' | translate }} <p-sortIcon field="status"></p-sortIcon></th>
+                <th pSortableColumn="preparedBy">{{ 'ACCOUNTING.PREPARED_BY' | translate }} <p-sortIcon field="preparedBy"></p-sortIcon></th>
+                <th pSortableColumn="disbursedAt">{{ 'ACCOUNTING.PAID_AT' | translate }} <p-sortIcon field="disbursedAt"></p-sortIcon></th>
+                <th style="width: 11rem">{{ 'COMMON.ACTIONS' | translate }}</th>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-row>
+            <tr>
+                <td class="font-medium">{{ row.batchNo }}</td>
+                <td>{{ countryName(row.studyCountryInId) }}</td>
+                <td>{{ feeTypeName(row.feeTypeId) }}</td>
+                <td>{{ currencyName(row.currencyId) }}</td>
+                <td class="text-right">{{ row.lineCount }}</td>
+                <td class="text-right">{{ row.entitledTotal | number:'1.2-2' }}</td>
+                <td class="text-right font-medium">{{ row.disbursedTotal | number:'1.2-2' }}</td>
+                <td>
+                    <p-tag [value]="row.status | codeLabel:'payment-batch-status':currentLanguage"
+                           [severity]="row.status | codeSeverity:'payment-batch-status'"></p-tag>
+                </td>
+                <!-- Maker and checker. A batch is prepared by one officer and
+                     approved by another, and the second qualifies the first; two
+                     columns for the pair left twelve on this table nothing to
+                     spare, so the checker folds underneath. -->
+                <td class="text-sm">
+                    <span *ngIf="row.preparedBy != null">#{{ row.preparedBy }}</span>
+                    <small class="block text-color-secondary">{{ row.preparedAt | date:'yyyy-MM-dd HH:mm' }}</small>
+                    <div class="cell-note" *ngIf="row.approvedBy != null">
+                        {{ 'ACCOUNTING.APPROVED_BY' | translate }} #{{ row.approvedBy }}
+                        <span class="block">{{ row.approvedAt | date:'yyyy-MM-dd HH:mm' }}</span>
+                    </div>
+                </td>
+                <td class="text-sm">{{ (row.disbursedAt | date:'yyyy-MM-dd HH:mm') || '—' }}</td>
+                <td>
+                    <button pButton pRipple type="button" icon="pi pi-list" class="p-button-text p-button-sm"
+                            [pTooltip]="'ACCOUNTING.VIEW_LINES' | translate"
+                            (click)="open(row)"></button>
+                    <ng-container *hasPermission="'PAYMENT_BATCH.APPROVE'">
+                        <button *ngIf="row.status === 'OPEN'" pButton pRipple type="button"
+                                icon="pi pi-check" class="p-button-text p-button-sm"
+                                [pTooltip]="'ACCOUNTING.APPROVE' | translate"
+                                (click)="approve(row)"></button>
+                        <button *ngIf="row.status === 'APPROVED'" pButton pRipple type="button"
+                                icon="pi pi-money-bill" class="p-button-text p-button-sm p-button-success"
+                                [pTooltip]="'ACCOUNTING.MARK_PAID' | translate"
+                                (click)="pay(row)"></button>
+                        <button *ngIf="row.status === 'OPEN'" pButton pRipple type="button"
+                                icon="pi pi-times" class="p-button-text p-button-sm p-button-danger"
+                                [pTooltip]="'ACCOUNTING.CANCEL_BATCH' | translate"
+                                (click)="cancel(row)"></button>
+                    </ng-container>
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+            <tr>
+                <td colspan="11" class="text-center text-color-secondary py-4">
+                    {{ 'ACCOUNTING.NO_BATCHES' | translate }}
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+    <small class="block mt-3 text-color-secondary">{{ 'ACCOUNTING.BATCH_NOTE' | translate }}</small>
+</div>
+
+<!-- View: one batch and the students in it. Shared vocabulary:
+     assets/layout/styles/_detail-dialog.scss. The four facts that identify the
+     batch were a wrapped row of `label: value` spans; they are a hero and a
+     label/value list now, and the two totals the batch is judged on read as
+     figures rather than as the last row of a table. -->
+<p-dialog [(visible)]="detailVisible" [modal]="true" [maximizable]="true" [draggable]="false"
+          [style]="{ width: '860px', maxWidth: '96vw' }" styleClass="dv-dialog"
+          [header]="'ACCOUNTING.BATCH_DETAIL' | translate">
+    <ng-template pTemplate="content">
+        <p-progressSpinner *ngIf="!detail" styleClass="w-2rem h-2rem"></p-progressSpinner>
+
+        <div class="dv-view" *ngIf="detail as d">
+            <div class="dv-hero">
+                <div class="dv-hero__badge">{{ d.batch.batchNo }}</div>
+                <div class="dv-hero__body">
+                    <div class="dv-hero__eyebrow">{{ countryName(d.batch.studyCountryInId) }}</div>
+                    <div class="dv-hero__title">{{ feeTypeName(d.batch.feeTypeId) }}</div>
+                    <div class="dv-hero__meta">
+                        <span class="dv-chip">{{ currencyName(d.batch.currencyId) }}</span>
+                        <p-tag [value]="d.batch.status | codeLabel:'payment-batch-status':currentLanguage"
+                               [severity]="d.batch.status | codeSeverity:'payment-batch-status'"></p-tag>
+                    </div>
+                </div>
+                <div class="dv-hero__amount">{{ d.batch.disbursedTotal | number:'1.2-2' }}</div>
+            </div>
+
+            <div class="dv-kpis dv-kpis--cols-3">
+                <div class="dv-kpi dv-kpi--blue">
+                    <div class="dv-kpi__icon"><i class="pi pi-list"></i></div>
+                    <div class="dv-kpi__body">
+                        <div class="dv-kpi__label">{{ 'ACCOUNTING.LINES' | translate }}</div>
+                        <div class="dv-kpi__value">{{ d.lines.length }}</div>
+                    </div>
+                </div>
+                <div class="dv-kpi dv-kpi--gray">
+                    <div class="dv-kpi__icon"><i class="pi pi-file"></i></div>
+                    <div class="dv-kpi__body">
+                        <div class="dv-kpi__label">{{ 'ACCOUNTING.ENTITLED' | translate }}</div>
+                        <div class="dv-kpi__value">{{ d.batch.entitledTotal | number:'1.2-2' }}</div>
+                    </div>
+                </div>
+                <div class="dv-kpi dv-kpi--green">
+                    <div class="dv-kpi__icon"><i class="pi pi-money-bill"></i></div>
+                    <div class="dv-kpi__body">
+                        <div class="dv-kpi__label">{{ 'ACCOUNTING.DISBURSED' | translate }}</div>
+                        <div class="dv-kpi__value">{{ d.batch.disbursedTotal | number:'1.2-2' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <section class="dv-section">
+                <header class="dv-section__head">
+                    <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-history"></i></span>
+                    <div><div class="dv-section__title">{{ 'ACCOUNTING.SECTION_AUDIT' | translate }}</div></div>
+                </header>
+                <dl class="dv-dl">
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.PREPARED_BY' | translate }}</dt>
+                        <dd>
+                            <span *ngIf="d.batch.preparedBy != null">#{{ d.batch.preparedBy }}</span>
+                            <span *ngIf="d.batch.preparedBy == null">{{ 'COMMON.NOT_AVAILABLE' | translate }}</span>
+                            <span class="text-color-secondary">{{ d.batch.preparedAt | date:'yyyy-MM-dd HH:mm' }}</span>
+                        </dd>
+                    </div>
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.APPROVED_BY' | translate }}</dt>
+                        <dd>
+                            <span *ngIf="d.batch.approvedBy != null">#{{ d.batch.approvedBy }}</span>
+                            <span *ngIf="d.batch.approvedBy == null">{{ 'COMMON.NOT_AVAILABLE' | translate }}</span>
+                            <span class="text-color-secondary">{{ d.batch.approvedAt | date:'yyyy-MM-dd HH:mm' }}</span>
+                        </dd>
+                    </div>
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.PAID_AT' | translate }}</dt>
+                        <dd>{{ (d.batch.disbursedAt | date:'yyyy-MM-dd HH:mm') || ('COMMON.NOT_AVAILABLE' | translate) }}</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="dv-section">
+                <header class="dv-section__head">
+                    <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-users"></i></span>
+                    <div>
+                        <div class="dv-section__title">{{ 'ACCOUNTING.LINES' | translate }}</div>
+                        <div class="dv-section__hint">{{ d.lines.length }}</div>
+                    </div>
+                </header>
+                <p-table [value]="d.lines" [scrollable]="true" scrollHeight="22rem" dataKey="id">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th style="width: 7rem" pSortableColumn="studentId">{{ 'ACCOUNTING.STUDENT' | translate }} <p-sortIcon field="studentId"></p-sortIcon></th>
+                            <th pSortableColumn="studentName">{{ 'STUDENT_PORTAL.NAME' | translate }} <p-sortIcon field="studentName"></p-sortIcon></th>
+                            <th class="text-right" style="width: 8rem" pSortableColumn="entitledAmount">{{ 'ACCOUNTING.ENTITLED' | translate }} <p-sortIcon field="entitledAmount"></p-sortIcon></th>
+                            <th class="text-right" style="width: 8rem" pSortableColumn="disbursedAmount">{{ 'ACCOUNTING.DISBURSED' | translate }} <p-sortIcon field="disbursedAmount"></p-sortIcon></th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-line>
+                        <tr [class.text-color-secondary]="line.disbursedAmount === 0">
+                            <td class="font-mono">{{ line.studentId }}</td>
+                            <td>
+                                {{ line.studentName || '—' }}
+                                <!-- Why a line was paid nothing. It qualifies the
+                                     student it belongs to, and as a column of its
+                                     own it was empty on almost every row. -->
+                                <div class="cell-note" *ngIf="line.heldReason">{{ line.heldReason }}</div>
+                            </td>
+                            <td class="text-right">{{ line.entitledAmount | number:'1.2-2' }}</td>
+                            <td class="text-right font-medium">{{ line.disbursedAmount | number:'1.2-2' }}</td>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="footer">
+                        <tr>
+                            <td colspan="2" class="font-medium">{{ 'ACCOUNTING.TOTAL' | translate }} ({{ d.lines.length }})</td>
+                            <td class="text-right font-medium">{{ d.batch.entitledTotal | number:'1.2-2' }}</td>
+                            <td class="text-right font-medium">{{ d.batch.disbursedTotal | number:'1.2-2' }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </section>
+
+            <div class="dv-notes" [class.dv-notes--empty]="!d.batch.notes">
+                {{ d.batch.notes || ('COMMON.NOT_AVAILABLE' | translate) }}
+            </div>
+        </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+        <div class="dv-footer">
+            <div class="dv-footer__actions">
+                <button pButton type="button" class="p-button-text p-button-secondary" icon="pi pi-times"
+                        [label]="'COMMON.CLOSE' | translate" (click)="detailVisible = false"></button>
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>
+
+<!-- Prepare a batch from the quarter's finance rows. -->
+<p-dialog [(visible)]="createVisible" [modal]="true" [maximizable]="true" [draggable]="false"
+          [style]="{ width: '920px', maxWidth: '96vw' }" styleClass="dv-dialog"
+          (onHide)="submitted = false"
+          [header]="'ACCOUNTING.NEW_BATCH' | translate">
+    <ng-template pTemplate="content">
+        <div class="dv-hero dv-hero--new">
+            <div class="dv-hero__badge"><i class="pi pi-plus"></i></div>
+            <div class="dv-hero__body">
+                <div class="dv-hero__eyebrow">{{ 'ACCOUNTING.NEW_BATCH' | translate }}</div>
+                <div class="dv-hero__title" [class.dv-hero__title--placeholder]="form.studyCountryInId == null">
+                    {{ form.studyCountryInId == null
+                        ? ('ACCOUNTING.ATTACHE' | translate)
+                        : countryName(form.studyCountryInId) }}
+                </div>
+                <div class="dv-hero__meta">
+                    <span class="dv-chip" *ngIf="form.currencyId != null">{{ currencyName(form.currencyId) }}</span>
+                    <span class="dv-chip">
+                        {{ 'ACCOUNTING.SELECTED_TOTAL' | translate }}: {{ selected.length }}
+                    </span>
+                </div>
+            </div>
+            <div class="dv-hero__amount" *ngIf="selected.length">{{ selectedDisbursed | number:'1.2-2' }}</div>
+        </div>
+
+        <section class="dv-section">
+            <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-tags"></i></span>
+                <div><div class="dv-section__title">{{ 'ACCOUNTING.SECTION_CLASSIFICATION' | translate }}</div></div>
+            </header>
+            <div class="dv-fields">
+                <div class="dv-field">
+                    <label for="newBatchCountry" class="dv-label">
+                        {{ 'ACCOUNTING.ATTACHE' | translate }} <span class="dv-required">*</span>
+                    </label>
+                    <p-select inputId="newBatchCountry" [options]="countryOptions" [(ngModel)]="form.studyCountryInId"
+                              optionLabel="name" optionValue="id" [filter]="true" filterBy="name" appendTo="body"
+                              [disabled]="countryOptions.length === 1" styleClass="w-full"
+                              [placeholder]="'ACCOUNTING.ATTACHE' | translate"
+                              (onChange)="loadCandidates()"></p-select>
+                    <small class="dv-error" *ngIf="submitted && form.studyCountryInId == null">
+                        <i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                </div>
+                <div class="dv-field">
+                    <label for="newBatchCurrency" class="dv-label">
+                        {{ 'ACCOUNTING.CURRENCY' | translate }} <span class="dv-required">*</span>
+                    </label>
+                    <p-select inputId="newBatchCurrency" [options]="currencyOptions" [(ngModel)]="form.currencyId"
+                              optionLabel="name" optionValue="id" [filter]="true" filterBy="name" appendTo="body"
+                              styleClass="w-full" [placeholder]="'ACCOUNTING.CURRENCY' | translate"></p-select>
+                    <small class="dv-error" *ngIf="submitted && form.currencyId == null">
+                        <i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                </div>
+                <div class="dv-field">
+                    <label for="newBatchFee" class="dv-label">{{ 'ACCOUNTING.FEE_TYPE' | translate }}</label>
+                    <p-select inputId="newBatchFee" [options]="feeTypes" [(ngModel)]="form.feeTypeId"
+                              optionValue="id" [showClear]="true" appendTo="body" styleClass="w-full"
+                              [placeholder]="'ACCOUNTING.ALL_STREAMS' | translate">
+                        <ng-template pTemplate="selectedItem" let-f>{{ feeTypeName(f.id) }}</ng-template>
+                        <ng-template pTemplate="item" let-f>{{ feeTypeName(f.id) }}</ng-template>
+                    </p-select>
+                </div>
+                <div class="dv-field">
+                    <label for="newBatchNotes" class="dv-label">{{ 'ACCOUNTING.NOTES' | translate }}</label>
+                    <input pInputText id="newBatchNotes" [(ngModel)]="form.notes" class="w-full" />
+                </div>
+            </div>
+        </section>
+
+        <section class="dv-section">
+            <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-users"></i></span>
+                <div>
+                    <div class="dv-section__title">{{ 'ACCOUNTING.SECTION_SELECTION' | translate }}</div>
+                    <div class="dv-section__hint">{{ 'ACCOUNTING.CANDIDATES_HINT' | translate }}</div>
+                </div>
+            </header>
+
+            <p-progressSpinner *ngIf="loadingCandidates" styleClass="w-2rem h-2rem"></p-progressSpinner>
+
+            <p-table *ngIf="!loadingCandidates" [value]="candidates" [(selection)]="selected" dataKey="studentId"
+                     [scrollable]="true" scrollHeight="20rem">
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th style="width: 3rem"><p-tableHeaderCheckbox></p-tableHeaderCheckbox></th>
+                        <th style="width: 7rem">{{ 'ACCOUNTING.STUDENT' | translate }}</th>
+                        <th>{{ 'STUDENT_PORTAL.NAME' | translate }}</th>
+                        <th class="text-right" style="width: 8rem">{{ 'ACCOUNTING.ENTITLED' | translate }}</th>
+                        <th class="text-right" style="width: 8rem">{{ 'ACCOUNTING.WAFAR' | translate }}</th>
+                        <th class="text-right" style="width: 8rem">{{ 'ACCOUNTING.NET' | translate }}</th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-c>
+                    <tr [class.text-color-secondary]="c.alreadyPaid">
+                        <td><p-tableCheckbox [value]="c"></p-tableCheckbox></td>
+                        <td class="font-mono">{{ c.studentId }}</td>
+                        <td>
+                            {{ c.studentName || '—' }}
+                            <!-- A student already in a batch this quarter. It was a
+                                 column holding a tag on the few rows that had one. -->
+                            <div class="cell-note" *ngIf="c.alreadyPaid">
+                                {{ 'ACCOUNTING.ALREADY_PAID' | translate }}
+                            </div>
+                        </td>
+                        <td class="text-right">{{ c.entitledAmount | number:'1.2-2' }}</td>
+                        <td class="text-right">{{ c.wafarAmount | number:'1.2-2' }}</td>
+                        <td class="text-right font-medium">{{ c.netAmount | number:'1.2-2' }}</td>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                    <tr>
+                        <td colspan="6" class="text-center text-color-secondary py-4">
+                            {{ (form.studyCountryInId == null ? 'ACCOUNTING.ATTACHE_REQUIRED' : 'ACCOUNTING.NO_CANDIDATES') | translate }}
+                        </td>
+                    </tr>
+                </ng-template>
+            </p-table>
+
+            <small class="dv-error block mt-2" *ngIf="submitted && selected.length === 0">
+                <i class="pi pi-exclamation-circle"></i> {{ 'ACCOUNTING.SELECT_STUDENTS_REQUIRED' | translate }}
+            </small>
+        </section>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+        <div class="dv-footer">
+            <small class="dv-footer__hint">
+                {{ 'ACCOUNTING.SELECTED_TOTAL' | translate }}: <b>{{ selected.length }}</b>
+                &nbsp;·&nbsp;
+                {{ 'ACCOUNTING.DISBURSED' | translate }}: <b>{{ selectedDisbursed | number:'1.2-2' }}</b>
+            </small>
+            <div class="dv-footer__actions">
+                <button pButton type="button" class="p-button-text p-button-secondary" icon="pi pi-times"
+                        [label]="'COMMON.CANCEL' | translate" [disabled]="saving"
+                        (click)="createVisible = false"></button>
+                <button pButton type="button" icon="pi pi-check" [label]="'ACCOUNTING.PREPARE' | translate"
+                        [loading]="saving" (click)="save()"></button>
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>

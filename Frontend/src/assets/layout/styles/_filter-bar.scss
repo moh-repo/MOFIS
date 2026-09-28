@@ -1,0 +1,182 @@
+/* ── Filter bar ───────────────────────────────────────────────────────────
+   One layout for every list page's filters.
+
+   Before this, each page laid its own out and none survived a narrow screen.
+   The recurring faults were the same three everywhere: controls carrying their
+   own pixel widths (120/160/200/180 …), so a row of them could never divide
+   evenly; the action buttons sitting in the same wrapping flex row as the
+   fields, so they landed wherever there happened to be space; and filters
+   sharing the page header with Add/Export, so "narrow the list" and "change
+   the data" read as the same kind of control.
+
+   The block is global rather than per-component because ten pages use it and a
+   filter row that looks different on each of them is the actual defect. Global
+   also keeps it out of every component's style budget.
+
+   Structure:
+
+     .filter-bar
+       .filter-bar__grid.filter-bar__grid--cols-N
+         .filter-bar__field[--wide][--active]
+           label + control
+       .filter-bar__actions
+
+   Columns are declared, never `auto-fit`: auto-fit picks a count from the
+   available width and strands whatever does not divide into it. Pick the N on
+   `--cols-N` so the fields divide evenly — with five fields prefer six tracks
+   and let the widest field span two, rather than five equal ones that give a
+   name search the same room as a status dropdown. */
+
+.filter-bar {
+    --filter-bar-cols: 4;
+
+    margin-bottom: 1.5rem;
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 14px;
+    background: var(--surface-50, var(--surface-ground));
+
+    &__grid {
+        display: grid;
+        gap: 0.9rem 1rem;
+        grid-template-columns: 1fr;
+
+        @media (min-width: 640px) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        @media (min-width: 1200px) {
+            grid-template-columns: repeat(var(--filter-bar-cols), minmax(0, 1fr));
+        }
+    }
+
+    /* The count is a class rather than an inline style so the template stays
+       free of layout numbers — the thing this block exists to remove. */
+    &__grid--cols-2 { --filter-bar-cols: 2; }
+    &__grid--cols-3 { --filter-bar-cols: 3; }
+    &__grid--cols-4 { --filter-bar-cols: 4; }
+    &__grid--cols-5 { --filter-bar-cols: 5; }
+    &__grid--cols-6 { --filter-bar-cols: 6; }
+    &__grid--cols-7 { --filter-bar-cols: 7; }
+
+    /* For a bar whose container resizes independently of the viewport — the
+       history page halves its panel once a student is picked, and a count
+       chosen from the window width is simply wrong there. This is the one
+       place auto-fit earns its keep: elsewhere the field count is known and
+       auto-fit only strands whatever does not divide into it. Declared after
+       the media queries above so it wins on source order. */
+    &__grid#{&}__grid--fluid {
+        grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    }
+
+    &__field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        /* Grid items default to min-content, so a long option label would push
+           the column wider than its track without this. */
+        min-width: 0;
+
+        > label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            color: var(--text-color-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* A filter that is actually narrowing the list says so. */
+        &--active > label {
+            color: var(--primary-color);
+        }
+
+        &--wide {
+            @media (min-width: 1200px) {
+                grid-column: span 2;
+            }
+        }
+
+        /* Every control fills the column it was given, whatever it is. The
+           list is explicit because PrimeNG's wrappers are inline-flex and a
+           bare `> *` would also catch the label. */
+        .p-inputtext,
+        .p-select,
+        .p-multiselect,
+        .p-datepicker,
+        .p-inputnumber,
+        .p-autocomplete,
+        .p-input-icon-left,
+        .p-input-icon-right,
+        nz-select,
+        nz-date-picker,
+        nz-range-picker,
+        /* ng-zorro's own stylesheet already gives an input, an affix wrapper
+           and a select the full width; a number input keeps its intrinsic
+           ~90px and is the one that has to be named here. */
+        nz-input-number {
+            width: 100%;
+        }
+    }
+
+    /* Out of the field flow on purpose: as a sixth flex item these wrapped
+       under whichever field ran out of room first. */
+    &__actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding-top: 0.9rem;
+        border-top: 1px solid var(--surface-border);
+    }
+
+    /* Pushes what follows it to the far end — a result count, usually. */
+    &__actions-spacer {
+        margin-inline-start: auto;
+    }
+
+    &__hint {
+        font-size: 0.8rem;
+        color: var(--text-color-secondary);
+    }
+
+    /* For the pages whose card is `p-0 overflow-hidden` so its header band can
+       run edge to edge: without this the bar would sit flush against the card
+       border on both sides. */
+    &--inset {
+        margin: 1.1rem 1.5rem 1.25rem;
+
+        @media (max-width: 640px) {
+            margin: 1rem;
+        }
+    }
+
+    @media (max-width: 640px) {
+        padding: 0.9rem;
+
+        &__actions {
+            flex-direction: column;
+            align-items: stretch;
+
+            .p-button,
+            button {
+                width: 100%;
+            }
+        }
+
+        &__actions-spacer {
+            margin-inline-start: 0;
+        }
+    }
+}
+
+/* Filters describe a view of the data, not the data; on paper the view is
+   whatever was printed. */
+@media print {
+    .filter-bar {
+        display: none !important;
+    }
+}

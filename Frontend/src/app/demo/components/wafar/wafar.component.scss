@@ -1,0 +1,142 @@
+.wafar-container {
+    padding: 1rem;
+}
+
+/* Balance summary — structure is shared
+   (assets/layout/styles/_summary-cards.scss); only the palette is local.
+
+   The value takes the accent colour here, unlike the other summary bands:
+   green deposits against red spending is the comparison the card exists to
+   make, so the figure itself carries it. */
+.summary-card {
+    .summary-value {
+        color: var(--summary-accent);
+    }
+
+    &.deposits {
+        --summary-accent: #4CAF50;
+        .summary-icon { background: linear-gradient(135deg, #66bb6a, #4CAF50); }
+    }
+
+    &.spent {
+        --summary-accent: #f44336;
+        .summary-icon { background: linear-gradient(135deg, #ef5350, #f44336); }
+    }
+
+    &.balance {
+        --summary-accent: #2196F3;
+        .summary-icon { background: linear-gradient(135deg, #42a5f5, #2196F3); }
+
+        /* An overdrawn balance is the one figure on this page that means
+           something is wrong, so it takes the same red as spending. */
+        &.negative {
+            --summary-accent: #f44336;
+            .summary-icon { background: linear-gradient(135deg, #ef5350, #f44336); }
+        }
+    }
+
+    &.pending {
+        --summary-accent: #FF9800;
+        .summary-icon { background: linear-gradient(135deg, #ffa726, #FF9800); }
+    }
+}
+
+.amount-cell {
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    text-align: end;
+}
+
+/* ── Shared dialog header ─────────────────────────────────────────────── */
+.dialog-header {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+
+    h3 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--text-color, #333);
+    }
+
+    .dialog-header-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: rgba(76, 175, 80, 0.12);
+        color: #4CAF50;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+
+        &.edit {
+            background: rgba(255, 152, 0, 0.12);
+            color: #FF9800;
+        }
+    }
+}
+
+/* ── Form dialog ──────────────────────────────────────────────────────── */
+.form-body {
+    padding-top: 0.25rem;
+}
+
+.form-section {
+    background: var(--surface-50, #fafafa);
+    border: 1px solid var(--surface-200, #eee);
+    border-radius: 12px;
+    padding: 1rem 1.25rem 0.5rem;
+    margin-bottom: 1.1rem;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--primary-color, #4CAF50);
+    margin-bottom: 0.85rem;
+
+    i {
+        font-size: 0.95rem;
+    }
+}
+
+.field-label {
+    display: block;
+    margin-bottom: 0.45rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-color-secondary, #555);
+
+    .req {
+        color: #f44336;
+        font-weight: 700;
+    }
+}
+
+.beneficiary-note {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    background: rgba(33, 150, 243, 0.08);
+    border: 1px solid rgba(33, 150, 243, 0.2);
+    color: var(--text-color, #333);
+    font-weight: 600;
+
+    i {
+        font-size: 1.1rem;
+        color: #2196F3;
+    }
+}

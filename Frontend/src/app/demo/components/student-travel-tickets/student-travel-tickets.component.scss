@@ -1,0 +1,666 @@
+:host {
+    display: block;
+    padding: 1rem;
+}
+
+// Cost total + Wafar balance panel in the add/edit form
+.cost-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 0.6rem 1rem;
+    background: var(--surface-100);
+    border: 1px solid var(--surface-200);
+    border-radius: 8px;
+
+    .cost-total {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+
+        .cost-total-label {
+            font-weight: 600;
+            color: var(--text-color-secondary);
+        }
+        .cost-total-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+    }
+
+    .cost-wafar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+
+        .wafar-balance { color: var(--text-color-secondary); }
+        .wafar-insufficient {
+            color: var(--red-600);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+    }
+}
+
+.vf-value.vf-strong { font-weight: 700; color: var(--primary-color); }
+
+// Card Styles
+.student-travel-ticket-card,
+.table-card {
+    margin-bottom: 1.5rem;
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+
+        .card-heading {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+
+            .card-heading__icon {
+                font-size: 2.5rem;
+                color: var(--primary-color);
+                line-height: 1;
+            }
+            .title {
+                margin: 0 0 0.5rem 0;
+                font-size: 1.75rem;
+                font-weight: 600;
+                color: var(--primary-color);
+            }
+
+            .subtitle {
+                margin: 0;
+                color: var(--text-color-secondary);
+                font-size: 1rem;
+            }
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+    }
+}
+
+// Summary Cards — structure is shared (assets/layout/styles/_summary-cards.scss);
+// only the palette is local, because the colours are tied to what the four
+// figures mean on this page.
+.summary-card {
+    &.total {
+        --summary-accent: #667eea;
+        .summary-icon { background: linear-gradient(135deg, #667eea, #764ba2); }
+    }
+
+    &.alone {
+        --summary-accent: #3b82f6;
+        .summary-icon { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    }
+
+    &.with-family {
+        --summary-accent: #22c55e;
+        .summary-icon { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    }
+
+    &.family-members {
+        --summary-accent: #8b5cf6;
+        .summary-icon { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+    }
+}
+
+// Table Styles
+::ng-deep {
+    .p-datatable {
+        .student-info {
+            .student-name {
+                font-weight: 600;
+                margin-bottom: 0.25rem;
+                color: var(--primary-color);
+            }
+
+            .text-muted {
+                color: var(--text-color-secondary);
+                font-size: 0.875rem;
+            }
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 0.25rem;
+            justify-content: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-color-secondary);
+
+            p {
+                margin-top: 1rem;
+                font-size: 1.1rem;
+            }
+        }
+    }
+}
+
+// Compact Dialog Styles
+::ng-deep .travel-ticket-dialog-compact {
+    .p-dialog-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-600));
+        color: white;
+        border-bottom: none;
+        padding: 1rem 1.5rem;
+        
+        .p-dialog-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        // PrimeNG 21 renders close and maximise as secondary text buttons (the v17
+        // .p-dialog-header-icon class is gone), and styles.scss paints every
+        // .p-button.p-button-text.p-button-secondary grey, so on this gradient the
+        // two icons all but vanished. The last selector outranks that rule.
+        .p-dialog-close-button,
+        .p-dialog-maximize-button,
+        .p-dialog-header-actions .p-button.p-button-text.p-button-secondary {
+            color: white;
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.15);
+                color: white;
+            }
+        }
+    }
+
+    .p-dialog-content {
+        padding: 0;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: var(--surface-50);
+    }
+
+    .compact-form-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .form-section {
+        background: white;
+        border-bottom: 1px solid var(--surface-200);
+        padding: 1rem 1.5rem;
+        
+        &:last-child {
+            border-bottom: none;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            font-weight: 600;
+            font-size: 1rem;
+
+            i {
+                font-size: 1.1rem;
+            }
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+        }
+
+        .form-col {
+            display: flex;
+            flex-direction: column;
+
+            &.full-width {
+                grid-column: 1 / -1;
+            }
+
+            label {
+                display: block;
+                margin-bottom: 0.4rem;
+                font-weight: 600;
+                font-size: 0.9rem;
+                color: var(--text-color);
+
+                .required {
+                    color: var(--red-500);
+                    margin-left: 2px;
+                }
+            }
+
+            .p-error {
+                color: var(--red-500);
+                font-size: 0.8rem;
+                margin-top: 0.25rem;
+            }
+
+            .p-inputtext,
+            .p-select,
+            .p-datepicker,
+            .p-inputnumber,
+            textarea {
+                font-size: 0.9rem;
+            }
+
+            textarea {
+                resize: vertical;
+                min-height: 50px;
+            }
+        }
+
+        .family-member-card {
+            border: 1px solid var(--surface-border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: var(--surface-ground);
+
+            .member-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1rem;
+                
+                h4 {
+                    margin: 0;
+                    color: var(--primary-color);
+                    font-size: 1rem;
+                }
+            }
+        }
+
+        .add-member-button {
+            margin-top: 1rem;
+            text-align: center;
+        }
+    }
+
+    .dialog-footer-compact {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        padding: 1rem 1.5rem;
+        background: var(--surface-100);
+        border-top: 1px solid var(--surface-200);
+        position: sticky;
+        bottom: 0;
+        z-index: 1;
+    }
+}
+
+// View Details Dialog — form-module layout
+::ng-deep .travel-ticket-view-dialog {
+    .p-dialog-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-600));
+        color: white;
+        border-bottom: none;
+        padding: 1rem 1.5rem;
+
+        .p-dialog-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        // The header template's icon and subtitle. They carried PrimeFlex
+        // text-primary and text-500, which are primary-on-primary and grey on
+        // this gradient; both are white here, the subtitle a little softened.
+        .view-dialog-header__icon {
+            color: white;
+        }
+
+        .view-dialog-header__sub {
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        // PrimeNG 21 renders close and maximise as secondary text buttons (the v17
+        // .p-dialog-header-icon class is gone), and styles.scss paints every
+        // .p-button.p-button-text.p-button-secondary grey, so on this gradient the
+        // two icons all but vanished. The last selector outranks that rule.
+        .p-dialog-close-button,
+        .p-dialog-maximize-button,
+        .p-dialog-header-actions .p-button.p-button-text.p-button-secondary {
+            color: white;
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.15);
+                color: white;
+            }
+        }
+    }
+
+    .p-dialog-content {
+        padding: 0;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: var(--surface-50);
+    }
+
+    .p-dialog-footer {
+        border-top: 1px solid var(--surface-200);
+        background: var(--surface-100);
+        padding: 0.75rem 1.5rem;
+    }
+}
+
+.view-compact-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.view-section {
+    background: white;
+    border-bottom: 1px solid var(--surface-200);
+    padding: 1rem 1.5rem;
+
+    &:last-child { border-bottom: none; }
+
+    &.view-section-audit {
+        background: var(--surface-50);
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--primary-color);
+        color: var(--primary-color);
+        font-weight: 600;
+        font-size: 1rem;
+
+        i { font-size: 1.1rem; }
+    }
+}
+
+.view-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1rem 1.5rem;
+    margin-top: 0.75rem;
+}
+
+.view-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.vf-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.vf-value {
+    font-size: 0.95rem;
+    color: var(--text-color);
+    font-weight: 500;
+    min-height: 1.4rem;
+
+    &.vf-multiline {
+        white-space: pre-wrap;
+        line-height: 1.5;
+    }
+}
+
+.vf-meta {
+    font-size: 0.82rem;
+    color: var(--text-color-secondary);
+    margin-left: 0.35rem;
+}
+
+.view-family-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.view-family-card {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    background: var(--surface-ground);
+}
+
+.view-family-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+// Sidebar Styles
+::ng-deep .travel-ticket-sidebar {
+    .p-drawer-header {
+        background: var(--primary-color);
+        color: white;
+        border-bottom: none;
+
+        .sidebar-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .p-drawer-close-button {
+            color: white;
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+    }
+
+    .p-drawer-content {
+        padding: 1rem;
+        background: var(--surface-50);
+    }
+
+    .ticket-details {
+        .p-card {
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+
+            .detail-card-header {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.75rem 1rem;
+                background: var(--surface-100);
+                border-bottom: 2px solid var(--primary-color);
+                font-weight: 600;
+                color: var(--primary-color);
+
+                i {
+                    font-size: 1.1rem;
+                }
+            }
+
+            .detail-row {
+                display: flex;
+                align-items: flex-start;
+                padding: 0.75rem 0;
+                border-bottom: 1px solid var(--surface-border);
+
+                &:last-child {
+                    border-bottom: none;
+                }
+
+                &.full-width {
+                    flex-direction: column;
+
+                    .detail-label {
+                        margin-bottom: 0.5rem;
+                    }
+
+                    .detail-value {
+                        width: 100%;
+                        white-space: pre-wrap;
+
+                        p {
+                            margin: 0;
+                            line-height: 1.6;
+                        }
+                    }
+                }
+
+                .detail-label {
+                    font-weight: 600;
+                    color: var(--text-color-secondary);
+                    min-width: 140px;
+                    font-size: 0.9rem;
+                }
+
+                .detail-value {
+                    flex: 1;
+                    color: var(--text-color);
+                    word-break: break-word;
+
+                    .text-muted {
+                        color: var(--text-color-secondary);
+                        font-size: 0.875rem;
+                    }
+                }
+            }
+
+            .family-member-detail {
+                padding: 0.75rem 0;
+                border-bottom: 1px solid var(--surface-border);
+
+                &:last-child {
+                    border-bottom: none;
+                }
+
+                .member-title {
+                    font-weight: 600;
+                    color: var(--primary-color);
+                    margin-bottom: 0.5rem;
+                    font-size: 0.95rem;
+                }
+
+                .member-info {
+                    display: flex;
+                    margin-bottom: 0.25rem;
+                    font-size: 0.9rem;
+
+                    .detail-label {
+                        font-weight: 600;
+                        color: var(--text-color-secondary);
+                        min-width: 120px;
+                    }
+
+                    .detail-value {
+                        flex: 1;
+                        color: var(--text-color);
+                        word-break: break-word;
+                    }
+                }
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-color-secondary);
+
+            p {
+                margin-top: 1rem;
+                font-size: 1.1rem;
+            }
+        }
+    }
+}
+
+// Responsive Styles
+@media (max-width: 768px) {
+    :host {
+        padding: 0.5rem;
+    }
+
+    .student-travel-ticket-card,
+    .table-card {
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+
+            .card-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+    }
+
+    ::ng-deep .travel-ticket-dialog-compact {
+        width: 95vw !important;
+        
+        .form-row {
+            grid-template-columns: 1fr !important;
+            gap: 0.75rem;
+        }
+        
+        .form-section {
+            padding: 0.75rem 1rem;
+        }
+        
+        .dialog-footer-compact {
+            flex-direction: column;
+            
+            .p-button {
+                width: 100%;
+            }
+        }
+    }
+
+    ::ng-deep .travel-ticket-sidebar {
+        width: 100% !important;
+    }
+}
+
+// Print Styles
+@media print {
+    :host {
+        padding: 0;
+    }
+
+    .card-actions,
+    .table-actions {
+        display: none !important;
+    }
+
+    .table-card {
+        box-shadow: none;
+    }
+}

@@ -1,0 +1,170 @@
+<div class="layout-topbar" [class.rtl]="translationService.isRTL()">
+  <a class="layout-topbar-logo" routerLink="">
+    <img [src]="systemLogoUrl" [alt]="systemDisplayName || ('LAYOUT.SYSTEM_NAME' | translate)"
+      (error)="onLogoError($event)">
+    <span>{{ systemDisplayName || ('LAYOUT.SYSTEM_NAME' | translate) }}</span>
+  </a>
+
+  @if (hasVisibleMenuItems) {
+    <button #menubutton class="p-link layout-menu-button layout-topbar-button" (click)="layoutService.onMenuToggle()">
+      <i class="pi pi-bars"></i>
+    </button>
+  }
+
+  <button #topbarmenubutton class="p-link layout-topbar-menu-button layout-topbar-button"
+    (click)="layoutService.showProfileSidebar()">
+    <i class="pi pi-ellipsis-v"></i>
+  </button>
+
+  <div #topbarmenu class="layout-topbar-menu"
+    [ngClass]="{'layout-topbar-menu-mobile-active': layoutService.state.profileSidebarVisible}">
+    <!-- Country Selector (multi-country scope) -->
+    @if (showCountrySelector) {
+      <div class="topbar-country-selector">
+        <p-select [options]="countryOptions" [(ngModel)]="selectedCountryId"
+          optionLabel="studyCountryInName" optionValue="id"
+          [placeholder]="'LAYOUT.ALL_COUNTRIES' | translate" (onChange)="onCountryChange()"
+          [showClear]="true" styleClass="topbar-country-dropdown" appendTo="body">
+        </p-select>
+      </div>
+    }
+
+    <!-- Language Selector -->
+    @if (translationService.isReady()) {
+      <div class="language-selector">
+        @for (lang of translationService.getAvailableLanguages(); track lang) {
+          <button
+            class="language-button"
+            [class.active]="translationService.getCurrentLanguage() === lang.code"
+            (click)="switchLanguage(lang.code)"
+            [title]="lang.name"
+            [attr.aria-label]="('LAYOUT.SWITCH_LANGUAGE' | translate:{ name: lang.name })">
+            <i [class]="lang.code === 'ar' ? 'pi pi-language' : 'pi pi-globe'" class="lang-icon"></i>
+            <span class="lang-flag">{{lang.code === 'ar' ? '🇸🇦' : '🇬🇧'}}</span>
+            <span class="lang-code">{{lang.code.toUpperCase()}}</span>
+          </button>
+        }
+      </div>
+    }
+
+    <div class="topbar-actions">
+      <!-- Approvals (pending count & link to Pending Approvals page) -->
+      @if (canViewPendingApprovals) {
+        <button class="p-link layout-topbar-button" (click)="goToPendingApprovals()"
+          [pTooltip]="pendingApprovalCount > 0 ? ('APPROVALS.TOOLTIP_COUNT' | translate:{ count: pendingApprovalCount }) : ('APPROVALS.TOOLTIP_PENDING' | translate)"
+          [tooltipPosition]="translationService.isRTL() ? 'left' : 'bottom'">
+          <i class="pi pi-check-square"></i>
+          @if (pendingApprovalCount > 0) {
+            <span class="topbar-badge">{{ pendingApprovalCount > 99 ? '99+' : pendingApprovalCount }}</span>
+          }
+          <span>{{ 'APPROVALS.NOTIFICATIONS' | translate }}</span>
+        </button>
+      }
+
+      <button #calendarButton class="p-link layout-topbar-button" (click)="calendarOverlay.toggle($event)" type="button"
+        [pTooltip]="'CALENDAR.TOOLTIP' | translate" [tooltipPosition]="translationService.isRTL() ? 'left' : 'bottom'">
+        <i class="pi pi-calendar"></i>
+        <span>{{ 'CALENDAR.TITLE' | translate }}</span>
+      </button>
+      <p-popover #calendarOverlay [dismissable]="true" appendTo="body" styleClass="topbar-calendar-overlay"
+        (onShow)="onCalendarShow()" (onHide)="onCalendarHide()">
+        <ng-template pTemplate="content">
+          <div class="topbar-calendar" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+            <p-datepicker [(ngModel)]="calendarDate" [inline]="true" [readonlyInput]="true"
+              dateFormat="dd/mm/yy" (onSelect)="loadAgenda()"
+              (onMonthChange)="onCalendarMonthChange($event)"
+              (onYearChange)="onCalendarMonthChange($event)">
+              <!-- A dot on the days that have something on them, so the month itself
+                   says where to look instead of making the user click through it. -->
+              <ng-template pTemplate="date" let-day>
+                <span class="calendar-day" [class.calendar-day--marked]="isMarked(day)">{{ day.day }}</span>
+              </ng-template>
+            </p-datepicker>
+
+            <!-- H1 (review round 2): the calendar read as a plain date picker. The
+                 legend says what the dot means and what clicking a day does. -->
+            <p class="topbar-agenda__legend">
+              <span class="topbar-agenda__legend-dot" aria-hidden="true"></span>
+              <span>{{ 'CALENDAR.LEGEND_MARKED' | translate }}</span>
+              <span class="topbar-agenda__legend-sep" aria-hidden="true">·</span>
+              <span>{{ 'CALENDAR.LEGEND_CLICK' | translate }}</span>
+            </p>
+
+            <div class="topbar-agenda">
+              <h4 class="topbar-agenda__heading">{{ 'CALENDAR.AGENDA_FOR' | translate:{ date: agendaDateLabel } }}</h4>
+
+              <!-- QA C10 / N14: what the day could not load, and a way to ask again. -->
+              @if (agendaPartial.length && !agendaLoading && !agendaFailed) {
+                <p class="topbar-agenda__note topbar-agenda__note--error">
+                  {{ 'CALENDAR.PARTIAL_FAILED' | translate:{ kinds: agendaPartialLabel } }}
+                  <button type="button" pButton pRipple icon="pi pi-refresh" class="p-button-sm p-button-text"
+                          [label]="'COMMON.RETRY' | translate" (click)="retryAgenda()"></button>
+                </p>
+              }
+              @if (markedFailed && !agendaLoading) {
+                <p class="topbar-agenda__note topbar-agenda__note--error">{{ 'CALENDAR.MARKS_FAILED' | translate }}</p>
+              }
+
+              @if (agendaLoading) {
+                <p class="topbar-agenda__note">{{ 'COMMON.LOADING' | translate }}</p>
+              } @else if (agendaFailed) {
+                <p class="topbar-agenda__note topbar-agenda__note--error">{{ 'CALENDAR.LOAD_FAILED' | translate }}</p>
+                <button type="button" pButton pRipple icon="pi pi-refresh" class="p-button-sm p-button-text"
+                        [label]="'COMMON.RETRY' | translate" (click)="retryAgenda()"></button>
+              } @else if (!agendaEntries.length) {
+                <div class="topbar-agenda__empty">
+                  <i class="pi pi-calendar-times" aria-hidden="true"></i>
+                  <p class="topbar-agenda__note">{{ 'CALENDAR.NOTHING_ON_THIS_DAY' | translate }}</p>
+                  <p class="topbar-agenda__note">{{ 'CALENDAR.WHAT_IS_SHOWN' | translate }}</p>
+                </div>
+              } @else {
+                <ul class="topbar-agenda__list">
+                  @for (entry of agendaEntries; track $index) {
+                    <li>
+                      <button type="button" class="topbar-agenda__entry" (click)="openAgendaEntry(entry)">
+                        <i class="topbar-agenda__icon" [class]="agendaIcon(entry.kind)"></i>
+                        <span class="topbar-agenda__text">
+                          <span class="topbar-agenda__title">{{ agendaTitle(entry) }}</span>
+                          <span class="topbar-agenda__detail">
+                            {{ 'CALENDAR.KIND.' + entry.kind | translate }}@if (entry.detail) { <span> — {{ entry.detail }}</span> }
+                          </span>
+                        </span>
+                        @if (entry.uiSeverity) {
+                          <span class="topbar-agenda__dot" [class]="'topbar-agenda__dot--' + entry.uiSeverity"></span>
+                        }
+                      </button>
+                    </li>
+                  }
+                </ul>
+                @if (agendaMore.length) {
+                  <p class="topbar-agenda__note">
+                    @for (more of agendaMore; track more.kind) {
+                      <span class="topbar-agenda__more">{{ 'CALENDAR.AND_MORE' | translate:{ count: more.extra, kind: ('CALENDAR.KIND.' + more.kind | translate) } }}</span>
+                    }
+                  </p>
+                }
+              }
+            </div>
+          </div>
+        </ng-template>
+      </p-popover>
+      <p-menu #profileMenu [popup]="true" [model]="profileItems" appendTo="body"></p-menu>
+      <button class="p-link layout-topbar-button" (click)="profileMenu.toggle($event)"
+        [pTooltip]="'COMMON.PROFILE' | translate" [tooltipPosition]="translationService.isRTL() ? 'left' : 'bottom'">
+        <i class="pi pi-user"></i>
+        <span>{{ 'COMMON.PROFILE' | translate }}</span>
+      </button>
+      <!-- Opens the layout config drawer (app-config); this replaces the
+           floating cog that used to hang off the right edge of every page. -->
+      <button class="p-link layout-topbar-button" type="button" (click)="layoutService.showConfigSidebar()"
+        [pTooltip]="'LAYOUT.CONFIG.TITLE' | translate" [tooltipPosition]="translationService.isRTL() ? 'left' : 'bottom'">
+        <i class="pi pi-cog"></i>
+        <span>{{ 'LAYOUT.CONFIG.TITLE' | translate }}</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- DEC-07: the question asked before a language or country switch wipes typed input.
+     Keyed, and answered by the topbar's own ConfirmationService. -->
+<p-confirmdialog key="unsaved-input" [style]="{ width: '28rem' }"></p-confirmdialog>

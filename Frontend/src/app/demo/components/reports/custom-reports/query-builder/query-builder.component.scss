@@ -1,0 +1,22 @@
+:host ::ng-deep {
+    .card-header {
+        padding: 1.5rem;
+        background-color: var(--surface-50);
+        border-bottom: 1px solid var(--surface-border);
+    }
+}
+
+/* Logical margin, so the gap sits between icon and heading in both directions. */
+.section-icon {
+    margin-inline-end: 0.5rem;
+}
+
+/* The composed statement, shown for inspection. Always LTR — it is SQL — and it
+   scrolls inside its own box rather than widening the page. */
+pre {
+    direction: ltr;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0 0 0.75rem 0;
+}
+

@@ -1,0 +1,407 @@
+.layout-sidebar {
+    position: fixed;
+    width: $sidebarWidth;
+    height: calc(100vh - 9rem);
+    z-index: 999;
+    overflow-y: auto;
+    user-select: none;
+    top: 7rem;
+    left: 2rem;
+    transition: transform $transitionDuration, left $transitionDuration;
+    background-color: var(--surface-overlay);
+    border-radius: $borderRadius;
+    padding: 0.5rem 1.5rem;
+    box-shadow: 0px 3px 5px rgba(0, 0, 0, .02), 0px 0px 2px rgba(0, 0, 0, .05), 0px 1px 4px rgba(0, 0, 0, .08);
+}
+
+// Someone with no permitted pages gets no sidebar. It is hidden rather than
+// removed from the component tree: app-menu is what works out whether there is
+// anything to show, so it has to stay mounted to notice when that changes.
+.layout-sidebar-empty {
+    display: none;
+}
+
+.layout-menu {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+
+    .layout-root-menuitem {
+        >.layout-menuitem-root-text {
+            font-size: .857rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--surface-900);
+            margin: .75rem 0;
+        }
+
+        // Parent sections: anchor is only for submenu toggle — keep hidden (label is in root-text).
+        &:not(.layout-root-nav-link) > a {
+            display: none;
+        }
+
+        // Single root link (e.g. Dashboard): real `<a>` is direct child, not inside nested `ul` — show and style like other menu rows.
+        &.layout-root-nav-link {
+            > .layout-menuitem-root-text {
+                display: none;
+            }
+
+            > a {
+                display: flex;
+                align-items: center;
+                position: relative;
+                outline: 0 none;
+                color: var(--text-color);
+                cursor: pointer;
+                padding: .75rem 1rem;
+                border-radius: $borderRadius;
+                transition: background-color $transitionDuration, box-shadow $transitionDuration;
+
+                .layout-menuitem-icon {
+                    margin-right: .5rem;
+                }
+
+                .layout-submenu-toggler {
+                    font-size: 75%;
+                    margin-left: auto;
+                    transition: transform $transitionDuration;
+                }
+
+                &.active-route {
+                    font-weight: 700;
+                    color: var(--primary-color);
+                }
+
+                &:hover {
+                    background-color: var(--surface-hover);
+                }
+
+                &:focus {
+                    @include focused-inset();
+                }
+            }
+        }
+    }
+
+    a {
+        user-select: none;
+
+        &.active-menuitem {
+            >.layout-submenu-toggler {
+                transform: rotate(-180deg);
+            }
+        }
+    }
+
+    li.active-menuitem {
+        >a {
+            .layout-submenu-toggler {
+                transform: rotate(-180deg);
+            }
+        }
+    }
+
+    ul {
+        margin: 0;
+        padding: 0;
+        list-style-type: none;
+
+        a {
+            display: flex;
+            align-items: center;
+            position: relative;
+            outline: 0 none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: .75rem 1rem;
+            border-radius: $borderRadius;
+            transition: background-color $transitionDuration, box-shadow $transitionDuration;
+
+            .layout-menuitem-icon {
+                margin-right: .5rem;
+            }
+
+            .layout-submenu-toggler {
+                font-size: 75%;
+                margin-left: auto;
+                transition: transform $transitionDuration;
+            }
+
+            &.active-route {
+                font-weight: 700;
+                color: var(--primary-color);
+            }
+
+            &:hover {
+                background-color: var(--surface-hover);
+            }
+
+            &:focus {
+                @include focused-inset();
+            }
+        }
+
+        ul {
+            overflow: hidden;
+            border-radius: $borderRadius;
+
+            li {
+                a {
+                    margin-left: 1rem;
+                }
+
+                li {
+                    a {
+                        margin-left: 2rem;
+                    }
+
+                    li {
+                        a {
+                            margin-left: 2.5rem;
+                        }
+
+                        li {
+                            a {
+                                margin-left: 3rem;
+                            }
+
+                            li {
+                                a {
+                                    margin-left: 3.5rem;
+                                }
+
+                                li {
+                                    a {
+                                        margin-left: 4rem;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Proposed layout: collapsible top-level sections ───────────────
+// Every rule below is scoped to .layout-menu--sections, a class only the
+// proposed sidebar sets. Classic matches none of them and takes the same code
+// path it always has — that is what keeps "the old one as it is" true.
+//
+// The shape of the thing: a section header is a heavier, tighter, uppercase row;
+// its children sit indented behind a hairline rail so an open section reads as
+// one block rather than as more rows of the same weight. Classic gets that
+// hierarchy for free because its captions are inert text with their own spacing;
+// once the caption becomes a clickable row, the indent and the rail have to be
+// put back deliberately.
+.layout-menu.layout-menu--sections {
+
+    .layout-root-menuitem {
+        // Collapsed sections stack directly on each other, so they need enough
+        // air between them not to read as siblings of the rows above.
+        margin-bottom: .1rem;
+
+        // The section name is the clickable row now, so the static caption goes.
+        > .layout-menuitem-root-text {
+            display: none;
+        }
+
+        // Undoes the `display: none` a few rules up. Kept at one class more than
+        // that rule so it wins on specificity rather than on source order.
+        &:not(.layout-root-nav-link) > a {
+            display: flex;
+            align-items: center;
+            position: relative;
+            outline: 0 none;
+            color: var(--surface-900);
+            cursor: pointer;
+            padding: .55rem .75rem;
+            border-radius: $borderRadius;
+            font-size: .78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            transition: background-color $transitionDuration, color $transitionDuration;
+
+            .layout-menuitem-icon {
+                margin-right: .5rem;
+                font-size: .9rem;
+            }
+
+            .layout-submenu-toggler {
+                font-size: 70%;
+                margin-left: auto;
+                opacity: .65;
+                transition: transform $transitionDuration;
+            }
+
+            &:hover {
+                background-color: var(--surface-hover);
+            }
+
+            &:focus {
+                @include focused-inset();
+            }
+        }
+
+        // The open section is the one piece of state a collapsed menu has to
+        // show; a rotated chevron alone is about six pixels of signal.
+        &.active-menuitem:not(.layout-root-nav-link) > a {
+            color: var(--primary-color);
+
+            .layout-submenu-toggler {
+                opacity: 1;
+            }
+        }
+
+        // Dashboard: a root row that navigates rather than opening. Matched to
+        // the section headers' metrics so the two sit on the same left edge, and
+        // to the destination rows' type, because that is what it is.
+        &.layout-root-nav-link > a {
+            padding: .55rem .75rem;
+            font-size: .875rem;
+        }
+
+        // Children of a section, indented and railed. The rail starts under the
+        // header's icon so it reads as descending from it.
+        //
+        // overflow is the load-bearing line. The @children animation collapses a
+        // section by animating height to 0 and nothing else, so without clipping
+        // the rows paint straight over whatever follows. Classic never needed it
+        // here — only `ul ul` carries it, because classic's root sections do not
+        // collapse — and that is exactly why this had to be added rather than
+        // inherited.
+        > ul {
+            overflow: hidden;
+            margin: .1rem 0 .4rem .95rem;
+            padding-left: .55rem;
+            border-left: 1px solid var(--surface-border);
+        }
+
+        // Rows inside a section: lighter and tighter than the header above them.
+        // Nested groups keep the existing margin-left cascade for their own step.
+        > ul a {
+            padding: .45rem .5rem;
+            font-size: .875rem;
+        }
+
+        // Sub-groups sit between a section and a destination; the chevron is the
+        // only thing distinguishing them, so give it a little more presence.
+        > ul li > a .layout-submenu-toggler {
+            opacity: .8;
+        }
+    }
+}
+
+// ── Sidebar menu search (proposed layout only) ────────────────────
+// RTL mirrors the search affordances; the field itself is direction-agnostic.
+.layout-wrapper.rtl .layout-menu-search {
+    > .pi-search { left: auto; right: .75rem; }
+    input { padding-left: 2rem; padding-right: 2.1rem; }
+    .layout-menu-search-clear { right: auto; left: .5rem; }
+}
+
+.layout-menu-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin: .5rem 0 .25rem;
+
+    > .pi-search {
+        position: absolute;
+        left: .75rem;
+        font-size: .8rem;
+        color: var(--text-color-secondary);
+        pointer-events: none;
+    }
+
+    input {
+        width: 100%;
+        padding-left: 2.1rem;
+        padding-right: 2rem;
+        font-size: .875rem;
+
+        // type="search" (chosen to keep browser autofill away) draws its own
+        // cancel icon in WebKit/Blink; the component renders its own clear button.
+        &::-webkit-search-cancel-button,
+        &::-webkit-search-decoration {
+            -webkit-appearance: none;
+            appearance: none;
+        }
+    }
+
+    .layout-menu-search-clear {
+        position: absolute;
+        right: .5rem;
+        display: flex;
+        align-items: center;
+        color: var(--text-color-secondary);
+        cursor: pointer;
+
+        &:hover {
+            color: var(--text-color);
+        }
+
+        i {
+            font-size: .75rem;
+        }
+    }
+}
+
+.layout-menu-empty {
+    margin: .75rem .25rem;
+    font-size: .85rem;
+    color: var(--text-color-secondary);
+}
+
+// ── Sidebar menu group separator ──────────────────────────────────────────────────
+li.menu-separator {
+    border-top: 1px solid var(--surface-border);
+    margin: .5rem 0;
+    padding: 0;
+    list-style: none;
+}
+
+// ── RTL sidebar and menu overrides ────────────────────────────────
+.layout-wrapper.rtl {
+    .layout-sidebar {
+        left: auto;
+        right: 2rem;
+        transition: transform $transitionDuration, right $transitionDuration;
+    }
+
+    .layout-menu {
+        // Flip icon margin for RTL flex row
+        ul a .layout-menuitem-icon,
+        .layout-root-nav-link > a .layout-menuitem-icon {
+            margin-right: 0;
+            margin-left: .5rem;
+        }
+
+        // The proposed layout's section header is a direct child of the root
+        // <li>, not inside a nested <ul>, so the rule above misses it.
+        &.layout-menu--sections .layout-root-menuitem > a .layout-menuitem-icon {
+            margin-right: 0;
+            margin-left: .5rem;
+        }
+
+        // Mirror the section rail and its indent.
+        &.layout-menu--sections .layout-root-menuitem > ul {
+            margin-left: 0;
+            margin-right: .95rem;
+            padding-left: 0;
+            padding-right: .55rem;
+            border-left: 0;
+            border-right: 1px solid var(--surface-border);
+        }
+
+        // Flip submenu indentation for RTL
+        ul ul li a                             { margin-left: 0; margin-right: 1rem; }
+        ul ul li li a                          { margin-left: 0; margin-right: 2rem; }
+        ul ul li li li a                       { margin-left: 0; margin-right: 2.5rem; }
+        ul ul li li li li a                    { margin-left: 0; margin-right: 3rem; }
+        ul ul li li li li li a                 { margin-left: 0; margin-right: 3.5rem; }
+        ul ul li li li li li li a              { margin-left: 0; margin-right: 4rem; }
+    }
+}

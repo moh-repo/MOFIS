@@ -1,0 +1,634 @@
+[
+  {
+    "label": "NAVIGATION.DASHBOARD",
+    "icon": "pi pi-fw pi-home",
+    "routerLink": [
+      "/"
+    ]
+  },
+  {
+    "label": "NAVIGATION.STUDENTS",
+    "icon": "pi pi-fw pi-id-card",
+    "items": [
+      {
+        "label": "NAVIGATION.ALL_STUDENTS",
+        "icon": "pi pi-fw pi-list",
+        "routerLink": [
+          "/students"
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_HISTORY",
+        "icon": "pi pi-fw pi-history",
+        "routerLink": [
+          "/student-history"
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_QUICK_EDIT",
+        "icon": "pi pi-fw pi-pencil",
+        "routerLink": [
+          "/student-quick-edit"
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_EXTENSION",
+        "icon": "pi pi-fw pi-calendar-plus",
+        "routerLink": [
+          "/student-extension"
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_TRAVEL_TICKETS",
+        "icon": "pi pi-fw pi-ticket",
+        "routerLink": [
+          "/student-travel-tickets"
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_INFO_REQUESTS",
+        "icon": "pi pi-fw pi-envelope",
+        "routerLink": [
+          "/student-info-requests"
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_CHANGE_REQUESTS",
+        "icon": "pi pi-fw pi-file-edit",
+        "routerLink": [
+          "/student-change-requests"
+        ]
+      }
+    ]
+  },
+  {
+    "label": "NAVIGATION.ACCOUNTING_SYSTEM",
+    "icon": "pi pi-fw pi-book",
+    "items": [
+      {
+        "label": "NAVIGATION.CHART_OF_ACCOUNTS",
+        "icon": "pi pi-fw pi-sitemap",
+        "routerLink": [
+          "/accounting/chart-of-accounts"
+        ]
+      },
+      {
+        "label": "NAVIGATION.BUDGET_APPROPRIATIONS",
+        "icon": "pi pi-fw pi-briefcase",
+        "routerLink": [
+          "/accounting/budget-appropriations"
+        ]
+      },
+      {
+        "label": "NAVIGATION.ALLOCATIONS",
+        "icon": "pi pi-fw pi-send",
+        "routerLink": [
+          "/accounting/allocations"
+        ]
+      },
+      {
+        "label": "NAVIGATION.PAYMENT_BATCHES",
+        "icon": "pi pi-fw pi-money-bill",
+        "routerLink": [
+          "/accounting/payment-batches"
+        ]
+      },
+      {
+        "label": "NAVIGATION.ATTACHE_ADVANCES",
+        "icon": "pi pi-fw pi-wallet",
+        "routerLink": [
+          "/accounting/advance-balances"
+        ]
+      },
+      {
+        "label": "NAVIGATION.FX_RATES",
+        "icon": "pi pi-fw pi-percentage",
+        "routerLink": [
+          "/accounting/fx-rates"
+        ]
+      }
+    ]
+  },
+  {
+    "label": "NAVIGATION.FINANCE",
+    "icon": "pi pi-fw pi-wallet",
+    "items": [
+      {
+        "label": "NAVIGATION.FINANCE_RECORDS",
+        "icon": "pi pi-fw pi-money-bill",
+        "routerLink": [
+          "/finance"
+        ]
+      },
+      {
+        "label": "NAVIGATION.FINANCE_HISTORY",
+        "icon": "pi pi-fw pi-history",
+        "routerLink": [
+          "/studentfinancearch"
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_FINANCE_WAFAR",
+        "icon": "pi pi-fw pi-star",
+        "routerLink": [
+          "/student-finance-wafar"
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_LOAN",
+        "icon": "pi pi-fw pi-credit-card",
+        "routerLink": [
+          "/student-loan"
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_BOOKS_ALLOWANCE",
+        "icon": "pi pi-fw pi-book",
+        "routerLink": [
+          "/student-books-allowance"
+        ]
+      },
+      {
+        "label": "NAVIGATION.WAFAR_SPENDING",
+        "icon": "pi pi-fw pi-chart-bar",
+        "routerLink": [
+          "/wafar"
+        ]
+      },
+      {
+        "label": "NAVIGATION.WAFAR_RECONCILIATION",
+        "icon": "pi pi-fw pi-sync",
+        "routerLink": [
+          "/wafar-reconciliation"
+        ]
+      },
+      {
+        "label": "NAVIGATION.FINANCE_RECEIVED_WHOM",
+        "icon": "pi pi-fw pi-users",
+        "routerLink": [
+          "/finance-received-whom"
+        ]
+      },
+      {
+        "label": "NAVIGATION.PAYMENT_AUTHORIZATION",
+        "icon": "pi pi-fw pi-check-circle",
+        "routerLink": [
+          "/payment-authorization"
+        ]
+      },
+      {
+        "label": "NAVIGATION.UNIVERSITY_FEE",
+        "icon": "pi pi-fw pi-building",
+        "items": [
+          {
+            "label": "NAVIGATION.UNIVERSITY_FEE_MANAGEMENT",
+            "icon": "pi pi-fw pi-money-bill",
+            "routerLink": [
+              "/studyuniversityfee"
+            ]
+          },
+          {
+            "label": "NAVIGATION.UNIVERSITY_FEE_HISTORY",
+            "icon": "pi pi-fw pi-history",
+            "routerLink": [
+              "/studyuniversityfeearch"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "label": "NAVIGATION.OPERATIONS",
+    "icon": "pi pi-fw pi-cog",
+    "items": [
+      {
+        "label": "NAVIGATION.MOHE_QUARTER",
+        "icon": "pi pi-fw pi-calendar",
+        "routerLink": [
+          "/operations/mohe-quarter"
+        ]
+      }
+    ]
+  },
+  {
+    "label": "NAVIGATION.APPROVALS",
+    "icon": "pi pi-fw pi-check-square",
+    "items": [
+      {
+        "label": "NAVIGATION.PENDING_APPROVALS",
+        "icon": "pi pi-fw pi-clock",
+        "routerLink": [
+          "/approvals/pending"
+        ]
+      },
+      {
+        "label": "NAVIGATION.APPROVAL_HISTORY",
+        "icon": "pi pi-fw pi-history",
+        "routerLink": [
+          "/approvals/history"
+        ]
+      },
+      {
+        "label": "NAVIGATION.MY_REQUESTS",
+        "icon": "pi pi-fw pi-send",
+        "routerLink": [
+          "/approvals/my-requests"
+        ]
+      },
+      {
+        "label": "NAVIGATION.APPROVAL_CONFIGS",
+        "icon": "pi pi-fw pi-sliders-h",
+        "routerLink": [
+          "/approvals/configs"
+        ]
+      }
+    ]
+  },
+  {
+    "label": "NAVIGATION.REPORTS",
+    "icon": "pi pi-fw pi-chart-bar",
+    "items": [
+      {
+        "label": "NAVIGATION.REPORTS_LIST",
+        "icon": "pi pi-fw pi-file",
+        "routerLink": [
+          "/reports/list"
+        ]
+      },
+      {
+        "label": "NAVIGATION.GRAPHS",
+        "icon": "pi pi-fw pi-chart-bar",
+        "routerLink": [
+          "/reports/graphs"
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_TRACER",
+        "icon": "pi pi-fw pi-share-alt",
+        "routerLink": [
+          "/reports/statistical/student-tracer"
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_GRAPH",
+        "icon": "pi pi-fw pi-sitemap",
+        "routerLink": [
+          "/reports/student-graph"
+        ]
+      }
+    ]
+  },
+  {
+    "label": "NAVIGATION.NOTIFICATIONS",
+    "icon": "pi pi-fw pi-bell",
+    "items": [
+      {
+        "label": "NAVIGATION.SEND_NOTIFICATION",
+        "icon": "pi pi-fw pi-send",
+        "routerLink": [
+          "/notifications/send"
+        ]
+      },
+      {
+        "label": "NAVIGATION.NOTIFICATION_HISTORY",
+        "icon": "pi pi-fw pi-history",
+        "routerLink": [
+          "/notifications/history"
+        ]
+      },
+      {
+        "label": "NAVIGATION.NOTIFICATION_SETTINGS",
+        "icon": "pi pi-fw pi-cog",
+        "routerLink": [
+          "/notifications/settings"
+        ]
+      }
+    ]
+  },
+  {
+    "label": "NAVIGATION.ALERT_EVENTS",
+    "icon": "pi pi-fw pi-bell",
+    "items": [
+      {
+        "label": "NAVIGATION.ALERT_CASES",
+        "icon": "pi pi-fw pi-exclamation-triangle",
+        "routerLink": [
+          "/alert-events/cases"
+        ]
+      },
+      {
+        "label": "NAVIGATION.ALERT_SCENARIOS",
+        "icon": "pi pi-fw pi-sliders-h",
+        "routerLink": [
+          "/alert-events/scenarios"
+        ]
+      }
+    ]
+  },
+  {
+    "separator": true
+  },
+  {
+    "label": "NAVIGATION.ADMINISTRATION",
+    "icon": "pi pi-fw pi-shield",
+    "items": [
+      {
+        "label": "NAVIGATION.AUDIT_LOGS",
+        "icon": "pi pi-fw pi-history",
+        "routerLink": [
+          "/audit/logs"
+        ]
+      },
+      {
+        "label": "NAVIGATION.SYSTEM_SETTINGS",
+        "icon": "pi pi-fw pi-wrench",
+        "items": [
+          {
+            "label": "NAVIGATION.SYSTEM_SETTINGS_PAGE",
+            "icon": "pi pi-fw pi-cog",
+            "routerLink": [
+              "/settings/system-settings"
+            ]
+          },
+          {
+            "label": "NAVIGATION.REPORT_SETTINGS",
+            "icon": "pi pi-fw pi-file-pdf",
+            "routerLink": [
+              "/settings/report-settings"
+            ]
+          },
+          {
+            "label": "NAVIGATION.CODE_LISTS",
+            "icon": "pi pi-fw pi-list",
+            "routerLink": [
+              "/settings/code-lists"
+            ]
+          },
+          {
+            "label": "NAVIGATION.SYS_PARAMETERS",
+            "icon": "pi pi-fw pi-sliders-h",
+            "routerLink": [
+              "/settings/sys-parameters"
+            ]
+          },
+          {
+            "separator": true
+          },
+          {
+            "label": "NAVIGATION.LU_STUDENT",
+            "icon": "pi pi-fw pi-user",
+            "routerLink": [
+              "/settings/lookuptables"
+            ],
+            "queryParams": {
+              "tab": 0
+            }
+          },
+          {
+            "label": "NAVIGATION.LU_STUDY_UNIVERSITY",
+            "icon": "pi pi-fw pi-book",
+            "routerLink": [
+              "/settings/lookuptables"
+            ],
+            "queryParams": {
+              "tab": 1
+            }
+          },
+          {
+            "label": "NAVIGATION.LU_FINANCE",
+            "icon": "pi pi-fw pi-dollar",
+            "routerLink": [
+              "/settings/lookuptables"
+            ],
+            "queryParams": {
+              "tab": 2
+            }
+          },
+          {
+            "label": "NAVIGATION.LU_OPERATIONS",
+            "icon": "pi pi-fw pi-cog",
+            "routerLink": [
+              "/settings/lookuptables"
+            ],
+            "queryParams": {
+              "tab": 3
+            }
+          },
+          {
+            "label": "NAVIGATION.LU_SYSTEM",
+            "icon": "pi pi-fw pi-desktop",
+            "routerLink": [
+              "/settings/lookuptables"
+            ],
+            "queryParams": {
+              "tab": 4
+            }
+          },
+          {
+            "label": "NAVIGATION.LU_LOCATION",
+            "icon": "pi pi-fw pi-map-marker",
+            "routerLink": [
+              "/settings/lookuptables"
+            ],
+            "queryParams": {
+              "tab": 5
+            }
+          },
+          {
+            "separator": true
+          },
+          {
+            "label": "NAVIGATION.STUDY_YEARS_LOOKUP",
+            "icon": "pi pi-fw pi-calendar",
+            "routerLink": [
+              "/settings/study-years-lookup"
+            ]
+          },
+          {
+            "label": "NAVIGATION.STUDY_AMOUNT_LOOKUP",
+            "icon": "pi pi-fw pi-money-bill",
+            "routerLink": [
+              "/settings/study-amount-lookup"
+            ]
+          },
+          {
+            "separator": true
+          },
+          {
+            "label": "NAVIGATION.STUDY_FINANCE_BANK",
+            "icon": "pi pi-fw pi-building",
+            "routerLink": [
+              "/system-admin/study-finance-bank"
+            ]
+          },
+          {
+            "label": "NAVIGATION.STUDY_FINANCE_BANK_BRANCH",
+            "icon": "pi pi-fw pi-sitemap",
+            "routerLink": [
+              "/system-admin/study-finance-bank-branch"
+            ]
+          },
+          {
+            "label": "NAVIGATION.STUDY_WAFAR_TYPE",
+            "icon": "pi pi-fw pi-tag",
+            "routerLink": [
+              "/system-admin/study-wafar-type"
+            ]
+          },
+          {
+            "separator": true
+          },
+          {
+            "label": "NAVIGATION.DOCUMENT_TYPES",
+            "icon": "pi pi-fw pi-file",
+            "routerLink": [
+              "/system-admin/document-types"
+            ]
+          },
+          {
+            "separator": true
+          },
+          {
+            "label": "NAVIGATION.BACKUP_RESTORE",
+            "icon": "pi pi-fw pi-database",
+            "routerLink": [
+              "/system-admin/backup-restore"
+            ]
+          },
+          {
+            "label": "NAVIGATION.DATA_IMPORT",
+            "icon": "pi pi-fw pi-upload",
+            "routerLink": [
+              "/system-admin/data-import"
+            ]
+          }
+        ]
+      },
+      {
+        "label": "NAVIGATION.STUDENT_USER_MANAGEMENT",
+        "icon": "pi pi-fw pi-user-edit",
+        "items": [
+          {
+            "label": "NAVIGATION.STUDENT_PORTAL_USERS",
+            "icon": "pi pi-fw pi-user",
+            "routerLink": [
+              "/student-admin/users"
+            ]
+          },
+          {
+            "label": "NAVIGATION.STUDENT_PORTAL_ROLES",
+            "icon": "pi pi-fw pi-key",
+            "routerLink": [
+              "/student-admin/roles"
+            ]
+          },
+          {
+            "label": "NAVIGATION.STUDENT_PORTAL_GROUPS",
+            "icon": "pi pi-fw pi-users",
+            "routerLink": [
+              "/student-admin/groups"
+            ]
+          },
+          {
+            "label": "NAVIGATION.STUDENT_PORTAL_PERMISSIONS",
+            "icon": "pi pi-fw pi-lock",
+            "routerLink": [
+              "/student-admin/permissions"
+            ]
+          },
+          {
+            "label": "NAVIGATION.STUDENT_PORTAL_SESSIONS",
+            "icon": "pi pi-fw pi-clock",
+            "routerLink": [
+              "/student-admin/sessions"
+            ]
+          }
+        ]
+      },
+      {
+        "label": "NAVIGATION.STAFF_ADMIN",
+        "icon": "pi pi-fw pi-users",
+        "items": [
+          {
+            "label": "NAVIGATION.USERS",
+            "icon": "pi pi-fw pi-user",
+            "routerLink": [
+              "/ums-admin/users"
+            ]
+          },
+          {
+            "label": "NAVIGATION.EFFECTIVE_PERMISSIONS",
+            "icon": "pi pi-fw pi-shield",
+            "routerLink": [
+              "/ums-admin/effective-permissions"
+            ]
+          },
+          {
+            "label": "NAVIGATION.ACCESS_REVIEW",
+            "icon": "pi pi-fw pi-verified",
+            "routerLink": [
+              "/ums-admin/access-reviews"
+            ]
+          },
+          {
+            "label": "NAVIGATION.GROUPS",
+            "icon": "pi pi-fw pi-users",
+            "routerLink": [
+              "/ums-admin/groups"
+            ]
+          },
+          {
+            "label": "NAVIGATION.ROLES",
+            "icon": "pi pi-fw pi-key",
+            "routerLink": [
+              "/ums-admin/roles"
+            ]
+          },
+          {
+            "label": "NAVIGATION.PERMISSIONS",
+            "icon": "pi pi-fw pi-lock",
+            "routerLink": [
+              "/ums-admin/permissions"
+            ]
+          },
+          {
+            "label": "NAVIGATION.PAGES",
+            "icon": "pi pi-fw pi-file",
+            "routerLink": [
+              "/ums-admin/pages"
+            ]
+          },
+          {
+            "label": "NAVIGATION.REPORTS_ADMIN",
+            "icon": "pi pi-fw pi-chart-bar",
+            "routerLink": [
+              "/ums-admin/reports-admin"
+            ]
+          },
+          {
+            "label": "NAVIGATION.SESSIONS",
+            "icon": "pi pi-fw pi-clock",
+            "routerLink": [
+              "/ums-admin/sessions"
+            ]
+          },
+          {
+            "label": "NAVIGATION.FIELDS",
+            "icon": "pi pi-fw pi-list",
+            "routerLink": [
+              "/ums-admin/fields"
+            ]
+          },
+          {
+            "label": "NAVIGATION.API_LINKS",
+            "icon": "pi pi-fw pi-link",
+            "routerLink": [
+              "/ums-admin/api-links"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,33 @@
+:host ::ng-deep {
+    .card-header {
+        padding: 1.5rem;
+        background-color: var(--surface-50);
+        border-bottom: 1px solid var(--surface-border);
+    }
+
+    .summary-row {
+        .summary-tile {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--surface-border);
+            border-radius: 6px;
+            background-color: var(--surface-50);
+            height: 100%;
+        }
+
+        .summary-label {
+            font-size: 0.75rem;
+            color: var(--text-color-secondary);
+        }
+
+        .summary-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            /* Latin digits stay left-to-right inside an RTL page. */
+            direction: ltr;
+            unicode-bidi: embed;
+        }
+    }
+}

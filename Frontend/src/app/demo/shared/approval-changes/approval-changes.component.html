@@ -1,0 +1,142 @@
+<div class="ac" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+  @if (loading) {
+    <div class="ac__state">
+      <p-progressSpinner strokeWidth="4" [style]="{ width: '2rem', height: '2rem' }"></p-progressSpinner>
+      <span>{{ 'COMMON.LOADING' | translate }}</span>
+    </div>
+  }
+
+  @if (failed) {
+    <div class="ac__state ac__state--error">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>{{ 'APPROVAL.CHANGES_LOAD_ERROR' | translate }}</span>
+    </div>
+  }
+
+  @if (!loading && !failed && details) {
+    @if (details.parseError) {
+      <div class="ac__state ac__state--error">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>{{ 'APPROVAL.CHANGES_UNREADABLE' | translate }}</span>
+      </div>
+    }
+    @if (!hasAnyChange && !details.parseError) {
+      <div class="ac__state">
+        <i class="pi pi-info-circle"></i>
+        <span>{{ 'APPROVAL.NO_CHANGES_RECORDED' | translate }}</span>
+      </div>
+    }
+    <!-- ── Field changes ── -->
+    @if (details.fieldChanges.length) {
+      <section class="ac__section">
+        <h4 class="ac__title">
+          <i class="pi pi-pencil"></i>
+          {{ 'APPROVAL.CHANGED_FIELDS' | translate }}
+          <p-tag [value]="details.fieldChanges.length.toString()" severity="info" styleClass="ml-2"></p-tag>
+        </h4>
+        <p-table [value]="details.fieldChanges" styleClass="p-datatable-sm ac__table">
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="width:34%">{{ 'APPROVAL.FIELD' | translate }}</th>
+              <th style="width:33%">{{ 'APPROVAL.OLD_VALUE' | translate }}</th>
+              <th style="width:33%">{{ 'APPROVAL.NEW_VALUE' | translate }}</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-change>
+            <tr>
+              <td class="ac__field">{{ fieldLabel(change.field) }}</td>
+              <td class="ac__old">{{ change.oldValue || '—' }}</td>
+              <td class="ac__new">{{ change.newValue || '—' }}</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </section>
+    }
+    <!-- ── Replacement photo ── -->
+    @if (details.photoChanged) {
+      <section class="ac__section">
+        <h4 class="ac__title">
+          <i class="pi pi-camera"></i>
+          {{ 'APPROVAL.PHOTO_CHANGED' | translate }}
+        </h4>
+        <div class="ac__photos">
+          @if (currentPhotoUrl || details.entityId) {
+            <figure class="ac__photo">
+              @if (currentPhotoUrl) {
+                <img [src]="currentPhotoUrl" alt="" class="ac__photo-img" />
+              }
+              @if (!currentPhotoUrl) {
+                <div class="ac__photo-empty">
+                  <i class="pi pi-user"></i>
+                </div>
+              }
+              <figcaption>{{ 'APPROVAL.PHOTO_CURRENT' | translate }}</figcaption>
+            </figure>
+          }
+          <i class="pi pi-arrow-right ac__photo-arrow"
+          [class.pi-arrow-left]="translationService.isRTL()"></i>
+          <figure class="ac__photo ac__photo--new">
+            @if (photoUrl) {
+              <img [src]="photoUrl" alt="" class="ac__photo-img" />
+            }
+            <figcaption>{{ 'APPROVAL.PHOTO_NEW' | translate }}</figcaption>
+          </figure>
+        </div>
+      </section>
+    }
+    <!-- ── Documents waiting to be added ── -->
+    @if (details.documents.length) {
+      <section class="ac__section">
+        <h4 class="ac__title">
+          <i class="pi pi-file"></i>
+          {{ 'APPROVAL.DOCUMENTS_ADDED' | translate }}
+          <p-tag [value]="details.documents.length.toString()" severity="info" styleClass="ml-2"></p-tag>
+        </h4>
+        <ul class="ac__docs">
+          @for (doc of details.documents; track doc) {
+            <li class="ac__doc">
+              <i class="pi" [ngClass]="doc.image ? 'pi-image' : 'pi-file-pdf'"></i>
+              <span class="ac__doc-name">{{ doc.originalName }}</span>
+              @if (doc.documentType) {
+                <p-tag [value]="doc.documentType" severity="secondary"
+                styleClass="text-xs"></p-tag>
+              }
+              <button pButton pRipple type="button" icon="pi pi-eye"
+                class="p-button-text p-button-sm ac__doc-view"
+                [pTooltip]="'COMMON.VIEW' | translate"
+              (click)="openDocument(doc)"></button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+    <!-- ── Documents waiting to be removed ── -->
+    @if (details.removedDocuments.length) {
+      <section class="ac__section">
+        <h4 class="ac__title">
+          <i class="pi pi-trash text-red-500"></i>
+          {{ 'APPROVAL.DOCUMENTS_REMOVED' | translate }}
+          <p-tag [value]="details.removedDocuments.length.toString()" severity="danger"
+          styleClass="ml-2"></p-tag>
+        </h4>
+        <ul class="ac__docs">
+          @for (doc of details.removedDocuments; track doc) {
+            <li class="ac__doc ac__doc--removing">
+              <i class="pi pi-file"></i>
+              <span class="ac__doc-name">{{ doc.documentName || doc.originalFilename }}</span>
+              @if (doc.documentType) {
+                <p-tag [value]="doc.documentType" severity="secondary"
+                styleClass="text-xs"></p-tag>
+              }
+              <button pButton pRipple type="button" icon="pi pi-eye"
+                class="p-button-text p-button-sm ac__doc-view"
+                [pTooltip]="'COMMON.VIEW' | translate"
+              (click)="openStoredDocument(doc)"></button>
+            </li>
+          }
+        </ul>
+      </section>
+    }
+  }
+</div>

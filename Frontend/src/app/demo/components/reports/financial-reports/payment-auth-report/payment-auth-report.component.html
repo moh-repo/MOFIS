@@ -1,0 +1,202 @@
+﻿<p-toast></p-toast>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  SCREEN VIEW: list + record selector                       -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="no-print" [attr.dir]="isRTL ? 'rtl' : 'ltr'">
+
+  <!-- Page header -->
+  <div class="page-header card mb-3">
+    <!-- Header Section. `flex-1` on the leading block, not
+         `justify-content-between`: under `direction: rtl` a flex row already
+         runs right to left, and the global rule in styles.scss reverses every
+         `.flex.justify-content-between` again, which put the heading back on
+         the left and the actions on the right in Arabic. See
+         src/app/demo/components/page-headings.spec.ts. -->
+    <div class="flex align-items-center flex-wrap gap-2">
+      <div class="flex-1">
+        <h3 class="m-0 text-primary">{{ 'PAYMENT_AUTH.REPORT_TITLE' | translate }}</h3>
+        <p class="text-500 m-0 mt-1">{{ 'PAYMENT_AUTH.REPORT_SUBTITLE' | translate }}</p>
+      </div>
+      <!-- Action buttons — only visible when a record is selected -->
+      @if (selectedRecord) {
+        <div class="flex gap-2 flex-wrap">
+          <button pButton pRipple icon="pi pi-times" [label]="'COMMON.CLEAR' | translate"
+            class="p-button-outlined p-button-secondary p-button-sm"
+          (click)="clearSelection()"></button>
+          <app-report-actions
+            pdfApiPath="/api/v1/paymentAuth/export-report"
+            [query]="reportQuery()"
+            baseFilename="payment-auth-report">
+          </app-report-actions>
+          
+          <button pButton pRipple icon="pi pi-file-excel" [label]="'PAYMENT_AUTH.EXPORT_CSV' | translate"
+          class="p-button-outlined p-button-success p-button-sm" (click)="exportCsv()"></button>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Two-panel layout when record selected -->
+  <div class="grid">
+    <!-- Left panel: search + list -->
+    <div [class]="selectedRecord ? 'col-12 md:col-4' : 'col-12'">
+      <div class="card">
+        <!-- Filters -->
+        <div class="grid mb-3">
+          @if (hasMultiCountry) {
+            <div class="col-12 md:col-4">
+              <label class="block mb-2 font-semibold">{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</label>
+              <p-multiselect
+                [options]="allowedCountries"
+                [(ngModel)]="selectedCountryIds"
+                optionLabel="label"
+                optionValue="value"
+                [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_COUNTRIES' | translate"
+                (onChange)="onCountryChange()"
+                styleClass="w-full"
+                appendTo="body">
+              </p-multiselect>
+            </div>
+          }
+          <div class="col-12 md:col-8">
+            <span class="p-input-icon-left w-full">
+              <i class="pi pi-search"></i>
+              <input pInputText type="text" [(ngModel)]="searchTerm"
+                (keyup.enter)="onSearch()"
+                [placeholder]="'PAYMENT_AUTH.SEARCH_PLACEHOLDER' | translate"
+                class="w-full" />
+            </span>
+          </div>
+          <div class="col-12 md:col-4">
+            <p-select [options]="statusOptions"
+              [(ngModel)]="selectedStatusFilter"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'PAYMENT_AUTH.ALL_STATUSES' | translate"
+              (onChange)="onSearch()" class="w-full"
+            appendTo="body"></p-select>
+          </div>
+        </div>
+
+        <p-table [value]="records" [loading]="loadingList"
+          [paginator]="true" [lazy]="true" [rows]="pageSize" [(first)]="first"
+          [totalRecords]="totalElements" [rowsPerPageOptions]="[5,10,25]"
+          (onPage)="onPageChange($event)"
+          selectionMode="single" [(selection)]="selectedRecord"
+          (onRowSelect)="selectRecord($event.data)"
+          styleClass="p-datatable-sm p-datatable-striped">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>{{ 'PAYMENT_AUTH.FORM_NUMBER' | translate }}</th>
+              <th>{{ 'PAYMENT_AUTH.DATE' | translate }}</th>
+              @if (!selectedRecord) {
+                <th>{{ 'PAYMENT_AUTH.STUDENT' | translate }}</th>
+              }
+              @if (!selectedRecord) {
+                <th>{{ 'PAYMENT_AUTH.NET_AMOUNT' | translate }}</th>
+              }
+              <th>{{ 'PAYMENT_AUTH.STATUS' | translate }}</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-rec>
+            <tr [pSelectableRow]="rec"
+              [class.selected-row]="selectedRecord?.id === rec.id"
+              style="cursor:pointer">
+              <td class="font-semibold">{{ rec.authFormNumber || rec.id }}</td>
+              <td>{{ rec.authDate | date:'dd/MM/yy' }}</td>
+              @if (!selectedRecord) {
+                <td>{{ rec.studentName }}</td>
+              }
+              @if (!selectedRecord) {
+                <td class="text-right">{{ formatAmount(rec.netAmount) }}</td>
+              }
+              <td>
+                <p-tag [value]="getStatusLabel(rec.authStatus)"
+                [severity]="getStatusSeverity(rec.authStatus)"></p-tag>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr><td colspan="5" class="text-center py-3 text-400">{{ 'PAYMENT_AUTH.NO_RECORDS' | translate }}</td></tr>
+          </ng-template>
+        </p-table>
+      </div>
+    </div>
+
+    <!-- Right panel: the statutory voucher, rendered by Jasper and shown in EmbedPDF -->
+    @if (selectedRecord) {
+      <div class="col-12 md:col-8">
+        @if (loadingRecord) {
+          <div class="card p-0">
+            <div class="text-center py-5"><p-progressSpinner strokeWidth="4"></p-progressSpinner></div>
+          </div>
+        }
+        @if (!loadingRecord) {
+          <div class="card">
+            <!-- Heading leads this row too; see the comment on the page header above. -->
+            <div class="flex align-items-center mb-3 flex-wrap gap-2">
+              <div class="flex align-items-center gap-2 flex-1">
+                <i class="pi pi-file-pdf text-primary" style="font-size:1.2rem"></i>
+                <h5 class="m-0">{{ 'PAYMENT_AUTH.FORM_TITLE' | translate }}</h5>
+              </div>
+              <p-selectButton [options]="reportLangOptions"
+                [(ngModel)]="selectedLang" optionLabel="label" optionValue="value"
+                (onChange)="onLangChange()">
+              </p-selectButton>
+            </div>
+            <app-report-viewer
+              [pdfApiPath]="formPdfApiPath" [pdfQuery]="formPdfQuery"
+              [loadTrigger]="formLoadTrigger" [useModal]="false" viewerHeight="70vh"
+              [filename]="'payment-auth-' + (selectedRecord.authFormNumber || selectedRecord.id) + '.pdf'">
+            </app-report-viewer>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Placeholder when nothing selected -->
+    @if (!selectedRecord) {
+      <div class="col-12">
+        <div class="card text-center py-6 text-400">
+          <i class="pi pi-file-edit text-6xl mb-3 block"></i>
+          <p>{{ 'PAYMENT_AUTH.SELECT_RECORD' | translate }}</p>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- Jasper PDF Report Viewer -->
+<div class="card mt-3 no-print">
+  <!-- Heading leads this row too; see the comment on the page header above. -->
+  <div class="flex align-items-center mb-3 flex-wrap gap-2">
+    <div class="flex align-items-center gap-2 flex-1">
+      <i class="pi pi-file-pdf" style="font-size:1.4rem;color:#6b2737"></i>
+      <h4 class="m-0" style="color:#6b2737">{{ 'REPORTS.VIEWER.GENERATE_REPORT' | translate }}</h4>
+    </div>
+    <div class="flex align-items-center gap-3 flex-wrap">
+      <div class="flex align-items-center gap-2">
+        <span class="font-semibold text-sm">{{ 'REPORTS.VIEWER.LANGUAGE' | translate }}:</span>
+        <p-selectButton [options]="reportLangOptions"
+          [(ngModel)]="selectedLang" optionLabel="label" optionValue="value">
+        </p-selectButton>
+      </div>
+      @if (selectedStatusFilter !== null) {
+        <div class="flex align-items-center gap-2">
+          <span class="text-sm text-500">{{ 'PAYMENT_AUTH.STATUS' | translate }}: {{ selectedStatusFilter }}</span>
+        </div>
+      }
+      <p-button icon="pi pi-play"
+        [label]="'REPORTS.VIEWER.GENERATE_REPORT' | translate"
+        [loading]="reportLoading"
+        (onClick)="generateReport()">
+      </p-button>
+    </div>
+  </div>
+  <app-report-viewer
+    [pdfApiPath]="pdfApiPath" [pdfQuery]="pdfQuery" [loadTrigger]="loadTrigger"
+    [loading]="reportLoading"
+    [filename]="'payment-auth-report.pdf'">
+  </app-report-viewer>
+</div>

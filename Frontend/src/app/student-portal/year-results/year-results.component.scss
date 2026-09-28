@@ -1,0 +1,115 @@
+/* Tokens come from the portal shell and inherit down; the fallbacks keep the
+   page sane if it is ever rendered outside it. */
+:host {
+  --yr-ink:    var(--p-ink, #10243b);
+  --yr-muted:  var(--p-muted, #64748b);
+  --yr-line:   var(--p-line, #e3e9f0);
+  --yr-ok:     #1f8a53;
+  --yr-fail:   #c0392b;
+}
+
+.yr-alert { border-radius: 8px; }
+
+.yr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+/* A card per year. It used to be tinted whole — a wash of green or red across
+   the card — so a transcript of eight years read as a traffic light and the
+   grades themselves were the quietest thing on it. The outcome is now the edge
+   and the icon; the card stays white and the numbers carry. */
+.yr-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid var(--yr-line);
+  border-inline-start: 3px solid var(--yr-muted);
+  border-radius: 10px;
+  transition: box-shadow 0.15s, transform 0.15s;
+
+  &:hover {
+    box-shadow: 0 4px 14px rgba(11, 37, 69, 0.08);
+    transform: translateY(-1px);
+  }
+
+  &--pass {
+    border-inline-start-color: var(--yr-ok);
+    .yr-card-icon { color: var(--yr-ok); }
+  }
+
+  &--fail {
+    border-inline-start-color: var(--yr-fail);
+    .yr-card-icon { color: var(--yr-fail); }
+  }
+
+  /* A placeholder year, no result on file (D24-a): grey, like its edge. The tag
+     needs saying: ng-zorro has no colour for a `default` tag, and the shell draws
+     a tag's border in its text colour, so it came out in ink. */
+  &--none {
+    .yr-card-icon,
+    .ant-tag { color: var(--yr-muted); }
+  }
+}
+
+.yr-card-year {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--yr-ink);
+}
+
+.yr-card-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.yr-card-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.yr-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--yr-line);
+
+  &:last-child { border-bottom: none; }
+}
+
+.yr-label {
+  font-size: 12.5px;
+  color: var(--yr-muted);
+  flex-shrink: 0;
+}
+
+.yr-val {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--yr-ink);
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.yr-notes {
+  font-weight: 400;
+  font-style: italic;
+  color: var(--yr-muted);
+}
+
+.yr-card-status {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* The rows are label/value pairs, and in Arabic the pair reads the other way —
+   which the shell's dir="rtl" already does. A `row-reverse` here flipped them a
+   second time, so the value came first. */

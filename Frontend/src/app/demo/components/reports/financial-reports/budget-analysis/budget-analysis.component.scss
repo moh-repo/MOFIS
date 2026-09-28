@@ -1,0 +1,15 @@
+:host ::ng-deep {
+  .p-progressbar {
+    height: 1rem;
+    .p-progressbar-value {
+      background: var(--primary-color);
+    }
+  }
+}
+
+@media print {
+  button, .no-print {
+    display: none !important;
+  }
+}
+

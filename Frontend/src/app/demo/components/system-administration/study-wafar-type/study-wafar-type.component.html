@@ -1,0 +1,283 @@
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>
+
+<div class="grid">
+  <div class="col-12">
+    <div class="card">
+      <!-- Header Section. `flex-1` on the icon-and-title block, not
+           `justify-content-between`: under `direction: rtl` a flex row already
+           runs right to left, and the global rule in styles.scss reverses every
+           `.flex.justify-content-between` again, which put the heading back on
+           the left and the buttons on the right in Arabic. See
+           src/app/demo/components/page-headings.spec.ts. -->
+      <div class="flex align-items-center mb-4">
+        <div class="flex align-items-center gap-3 flex-1">
+          <i class="pi pi-star text-primary" style="font-size: 2.5rem"></i>
+          <div>
+            <h2 class="m-0 text-primary">{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0">{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button pButton pRipple type="button"
+            icon="pi pi-plus"
+            class="p-button-success"
+            [attr.aria-label]="'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.ADD' | translate"
+            [label]="'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.ADD' | translate"
+          (click)="openCreateDialog()" *hasPermission="'SETTINGS.EDIT'"></button>
+          <button pButton pRipple type="button"
+            icon="pi pi-refresh"
+            class="p-button-outlined"
+            [attr.aria-label]="'COMMON.REFRESH' | translate"
+            [label]="'COMMON.REFRESH' | translate"
+            (click)="loadWafarTypes()"
+          [loading]="loading"></button>
+        </div>
+      </div>
+
+      <!-- Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+           The list is held whole, so the table narrows itself. -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-2">
+          <div class="filter-bar__field filter-bar__field--wide" [class.filter-bar__field--active]="filterSearch">
+            <label for="wtSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="wtSearch" pInputText type="text" [(ngModel)]="filterSearch"
+                (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+                [placeholder]="'COMMON.SEARCH' | translate" />
+            </span>
+          </div>
+        </div>
+        <div class="filter-bar__actions">
+          <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+            [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters(dt)"></button>
+          <span class="filter-bar__hint filter-bar__actions-spacer">{{ 'COMMON.TOTAL' | translate }}: {{ (dt.filteredValue || wafarTypes).length }}</span>
+        </div>
+      </div>
+
+      <!-- Data Table -->
+      <p-table #dt
+        [value]="wafarTypes"
+        [loading]="loading"
+        [paginator]="true"
+        [rows]="10"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="{{ 'COMMON.TABLE.SHOWING' | translate }} {first} {{ 'COMMON.TABLE.TO' | translate }} {last} {{ 'COMMON.TABLE.OF' | translate }} {totalRecords} {{ 'COMMON.TABLE.ENTRIES' | translate }}"
+        styleClass="p-datatable-gridlines p-datatable-striped"
+        responsiveLayout="scroll"
+        dataKey="id"
+        [globalFilterFields]="['id', 'wafarName', 'wafarNote1']">
+
+
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="id" style="min-width: 8rem">
+              {{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.TABLE.ID' | translate }}
+              <p-sortIcon field="id"></p-sortIcon>
+            </th>
+            <th pSortableColumn="wafarName" style="min-width: 20rem">
+              {{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.TABLE.NAME' | translate }}
+              <p-sortIcon field="wafarName"></p-sortIcon>
+            </th>
+            <th pSortableColumn="swafarMidate" style="min-width: 12rem">
+              {{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.TABLE.MIDATE' | translate }}
+              <p-sortIcon field="swafarMidate"></p-sortIcon>
+            </th>
+            <th style="min-width: 20rem">{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.TABLE.NOTES' | translate }}</th>
+            <th style="min-width: 12rem" class="text-center">{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.TABLE.ACTIONS' | translate }}</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-type>
+          <tr>
+            <td>
+              <span class="text-primary font-bold">{{ type.id }}</span>
+            </td>
+            <td>
+              <div class="flex align-items-center gap-2">
+                <i class="pi pi-star-fill text-yellow-500"></i>
+                <span class="font-medium">{{ type.wafarName }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="text-700">{{ type.swafarMidate | date:'dd/MM/yyyy' }}</span>
+            </td>
+            <td>
+              <span class="text-700">{{ type.wafarNote1 || '-' }}</span>
+            </td>
+            <td class="text-center">
+              <div class="flex justify-content-center gap-2">
+                <button pButton pRipple type="button"
+                  icon="pi pi-eye"
+                  class="p-button-rounded p-button-text p-button-info"
+                  [pTooltip]="'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.VIEW' | translate"
+                  tooltipPosition="top"
+                (click)="openViewDialog(type)" *hasPermission="'SETTINGS.VIEW'"></button>
+                <button pButton pRipple type="button"
+                  icon="pi pi-pencil"
+                  class="p-button-rounded p-button-text p-button-warning"
+                  [pTooltip]="'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.EDIT' | translate"
+                  tooltipPosition="top"
+                (click)="openEditDialog(type)" *hasPermission="'SETTINGS.EDIT'"></button>
+                <button pButton pRipple type="button"
+                  icon="pi pi-trash"
+                  class="p-button-rounded p-button-text p-button-danger"
+                  [pTooltip]="'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.DELETE' | translate"
+                  tooltipPosition="top"
+                (click)="confirmDelete(type)" *hasPermission="'SETTINGS.EDIT'"></button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="5" class="text-center py-6">
+              <div class="flex flex-column align-items-center gap-3">
+                <i class="pi pi-inbox text-400" style="font-size: 3rem"></i>
+                <h5 class="m-0 text-600">{{ (hasFilters ? 'COMMON.NO_MATCH' : 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.EMPTY.TITLE') | translate }}</h5>
+                <p class="m-0 text-500">{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.EMPTY.DESCRIPTION' | translate }}</p>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Dialog -->
+<p-dialog
+  [(visible)]="formDialogVisible"
+  [modal]="true"
+  [style]="{ width: '650px', maxWidth: '95vw' }"
+  [header]="dialogTitle"
+  [draggable]="false"
+  [dismissableMask]="false"
+  styleClass="dv-dialog"
+  (onHide)="hideFormDialog()">
+
+  <ng-template pTemplate="content">
+    <form [formGroup]="wafarTypeForm" class="dv-form" autocomplete="off">
+      <div class="dv-hero" [class.dv-hero--new]="dialogMode !== 'edit'">
+        <div class="dv-hero__badge">
+          @if (dialogMode === 'edit') { {{ wafarTypeForm.get('id')?.value }} } @else { <i class="pi pi-plus"></i> }
+        </div>
+        <div class="dv-hero__body">
+          <div class="dv-hero__eyebrow">{{ dialogTitle }}</div>
+          <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!wafarTypeForm.get('wafarName')?.value">
+            {{ wafarTypeForm.get('wafarName')?.value || ('SYSTEM_ADMIN.STUDY_WAFAR_TYPE.FORM.NAME' | translate) }}
+          </div>
+        </div>
+      </div>
+
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+          <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+        </header>
+        <div class="dv-fields">
+          <div class="dv-field dv-field--full">
+            <label for="wafarName" class="dv-label">
+              {{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.FORM.NAME' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <input id="wafarName" pInputText formControlName="wafarName" class="w-full" />
+            @if (wafarTypeForm.get('wafarName')?.invalid && wafarTypeForm.get('wafarName')?.touched) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'COMMON.REQUIRED_FIELD' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="dv-field dv-field--full">
+            <label for="wafarNameEn" class="dv-label">{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.FORM.NAME_EN' | translate }}</label>
+            <input id="wafarNameEn" pInputText formControlName="wafarNameEn" class="w-full" dir="ltr" />
+          </div>
+
+          <div class="dv-field dv-field--full">
+            <label for="wafarNote1" class="dv-label">{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.FORM.NOTES' | translate }}</label>
+            <textarea id="wafarNote1" pTextarea formControlName="wafarNote1" rows="4" class="w-full"></textarea>
+          </div>
+        </div>
+      </section>
+    </form>
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <small class="dv-footer__hint"><span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+      <div class="dv-footer__actions">
+      <button pButton pRipple type="button"
+        class="p-button-text p-button-secondary"
+        [label]="'COMMON.CANCEL' | translate"
+        icon="pi pi-times"
+      (click)="hideFormDialog()"></button>
+      <button pButton pRipple type="button"
+        class="p-button-primary"
+        [label]="'COMMON.SAVE' | translate"
+        icon="pi pi-check"
+        (click)="saveWafarType()"
+      [loading]="loading"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- View Dialog -->
+<p-dialog
+  [(visible)]="viewDialogVisible"
+  [modal]="true"
+  [style]="{ width: '600px', maxWidth: '95vw' }"
+  [header]="'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.VIEW' | translate"
+  [draggable]="false"
+  styleClass="dv-dialog"
+  (onHide)="selectedWafarType = null">
+
+  <ng-template pTemplate="content">
+    @if (selectedWafarType; as type) {
+      <div class="dv-view">
+        <div class="dv-hero">
+          <div class="dv-hero__badge">{{ type.id }}</div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.FORM.NAME' | translate }}</div>
+            <div class="dv-hero__title">{{ type.wafarName }}</div>
+          </div>
+        </div>
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+            <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+          </header>
+          <dl class="dv-dl">
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.FORM.ID' | translate }}</dt><dd>{{ type.id }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.FORM.NAME' | translate }}</dt><dd>{{ type.wafarName }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.FORM.MIDATE' | translate }}</dt><dd>{{ type.swafarMidate | date:'dd/MM/yyyy' }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_WAFAR_TYPE.FORM.NOTES' | translate }}</dt><dd>{{ type.wafarNote1 || '-' }}</dd></div>
+          </dl>
+        </section>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint"></div>
+      <div class="dv-footer__actions">
+      <button pButton pRipple type="button"
+        class="p-button-text p-button-secondary"
+        [label]="'COMMON.CLOSE' | translate"
+        icon="pi pi-times"
+      (click)="viewDialogVisible = false"></button>
+      <button pButton pRipple type="button"
+        class="p-button-primary"
+        [label]="'COMMON.EDIT' | translate"
+        icon="pi pi-pencil"
+      (click)="editFromView()"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>

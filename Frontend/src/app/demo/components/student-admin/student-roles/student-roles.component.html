@@ -1,0 +1,305 @@
+<p-toast></p-toast>
+<p-confirmdialog [style]="{ width: '28rem' }"></p-confirmdialog>
+<div class="grid">
+  <div class="col-12">
+    <div class="card">
+      <!-- Header Section. `flex-1` on the icon-and-title block, not
+           `justify-content-between`: under `direction: rtl` a flex row already
+           runs right to left, and the global rule in styles.scss reverses every
+           `.flex.justify-content-between` again, which put the heading back on
+           the left and the buttons on the right in Arabic. See
+           src/app/demo/components/page-headings.spec.ts. -->
+      <div class="flex align-items-center mb-4 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3 flex-1">
+          <i class="pi pi-key text-primary" style="font-size: 2.5rem"></i>
+          <div>
+            <h2 class="m-0 text-primary">{{ 'STUDENT_ADMIN.ROLES.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0">{{ 'STUDENT_ADMIN.ROLES.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-success"
+            [attr.aria-label]="'STUDENT_ADMIN.ROLES.NEW_ROLE' | translate"
+            [label]="'STUDENT_ADMIN.ROLES.NEW_ROLE' | translate" (click)="openNew()"></button>
+          <button pButton pRipple type="button" icon="pi pi-refresh" class="p-button-outlined"
+            [attr.aria-label]="'COMMON.REFRESH' | translate"
+            [label]="'COMMON.REFRESH' | translate" (click)="load()" [loading]="loading"></button>
+        </div>
+      </div>
+
+      <!-- Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+           The list is small and held whole, so the table narrows itself. -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-3">
+          <div class="filter-bar__field filter-bar__field--wide" [class.filter-bar__field--active]="filterSearch">
+            <label for="srSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="srSearch" pInputText type="text" [(ngModel)]="filterSearch"
+                (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+                [placeholder]="'STUDENT_ADMIN.ROLES.SEARCH_PLACEHOLDER' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterActive !== null">
+            <label for="srActive">{{ 'STUDENT_ADMIN.ROLES.ACTIVE' | translate }}</label>
+            <p-select inputId="srActive" [options]="activeOptions" [(ngModel)]="filterActive"
+              optionLabel="label" optionValue="value"
+              (onChange)="dt.filter(filterActive, 'isActive', 'equals')"></p-select>
+          </div>
+        </div>
+        <div class="filter-bar__actions">
+          <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+            [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters(dt)"></button>
+          <span class="filter-bar__hint filter-bar__actions-spacer">
+            {{ 'COMMON.TOTAL' | translate }}: {{ (dt.filteredValue || roles).length }}
+          </span>
+        </div>
+      </div>
+
+      <p-table #dt [value]="roles" [loading]="loading" dataKey="roleId"
+        [globalFilterFields]="['roleName', 'roleNameAr', 'description']"
+        [paginator]="roles.length > 10" [rows]="10" [rowsPerPageOptions]="[10, 20, 50]"
+        styleClass="p-datatable-sm p-datatable-gridlines" responsiveLayout="scroll">
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="roleId" style="width:70px">{{ 'COMMON.ID' | translate }} <p-sortIcon field="roleId"></p-sortIcon></th>
+            <th pSortableColumn="roleName">{{ 'STUDENT_ADMIN.ROLES.ROLE_NAME' | translate }} <p-sortIcon field="roleName"></p-sortIcon></th>
+            <th pSortableColumn="roleNameAr">{{ 'STUDENT_ADMIN.ROLES.ROLE_NAME_AR' | translate }} <p-sortIcon field="roleNameAr"></p-sortIcon></th>
+            <th>{{ 'STUDENT_ADMIN.ROLES.DESCRIPTION' | translate }}</th>
+            <th pSortableColumn="isActive" style="width:90px">{{ 'STUDENT_ADMIN.ROLES.ACTIVE' | translate }} <p-sortIcon field="isActive"></p-sortIcon></th>
+            <th style="width:90px">{{ 'STUDENT_ADMIN.ROLES.SYSTEM' | translate }}</th>
+            <th style="width:200px">{{ 'COMMON.ACTIONS' | translate }}</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-r>
+          <tr>
+            <td>{{ r.roleId }}</td>
+            <td class="font-semibold">{{ r.roleName }}</td>
+            <td>{{ r.roleNameAr }}</td>
+            <td class="text-500 text-sm">{{ r.description }}</td>
+            <td><p-tag [value]="(r.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate" [severity]="r.isActive ? 'success' : 'warning'"></p-tag></td>
+            <td>@if (r.isSystem) {
+              <p-tag [value]="'STUDENT_ADMIN.ROLES.SYSTEM' | translate" severity="info"></p-tag>
+            }</td>
+            <td>
+              <div class="flex gap-1">
+                <button pButton pRipple icon="pi pi-eye" class="p-button-info p-button-sm p-button-outlined"
+                  [pTooltip]="'STUDENT_ADMIN.ROLES.VIEW_ROLE' | translate" tooltipPosition="top"
+                (click)="openView(r)"></button>
+                @if (!r.isSystem) {
+                  <button pButton pRipple icon="pi pi-pencil" class="p-button-warning p-button-sm p-button-outlined"
+                    [pTooltip]="'COMMON.EDIT' | translate" tooltipPosition="top"
+                  (click)="openEdit(r)"></button>
+                }
+                @if (!r.isSystem) {
+                  <button pButton pRipple icon="pi pi-trash" class="p-button-danger p-button-sm p-button-outlined"
+                    [pTooltip]="'COMMON.DELETE' | translate" tooltipPosition="top"
+                  (click)="deleteRole(r)"></button>
+                }
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="7" class="text-center text-500 py-4">
+              {{ (hasFilters ? 'COMMON.NO_MATCH' : 'STUDENT_ADMIN.NO_RECORDS') | translate }}
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Dialog. Shared vocabulary: assets/layout/styles/_detail-dialog.scss. -->
+<p-dialog [(visible)]="showDialog"
+  [header]="(editMode ? 'COMMON.EDIT' : 'STUDENT_ADMIN.ROLES.NEW_ROLE') | translate"
+  [modal]="true" [style]="{ width: '640px', maxWidth: '96vw' }" [draggable]="false"
+  [dismissableMask]="false" styleClass="dv-dialog"
+  (onHide)="submitted = false">
+  <ng-template pTemplate="content">
+    <div class="dv-hero" [class.dv-hero--new]="!editMode">
+      <div class="dv-hero__badge">
+        @if (editMode) { {{ form.roleId }} } @else { <i class="pi pi-plus"></i> }
+      </div>
+      <div class="dv-hero__body">
+        <div class="dv-hero__eyebrow">{{ (editMode ? 'COMMON.EDIT' : 'STUDENT_ADMIN.ROLES.NEW_ROLE') | translate }}</div>
+        <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!form.roleName">
+          {{ form.roleName || ('STUDENT_ADMIN.ROLES.ROLE_NAME' | translate) }}
+        </div>
+        <div class="dv-hero__meta">
+          @if (form.roleNameAr) { <span class="dv-chip">{{ form.roleNameAr }}</span> }
+          <p-tag [rounded]="true" [severity]="form.isActive ? 'success' : 'warning'"
+            [value]="(form.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate"></p-tag>
+        </div>
+      </div>
+    </div>
+
+    <section class="dv-section">
+      <header class="dv-section__head">
+        <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+        <div>
+          <div class="dv-section__title">{{ 'UMS.FORM.SECTION_IDENTITY' | translate }}</div>
+        </div>
+      </header>
+      <div class="dv-fields">
+        <div class="dv-field">
+          <label for="srName" class="dv-label">
+            {{ 'STUDENT_ADMIN.ROLES.ROLE_NAME' | translate }} <span class="dv-required">*</span>
+          </label>
+          <input id="srName" pInputText [(ngModel)]="form.roleName" class="w-full" />
+          @if (submitted && !form.roleName?.trim()) {
+            <small class="dv-error"><i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+          }
+        </div>
+        <div class="dv-field">
+          <label for="srNameAr" class="dv-label">{{ 'STUDENT_ADMIN.ROLES.ROLE_NAME_AR' | translate }}</label>
+          <input id="srNameAr" pInputText [(ngModel)]="form.roleNameAr" class="w-full" dir="rtl" />
+        </div>
+        <div class="dv-field dv-field--full">
+          <label for="srDesc" class="dv-label">{{ 'STUDENT_ADMIN.ROLES.DESCRIPTION' | translate }}</label>
+          <textarea id="srDesc" pTextarea [(ngModel)]="form.description" [rows]="3" class="w-full"></textarea>
+        </div>
+        <div class="dv-field dv-field--full">
+          <label for="srIsActive" class="dv-label">{{ 'STUDENT_ADMIN.ROLES.ACTIVE' | translate }}</label>
+          <p-toggleswitch inputId="srIsActive" [(ngModel)]="form.isActive"></p-toggleswitch>
+        </div>
+      </div>
+    </section>
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <small class="dv-footer__hint">
+        <span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+      </small>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" class="p-button-text p-button-secondary"
+          [label]="'COMMON.CANCEL' | translate" icon="pi pi-times" [disabled]="saving" (click)="showDialog = false"></button>
+        <button pButton pRipple type="button"
+          [label]="'COMMON.SAVE' | translate" icon="pi pi-check" [loading]="saving" (click)="save()"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- View Dialog: the role and the permissions it grants -->
+<p-dialog [(visible)]="showViewDialog"
+  [header]="'STUDENT_ADMIN.ROLES.VIEW_ROLE' | translate"
+  [modal]="true" [style]="{ width: '720px', maxWidth: '96vw' }" [draggable]="false"
+  styleClass="dv-dialog">
+  <ng-template pTemplate="content">
+    @if (selectedRole; as r) {
+      <div class="dv-view">
+        <div class="dv-hero" [class.dv-hero--muted]="!r.isActive">
+          <div class="dv-hero__badge">{{ r.roleId }}</div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'STUDENT_ADMIN.ROLES.ROLE_NAME' | translate }}</div>
+            <div class="dv-hero__title">{{ r.roleName }}</div>
+            <div class="dv-hero__meta">
+              @if (r.roleNameAr) { <span class="dv-chip">{{ r.roleNameAr }}</span> }
+              <p-tag [rounded]="true" [severity]="r.isActive ? 'success' : 'warning'"
+                [value]="(r.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate"></p-tag>
+              @if (r.isSystem) {
+                <p-tag [rounded]="true" severity="info" icon="pi pi-lock" [value]="'STUDENT_ADMIN.ROLES.SYSTEM' | translate"></p-tag>
+              }
+            </div>
+          </div>
+        </div>
+
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+            <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+          </header>
+          <dl class="dv-dl">
+            <div class="dv-dl__row"><dt>{{ 'COMMON.ID' | translate }}</dt><dd>{{ r.roleId }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.ROLES.ROLE_NAME' | translate }}</dt><dd>{{ r.roleName }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.ROLES.ROLE_NAME_AR' | translate }}</dt><dd>{{ r.roleNameAr || '—' }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.ROLES.DESCRIPTION' | translate }}</dt><dd>{{ r.description || '—' }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-lock-open"></i></span>
+            <div>
+              <div class="dv-section__title">{{ 'STUDENT_ADMIN.ROLES.VIEW_PERMISSIONS' | translate }}</div>
+              <div class="dv-section__hint">{{ 'COMMON.TOTAL' | translate }}: {{ rolePermissions.length }}</div>
+            </div>
+          </header>
+          <p-table [value]="rolePermissions" styleClass="p-datatable-sm" [loading]="permissionsLoading"
+            [paginator]="rolePermissions.length > 10" [rows]="10">
+            <ng-template pTemplate="header">
+              <tr>
+                <th>{{ 'STUDENT_ADMIN.ROLES.PERMISSION_CODE' | translate }}</th>
+                <th>{{ 'STUDENT_ADMIN.ROLES.PERMISSION_NAME' | translate }}</th>
+                <th>{{ 'STUDENT_ADMIN.ROLES.PERMISSION_TYPE' | translate }}</th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-p>
+              <tr>
+                <td><code class="text-xs">{{ p.permissionCode }}</code></td>
+                <td>{{ permissionLabel(p) }}</td>
+                <td>{{ p.actionType }}</td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+              <tr><td colspan="3" class="text-center text-500 py-3">{{ 'STUDENT_ADMIN.ROLES.NO_PERMISSIONS' | translate }}</td></tr>
+            </ng-template>
+          </p-table>
+        </section>
+
+        <!-- Grant and revoke. The endpoints behind these two buttons have always
+             existed and nothing called them, so a role's permissions could be
+             read here and changed nowhere. One at a time rather than a replace,
+             so nothing is cleared by accident. -->
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-key"></i></span>
+            <div class="dv-section__title">{{ 'STUDENT_ADMIN.ROLES.MANAGE_PERMISSIONS' | translate }}</div>
+          </header>
+          <!-- Review M11: a filter over the list, and removal is an explicit button
+               rather than a click on the "assigned" tag. -->
+          <span class="p-input-icon-left w-full mb-2 block">
+            <i class="pi pi-search"></i>
+            <input id="srPermFilter" pInputText type="text" class="w-full" [(ngModel)]="permissionFilter"
+              [placeholder]="'COMMON.SEARCH_PLACEHOLDER' | translate" />
+          </span>
+          @if (filteredPermissions.length === 0) {
+            <div class="text-center text-500 py-3">{{ 'COMMON.NO_MATCH' | translate }}</div>
+          }
+          @for (p of filteredPermissions; track p.permissionId) {
+            <div class="flex align-items-center gap-2 py-2 border-bottom-1 surface-border">
+              <div class="flex-1">
+                <span class="font-semibold">{{ permissionLabel(p) }}</span>
+                <code class="text-xs text-500 mx-2">{{ p.permissionCode }}</code>
+              </div>
+              @if (hasPermission(p.permissionId)) {
+                <p-tag [value]="'COMMON.ASSIGNED' | translate" severity="success" icon="pi pi-check"></p-tag>
+                <button pButton pRipple type="button" icon="pi pi-times" class="p-button-sm p-button-outlined p-button-danger"
+                  [label]="'COMMON.REMOVE' | translate" (click)="togglePermission(p)"></button>
+              } @else {
+                <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-sm p-button-outlined"
+                  [label]="'COMMON.ADD' | translate" (click)="togglePermission(p)"></button>
+              }
+            </div>
+          }
+        </section>
+      </div>
+    }
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint"></div>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" class="p-button-text p-button-secondary"
+          [label]="'COMMON.CLOSE' | translate" icon="pi pi-times" (click)="showViewDialog = false"></button>
+        @if (selectedRole && !selectedRole.isSystem) {
+          <button pButton pRipple type="button"
+            [label]="'COMMON.EDIT' | translate" icon="pi pi-pencil" (click)="editFromView()"></button>
+        }
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,49 @@
+<p-toast></p-toast>
+
+<!-- ===== ACTION TOOLBAR =====
+     Back and the document language belong to this page; the four report actions
+     (preview / download / print / export) are the shared bar every other report
+     page uses, so they behave the same here as everywhere else. -->
+<div class="report-toolbar">
+  <div class="flex align-items-center gap-3 flex-wrap">
+    <button pButton pRipple icon="pi pi-arrow-right" [label]="'COMMON.BACK' | translate"
+      class="p-button-outlined p-button-secondary" (click)="goBack()"></button>
+
+    <p-divider layout="vertical"></p-divider>
+
+    <app-report-actions
+      [pdfApiPath]="voucherApiPath"
+      [query]="pdfQuery"
+      [baseFilename]="'payment-auth-' + (record?.authFormNumber || recordId)"
+      [disabled]="!recordId">
+    </app-report-actions>
+
+    <p-divider layout="vertical"></p-divider>
+
+    <!-- The masthead and the footer sentence are stored in both languages;
+         switching re-renders the document rather than reloading the page. -->
+    <p-selectButton [options]="reportLangOptions"
+      [(ngModel)]="selectedLang" optionLabel="label" optionValue="value"
+      (onChange)="onLangChange()">
+    </p-selectButton>
+  </div>
+
+  @if (record) {
+    <div class="ml-auto flex align-items-center gap-2">
+      <span class="text-600">{{ record.authFormNumber }}</span>
+      <p-tag [value]="record.authStatus"
+        [severity]="record.authStatus === 'APPROVED' ? 'success' : record.authStatus === 'PAID' ? 'info' : 'warning'">
+      </p-tag>
+    </div>
+  }
+</div>
+
+<!-- ===== THE DOCUMENT =====
+     نموذج رقم ١١ حسابات as the server renders it, masthead, ministry logo and
+     footer included — all three come from REPORT_TYPE_SETTINGS and none of them
+     could appear on the HTML replica this replaced. -->
+<app-report-viewer
+  [pdfApiPath]="pdfApiPath" [pdfQuery]="pdfQuery" [loadTrigger]="loadTrigger"
+  [useModal]="false" viewerHeight="76vh"
+  [filename]="filename">
+</app-report-viewer>

@@ -1,0 +1,158 @@
+<div class="portal-page my-data-page">
+  <div class="sp-intro">
+    <p class="sp-intro__text">{{ 'STUDENT_PORTAL.PAGE_MY_DATA_SUB' | translate }}</p>
+  </div>
+
+  <nz-spin [nzSpinning]="loading">
+    @if (errorKey) {
+      <nz-alert nzType="error" [nzMessage]="errorKey | translate" nzShowIcon class="page-alert"></nz-alert>
+    }
+
+    @if (!loading && data) {
+
+      @if (sections.length === 0 && !hasProgress && notes.length === 0) {
+        <div class="sp-state">
+          <span class="sp-state__icon" nz-icon nzType="idcard" nzTheme="outline"></span>
+          <p class="sp-state__title">{{ 'STUDENT_PORTAL.NO_DATA' | translate }}</p>
+        </div>
+      } @else {
+
+        <!-- Identity header: who this record belongs to, before the detail of it. -->
+        <section class="md-identity">
+          <span class="md-identity__avatar">{{ studentInitials }}</span>
+          <div class="md-identity__body">
+            <h2 class="md-identity__name">{{ data.student?.studentName || '—' }}</h2>
+            <p class="md-identity__meta">
+              @if (data.student?.studentId != null) {
+                <span>{{ 'STUDENT_PORTAL.STUDENT_ID' | translate }}: <strong>{{ data.student?.studentId }}</strong></span>
+              }
+              @if (data.student?.studentCurrentLevelName) {
+                <span>{{ 'STUDENT_PORTAL.CURRENT_LEVEL' | translate }}: <strong>{{ data.student?.studentCurrentLevelName }}</strong></span>
+              }
+              @if (data.student?.studentStudyStatusName) {
+                <span>{{ 'STUDENT_PORTAL.STUDY_STATUS' | translate }}: <strong>{{ data.student?.studentStudyStatusName }}</strong></span>
+              }
+            </p>
+          </div>
+        </section>
+
+        <!-- Jump bar. Sixty fields is a long scroll, and the sections are the
+             only structure that makes it navigable. -->
+        <nav class="md-jump" [attr.aria-label]="'STUDENT_PORTAL.ON_THIS_PAGE' | translate">
+          @for (section of sections; track section.id) {
+            <button type="button" class="md-jump__chip" (click)="goToSection(section.id)">
+              <span nz-icon [nzType]="section.icon" nzTheme="outline"></span>
+              {{ section.titleKey | translate }}
+            </button>
+          }
+          @if (hasProgress) {
+            <button type="button" class="md-jump__chip" (click)="goToSection('progress')">
+              <span nz-icon nzType="bar-chart" nzTheme="outline"></span>
+              {{ 'STUDENTS.PROFILE_PAGE.TAB_PROGRESS' | translate }}
+            </button>
+          }
+          @if (notes.length) {
+            <button type="button" class="md-jump__chip" (click)="goToSection('notes')">
+              <span nz-icon nzType="form" nzTheme="outline"></span>
+              {{ 'STUDENT_PORTAL.NOTES' | translate }}
+            </button>
+          }
+        </nav>
+
+        <!-- The fact sections. One loop: every one is a title and a run of
+             label/value pairs, laid out in as many columns as the width allows
+             rather than one full-width row per field. -->
+        @for (section of sections; track section.id) {
+          <section class="md-section" [id]="'md-' + section.id">
+            <h3 class="sp-card__title">
+              <span nz-icon [nzType]="section.icon" nzTheme="outline"></span>
+              {{ section.titleKey | translate }}
+            </h3>
+            <dl class="sp-facts">
+              @for (fact of section.facts; track fact.labelKey) {
+                <div class="sp-facts__row">
+                  <dt>{{ fact.labelKey | translate }}</dt>
+                  <dd>
+                    @switch (fact.type) {
+                      @case ('date') { {{ fact.value | localeDate:'mediumDate' }} }
+                      @case ('datetime') { {{ fact.value | localeDate:'medium' }} }
+                      @default { <bdi>{{ fact.value }}</bdi> }
+                    }
+                  </dd>
+                </div>
+              }
+            </dl>
+          </section>
+        }
+
+        <!-- Progress: a bar and a transcript, neither of which is a fact list. -->
+        @if (hasProgress) {
+          <section class="md-section" id="md-progress">
+            <h3 class="sp-card__title">
+              <span nz-icon nzType="bar-chart" nzTheme="outline"></span>
+              {{ 'STUDENTS.PROFILE_PAGE.TAB_PROGRESS' | translate }}
+            </h3>
+
+            <nz-spin [nzSpinning]="progressLoading">
+              @if (studentProgress) {
+                <div class="md-progress">
+                  <div class="md-progress__head">
+                    <span class="md-progress__year">{{ (studentProgress | inLanguage:'currentYearLabel') || '—' }}</span>
+                    @if (studentProgress.currentYearOrder != null && studentProgress.totalYears != null) {
+                      <span class="md-progress__of">
+                        {{ studentProgress.currentYearOrder }} / {{ studentProgress.totalYears }}
+                        {{ 'STUDENT_PORTAL.STUDY_YEARS' | translate }}
+                      </span>
+                    }
+                  </div>
+                  @if (studentProgress.progressPercent != null) {
+                    <nz-progress [nzPercent]="studentProgress.progressPercent" [nzShowInfo]="true"></nz-progress>
+                  }
+                </div>
+              }
+            </nz-spin>
+
+            <nz-spin [nzSpinning]="yearResultsLoading">
+              @if (yearResults.length) {
+                <ul class="md-years">
+                  @for (r of yearResults; track r) {
+                    <li class="md-years__row" [class.md-years__row--fail]="outcome(r) === 'failed'"
+                      [class.md-years__row--none]="outcome(r) === 'not-recorded'">
+                      <span class="md-years__label">{{ yearResultTitle(r) }}</span>
+                      <span class="md-years__value">
+                        @if (r.grade) {
+                          <span class="md-years__grade">{{ 'STUDENT_QUICK_EDIT.YEAR_RESULTS.GRADE' | translate }}: {{ r.grade }}</span>
+                        }
+                        <nz-tag [nzColor]="outcomeColor(r)">
+                          {{ outcomeKey(r) | translate }}
+                        </nz-tag>
+                      </span>
+                    </li>
+                  }
+                </ul>
+              } @else if (!yearResultsLoading && !studentProgress) {
+                <p class="sp-hint">{{ 'STUDENT_HISTORY.NO_PROGRESS' | translate }}</p>
+              }
+            </nz-spin>
+          </section>
+        }
+
+        <!-- Notes: prose, so it gets its width rather than a value column. -->
+        @if (notes.length) {
+          <section class="md-section" id="md-notes">
+            <h3 class="sp-card__title">
+              <span nz-icon nzType="form" nzTheme="outline"></span>
+              {{ 'STUDENT_PORTAL.NOTES' | translate }}
+            </h3>
+            @for (note of notes; track note.labelKey) {
+              <div class="note-block">
+                <div class="note-label">{{ note.labelKey | translate }}</div>
+                <p class="note-text">{{ note.text }}</p>
+              </div>
+            }
+          </section>
+        }
+      }
+    }
+  </nz-spin>
+</div>

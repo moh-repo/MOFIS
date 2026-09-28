@@ -1,0 +1,305 @@
+<p-toast></p-toast>
+<div class="grid">
+  <div class="col-12">
+    <div class="card">
+      <!-- Header Section. `flex-1` on the icon-and-title block, not
+           `justify-content-between`: under `direction: rtl` a flex row already
+           runs right to left, and the global rule in styles.scss reverses every
+           `.flex.justify-content-between` again, which put the heading back on
+           the left and the buttons on the right in Arabic. See
+           src/app/demo/components/page-headings.spec.ts. -->
+      <div class="flex align-items-center mb-4 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3 flex-1">
+          <i class="pi pi-user text-primary" style="font-size: 2.5rem"></i>
+          <div>
+            <h2 class="m-0 text-primary">{{ 'STUDENT_ADMIN.USERS.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0">{{ 'STUDENT_ADMIN.USERS.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button pButton pRipple type="button"
+            icon="pi pi-refresh"
+            class="p-button-outlined"
+            [attr.aria-label]="'COMMON.REFRESH' | translate"
+            [label]="'COMMON.REFRESH' | translate"
+            (click)="load()"
+            [loading]="loading"></button>
+        </div>
+      </div>
+
+      <!--
+        Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+        Narrowing is the server's job: the table is lazy and holds one page at
+        a time, so a filter applied here would search that page only.
+      -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-3">
+          <div class="filter-bar__field filter-bar__field--wide" [class.filter-bar__field--active]="searchTerm">
+            <label for="suSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="suSearch" pInputText type="text" [(ngModel)]="searchTerm" (keyup.enter)="onSearch()"
+                [placeholder]="'STUDENT_ADMIN.USERS.SEARCH_PLACEHOLDER' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="selectedStatus">
+            <label for="suStatus">{{ 'STUDENT_ADMIN.USERS.STATUS' | translate }}</label>
+            <p-select inputId="suStatus" [options]="statusOptions" [(ngModel)]="selectedStatus"
+              optionLabel="label" optionValue="value" (onChange)="onFilter()"></p-select>
+          </div>
+        </div>
+        <div class="filter-bar__actions">
+          <button pButton pRipple type="button" icon="pi pi-search" class="p-button-search"
+            [label]="'COMMON.SEARCH' | translate" (click)="onSearch()"></button>
+          <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+            [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters()"></button>
+          <span class="filter-bar__hint filter-bar__actions-spacer">{{ 'COMMON.TOTAL' | translate }}: {{ totalRecords }}</span>
+        </div>
+      </div>
+
+      <p-table [value]="users" [lazy]="true" (onLazyLoad)="onPage($event)"
+        [totalRecords]="totalRecords" [loading]="loading"
+        [paginator]="true" [rows]="rows" [(first)]="first" [rowsPerPageOptions]="[10,20,50]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="{first} - {last} / {totalRecords}"
+        styleClass="p-datatable-sm p-datatable-gridlines" responsiveLayout="scroll">
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="studentUserId" style="width:70px">{{ 'STUDENT_ADMIN.USERS.USER_ID' | translate }} <p-sortIcon field="studentUserId"></p-sortIcon></th>
+            <th pSortableColumn="studentId" style="width:90px">{{ 'STUDENTS.STUDENT_ID' | translate }} <p-sortIcon field="studentId"></p-sortIcon></th>
+            <th pSortableColumn="username">{{ 'STUDENT_ADMIN.USERS.USERNAME' | translate }} <p-sortIcon field="username"></p-sortIcon></th>
+            <th pSortableColumn="status" style="width:110px">{{ 'STUDENT_ADMIN.USERS.STATUS' | translate }} <p-sortIcon field="status"></p-sortIcon></th>
+            <th pSortableColumn="failedLoginAttempts" style="width:70px">{{ 'STUDENT_ADMIN.USERS.FAILED_ATTEMPTS' | translate }} <p-sortIcon field="failedLoginAttempts"></p-sortIcon></th>
+            <th pSortableColumn="lastLoginAt">{{ 'STUDENT_ADMIN.USERS.LAST_LOGIN' | translate }} <p-sortIcon field="lastLoginAt"></p-sortIcon></th>
+            <th pSortableColumn="createdAt">{{ 'STUDENT_ADMIN.USERS.CREATED' | translate }} <p-sortIcon field="createdAt"></p-sortIcon></th>
+            <th style="width:260px">{{ 'COMMON.ACTIONS' | translate }}</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-u>
+          <tr>
+            <td>{{ u.studentUserId }}</td>
+            <td>{{ u.studentId }}</td>
+            <td class="font-semibold">{{ u.username }}</td>
+            <td><p-tag [value]="statusLabel(u.status)" [severity]="statusSeverity(u.status)"></p-tag></td>
+            <td class="text-center">{{ u.failedLoginAttempts }}</td>
+            <td class="text-sm text-500">{{ u.lastLoginAt | date:'dd/MM/yy HH:mm' }}</td>
+            <td class="text-sm text-500">{{ u.createdAt | date:'dd/MM/yy' }}</td>
+            <td>
+              <div class="flex gap-1 flex-wrap">
+                <button pButton pRipple icon="pi pi-eye" class="p-button-text p-button-sm"
+                  [pTooltip]="'COMMON.VIEW' | translate" tooltipPosition="top"
+                (click)="openView(u)"></button>
+                @if (u.status !== 'ACTIVE') {
+                  <button pButton pRipple icon="pi pi-check-circle" class="p-button-success p-button-sm p-button-outlined"
+                    [pTooltip]="'STUDENT_ADMIN.USERS.ACTIVATE' | translate" tooltipPosition="top"
+                  (click)="updateStatus(u, 'ACTIVE')"></button>
+                }
+                @if (u.status !== 'LOCKED') {
+                  <button pButton pRipple icon="pi pi-ban" class="p-button-danger p-button-sm p-button-outlined"
+                    [pTooltip]="'STUDENT_ADMIN.USERS.LOCK' | translate" tooltipPosition="top"
+                  (click)="updateStatus(u, 'LOCKED')"></button>
+                }
+                @if (u.status !== 'INACTIVE') {
+                  <button pButton pRipple icon="pi pi-eye-slash" class="p-button-warning p-button-sm p-button-outlined"
+                    [pTooltip]="'STUDENT_ADMIN.USERS.DEACTIVATE' | translate" tooltipPosition="top"
+                  (click)="updateStatus(u, 'INACTIVE')"></button>
+                }
+                <button pButton pRipple icon="pi pi-key" class="p-button-info p-button-sm p-button-outlined"
+                  [pTooltip]="'STUDENT_ADMIN.USERS.RESET_PASSWORD' | translate" tooltipPosition="top"
+                (click)="openReset(u)"></button>
+                <button pButton pRipple icon="pi pi-users" class="p-button-secondary p-button-sm p-button-outlined"
+                  [pTooltip]="'STUDENT_ADMIN.USERS.MANAGE_GROUPS' | translate" tooltipPosition="top"
+                (click)="openGroups(u)"></button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="8" class="text-center text-500 py-4">
+              {{ (hasFilters ? 'COMMON.NO_MATCH' : 'STUDENT_ADMIN.NO_RECORDS') | translate }}
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Dialog. Shared vocabulary: assets/layout/styles/_detail-dialog.scss. -->
+<p-dialog [(visible)]="showResetDialog"
+  [header]="'STUDENT_ADMIN.USERS.RESET_PASSWORD' | translate"
+  [modal]="true" [style]="{ width: '480px', maxWidth: '96vw' }" [draggable]="false"
+  [dismissableMask]="false" styleClass="dv-dialog"
+  (onHide)="resetSubmitted = false">
+  <ng-template pTemplate="content">
+    <div class="dv-hero dv-hero--warn">
+      <div class="dv-hero__badge"><i class="pi pi-key"></i></div>
+      <div class="dv-hero__body">
+        <div class="dv-hero__eyebrow">{{ 'STUDENT_ADMIN.USERS.USERNAME' | translate }}</div>
+        <div class="dv-hero__title">{{ resetUserName }}</div>
+      </div>
+    </div>
+
+    <section class="dv-section">
+      <header class="dv-section__head">
+        <span class="dv-section__icon dv-section__icon--orange"><i class="pi pi-lock"></i></span>
+        <div>
+          <div class="dv-section__title">{{ 'STUDENT_PORTAL.NEW_PASSWORD' | translate }}</div>
+          <div class="dv-section__hint">{{ 'STUDENT_ADMIN.USERS.PASSWORD_MIN' | translate }}</div>
+        </div>
+      </header>
+      <div class="dv-fields">
+        <div class="dv-field dv-field--full">
+          <label for="suNewPassword" class="dv-label">
+            {{ 'STUDENT_PORTAL.NEW_PASSWORD' | translate }}
+            <span class="dv-required">*</span>
+          </label>
+          <input id="suNewPassword" pInputText type="password" [(ngModel)]="newPassword" class="w-full"
+            autocomplete="new-password" (keyup.enter)="submitReset()" />
+          @if (resetSubmitted && !passwordValid) {
+            <small class="dv-error">
+              <i class="pi pi-exclamation-circle"></i>
+              {{ 'STUDENT_ADMIN.USERS.MESSAGES.PASSWORD_MIN' | translate }}
+            </small>
+          }
+        </div>
+      </div>
+    </section>
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <small class="dv-footer__hint">
+        <span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+      </small>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" class="p-button-text p-button-secondary"
+          [label]="'COMMON.CANCEL' | translate" icon="pi pi-times"
+          [disabled]="resetLoading" (click)="showResetDialog = false"></button>
+        <button pButton pRipple type="button"
+          [label]="'COMMON.CONFIRM' | translate" icon="pi pi-check"
+          [loading]="resetLoading" (click)="submitReset()"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- Manage Groups Dialog -->
+<p-dialog [(visible)]="showGroupsDialog"
+  [header]="'STUDENT_ADMIN.USERS.MANAGE_GROUPS' | translate"
+  [modal]="true" [style]="{ width: '560px', maxWidth: '96vw' }" [draggable]="false"
+  styleClass="dv-dialog">
+  <ng-template pTemplate="content">
+    <div class="dv-hero">
+      <div class="dv-hero__badge"><i class="pi pi-users"></i></div>
+      <div class="dv-hero__body">
+        <div class="dv-hero__eyebrow">{{ 'STUDENT_ADMIN.USERS.USERNAME' | translate }}</div>
+        <div class="dv-hero__title">{{ groupsUserName }}</div>
+        <div class="dv-hero__meta">
+          <span class="dv-chip"><i class="pi pi-users"></i> {{ selectedUserGroups.length }}</span>
+        </div>
+      </div>
+    </div>
+
+    <section class="dv-section">
+      <header class="dv-section__head">
+        <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-sitemap"></i></span>
+        <div>
+          <div class="dv-section__title">{{ 'STUDENT_ADMIN.USERS.MANAGE_GROUPS' | translate }}</div>
+          <div class="dv-section__hint">{{ 'STUDENT_ADMIN.USERS.GROUPS_HINT' | translate }}</div>
+        </div>
+      </header>
+      @if (groupsLoading) {
+        <div class="text-center py-4"><i class="pi pi-spin pi-spinner text-2xl text-primary"></i></div>
+      } @else {
+        <!-- Review M11: a filter over the list, and removal is an explicit button
+               rather than a click on the "assigned" tag. -->
+          <span class="p-input-icon-left w-full mb-2 block">
+            <i class="pi pi-search"></i>
+            <input id="suGroupFilter" pInputText type="text" class="w-full" [(ngModel)]="groupFilter"
+              [placeholder]="'COMMON.SEARCH_PLACEHOLDER' | translate" />
+          </span>
+        @if (filteredGroups.length === 0) {
+            <div class="text-center text-500 py-3">{{ 'COMMON.NO_MATCH' | translate }}</div>
+          }
+        @for (g of filteredGroups; track g.groupId) {
+          <!-- `flex-1` on the name block, not `justify-content-between`: the
+               same double mirror as the page header, one row at a time. -->
+          <div class="flex align-items-center gap-2 py-2 border-bottom-1 surface-border">
+            <div class="flex-1">
+              <span class="font-semibold">{{ g.groupName }}</span>
+              @if (g.groupNameAr) {
+                <span class="text-500 text-sm mx-2">{{ g.groupNameAr }}</span>
+              }
+            </div>
+            @if (hasGroup(g.groupId)) {
+              <p-tag [value]="'COMMON.ASSIGNED' | translate" severity="success" icon="pi pi-check"></p-tag>
+              <button pButton pRipple type="button" icon="pi pi-times" class="p-button-sm p-button-outlined p-button-danger"
+                [label]="'COMMON.REMOVE' | translate" [pTooltip]="'STUDENT_ADMIN.USERS.REMOVE_GROUP' | translate"
+                (click)="toggleGroup(g.groupId)"></button>
+            } @else {
+              <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-sm p-button-outlined"
+                [label]="'COMMON.ADD' | translate" (click)="toggleGroup(g.groupId)"></button>
+            }
+          </div>
+        }
+      }
+    </section>
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint"></div>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" class="p-button-text p-button-secondary"
+          [label]="'COMMON.CLOSE' | translate" icon="pi pi-times" (click)="showGroupsDialog = false"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- The detail view. GET /users/{id} was implemented all along and nothing
+     called it; the account was only ever readable across a table row. -->
+<p-dialog [(visible)]="showViewDialog"
+  [header]="'STUDENT_ADMIN.USERS.VIEW_USER' | translate"
+  [modal]="true" [style]="{ width: '680px', maxWidth: '96vw' }" [draggable]="false"
+  styleClass="dv-dialog">
+  <ng-template pTemplate="content">
+    @if (selectedUser; as u) {
+      <div class="dv-view">
+        <div class="dv-hero" [class.dv-hero--muted]="u.status !== 'ACTIVE'">
+          <div class="dv-hero__badge">{{ u.studentUserId }}</div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'STUDENT_ADMIN.USERS.USERNAME' | translate }}</div>
+            <div class="dv-hero__title">{{ u.username }}</div>
+            <div class="dv-hero__meta">
+              <p-tag [rounded]="true"
+                [severity]="u.status === 'ACTIVE' ? 'success' : u.status === 'LOCKED' ? 'danger' : 'warning'"
+                [value]="u.status"></p-tag>
+              @if (u.failedLoginAttempts) {
+                <span class="dv-chip">{{ 'STUDENT_ADMIN.USERS.FAILED_ATTEMPTS' | translate }}: {{ u.failedLoginAttempts }}</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+            <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+          </header>
+          <dl class="dv-dl">
+            <div class="dv-dl__row"><dt>{{ 'COMMON.ID' | translate }}</dt><dd>{{ u.studentUserId }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.USERS.STUDENT_ID' | translate }}</dt><dd>{{ u.studentId ?? '—' }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.USERS.LAST_LOGIN' | translate }}</dt><dd>{{ u.lastLoginAt ? (u.lastLoginAt | date:'medium') : '—' }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.USERS.CREATED' | translate }}</dt><dd>{{ u.createdAt ? (u.createdAt | date:'medium') : '—' }}</dd></div>
+          </dl>
+        </section>
+      </div>
+    }
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <button pButton pRipple type="button" [label]="'COMMON.CLOSE' | translate"
+      class="p-button-text" (click)="showViewDialog = false"></button>
+  </ng-template>
+</p-dialog>

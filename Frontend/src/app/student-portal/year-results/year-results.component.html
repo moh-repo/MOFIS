@@ -1,0 +1,87 @@
+<div class="portal-page yr-page">
+
+  <div class="sp-intro">
+    <p class="sp-intro__text">{{ 'STUDENT_PORTAL.PAGE_YEAR_RESULTS_SUB' | translate }}</p>
+  </div>
+
+  <nz-spin [nzSpinning]="loading">
+    @if (errorKey) {
+      <nz-alert nzType="error" [nzMessage]="errorKey | translate" nzShowIcon class="yr-alert"></nz-alert>
+    }
+
+    @if (!loading && !errorKey && results.length > 0) {
+      <div class="sp-toolbar">
+        <nz-input-group [nzPrefix]="yrSearchIcon" class="sp-toolbar__search">
+          <input nz-input [(ngModel)]="search"
+            [placeholder]="'STUDENT_PORTAL.SEARCH_PLACEHOLDER' | translate"
+            [attr.aria-label]="'STUDENT_PORTAL.SEARCH_PLACEHOLDER' | translate" />
+        </nz-input-group>
+        <ng-template #yrSearchIcon><span nz-icon nzType="search" nzTheme="outline"></span></ng-template>
+
+        @if (hasBothOutcomes) {
+          <nz-select class="sp-toolbar__filter" [(ngModel)]="outcomeFilter" nzAllowClear
+            [nzPlaceHolder]="'STUDENT_PORTAL.STATUS' | translate">
+            <nz-option nzValue="passed" [nzLabel]="'STUDENT_PORTAL.PASSED_YES' | translate"></nz-option>
+            <nz-option nzValue="failed" [nzLabel]="'STUDENT_PORTAL.PASSED_NO' | translate"></nz-option>
+          </nz-select>
+        }
+
+        <span class="sp-toolbar__count">
+          {{ 'STUDENT_PORTAL.SHOWING_COUNT' | translate:{ shown: filteredResults.length, total: results.length } }}
+        </span>
+      </div>
+
+      <div class="yr-grid">
+        @for (r of filteredResults; track r) {
+          <div class="yr-card" [class.yr-card--pass]="outcome(r) === 'passed'" [class.yr-card--fail]="outcome(r) === 'failed'"
+            [class.yr-card--none]="outcome(r) === 'not-recorded'">
+            <div class="yr-card-year">
+              <span nz-icon [nzType]="outcomeIcon(r)" nzTheme="fill"
+                class="yr-card-icon"></span>
+              <span class="yr-card-num">{{ 'STUDENT_PORTAL.YEAR_NUMBER' | translate }} {{ r.yearNumber }}</span>
+            </div>
+            <div class="yr-card-body">
+              @if (r.academicYear) {
+                <div class="yr-row">
+                  <span class="yr-label">{{ 'STUDENT_PORTAL.ACADEMIC_YEAR' | translate }}</span>
+                  <span class="yr-val">{{ r.academicYear }}</span>
+                </div>
+              }
+              @if (r.grade) {
+                <div class="yr-row">
+                  <span class="yr-label">{{ 'STUDENT_PORTAL.GRADE' | translate }}</span>
+                  <span class="yr-val">{{ r.grade }}</span>
+                </div>
+              }
+              @if (r.notes) {
+                <div class="yr-row">
+                  <span class="yr-label">{{ 'STUDENT_PORTAL.NOTES' | translate }}</span>
+                  <span class="yr-val yr-notes">{{ r.notes }}</span>
+                </div>
+              }
+            </div>
+            <div class="yr-card-status">
+              <nz-tag [nzColor]="outcomeColor(r)">
+                {{ outcomeKey(r) | translate }}
+              </nz-tag>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (filteredEverythingOut) {
+      <div class="sp-state">
+        <span class="sp-state__icon" nz-icon nzType="search" nzTheme="outline"></span>
+        <p class="sp-state__title">{{ 'STUDENT_PORTAL.NO_MATCHES' | translate }}</p>
+        <button nz-button nzType="link" (click)="clearFilters()">{{ 'STUDENT_PORTAL.CLEAR_FILTERS' | translate }}</button>
+      </div>
+    } @else if (!loading && !errorKey && results.length === 0) {
+      <div class="sp-state">
+        <span class="sp-state__icon" nz-icon nzType="bar-chart" nzTheme="outline"></span>
+        <p class="sp-state__title">{{ 'STUDENT_PORTAL.NO_DATA' | translate }}</p>
+      </div>
+    }
+
+  </nz-spin>
+</div>

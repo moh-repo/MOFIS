@@ -1,0 +1,972 @@
+<!-- Toast for Messages -->
+<p-toast></p-toast>
+
+<!-- Confirmation Dialog -->
+<p-confirmdialog></p-confirmdialog>
+
+<!-- Main Card with Filters -->
+<p-card styleClass="student-travel-ticket-card" [attr.dir]="translation.isRTL() ? 'rtl' : 'ltr'">
+  <ng-template pTemplate="header">
+    <div class="card-header">
+      <!-- The icon leads the heading, as it does on every other page. It is a
+           sibling of the title block rather than a child of the h2, so the text
+           wraps under itself rather than under the glyph. -->
+      <div class="card-heading">
+        <i class="pi pi-ticket card-heading__icon"></i>
+        <div>
+          <h2 class="title">{{ 'STUDENT_TRAVEL_TICKETS.TITLE' | translate }}</h2>
+          <p class="subtitle">{{ 'STUDENT_TRAVEL_TICKETS.SUBTITLE' | translate }}</p>
+        </div>
+      </div>
+      <div class="card-actions">
+        <p-button
+          icon="pi pi-refresh"
+          [label]="'COMMON.REFRESH' | translate"
+          [loading]="loading"
+          (onClick)="loadTravelTickets()"
+          styleClass="p-button-action-outlined">
+        </p-button>
+        <p-button
+          icon="pi pi-plus"
+          [label]="'STUDENT_TRAVEL_TICKETS.ACTIONS.ADD' | translate"
+          severity="success"
+          (onClick)="openCreate()">
+        </p-button>
+      </div>
+    </div>
+  </ng-template>
+
+  <!--
+    Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+    The two controls used to carry their own pixel widths (200px and 180px) in
+    a wrapping flex row, with the buttons as a third item in the same row, so
+    they landed wherever there happened to be space.
+  -->
+  <form [formGroup]="filtersForm" (ngSubmit)="applyFilters(true)" class="filter-bar">
+    <div class="filter-bar__grid filter-bar__grid--cols-3">
+      <div class="filter-bar__field filter-bar__field--wide"
+        [class.filter-bar__field--active]="filtersForm.value.studentId">
+        <label for="studentFilter">{{ 'STUDENT_TRAVEL_TICKETS.FILTERS.STUDENT' | translate }}</label>
+        <p-select
+          inputId="studentFilter"
+          [options]="studentOptions"
+          formControlName="studentId"
+          optionLabel="label"
+          optionValue="id"
+          [placeholder]="'STUDENT_TRAVEL_TICKETS.FILTERS.ALL_STUDENTS' | translate"
+          [showClear]="true"
+          [filter]="true"
+          filterBy="label"
+          [resetFilterOnHide]="false"
+          (onFilter)="onStudentFilter($event)">
+        </p-select>
+      </div>
+      <div class="filter-bar__field"
+        [class.filter-bar__field--active]="filtersForm.value.travelType">
+        <label for="typeFilter">{{ 'STUDENT_TRAVEL_TICKETS.FILTERS.TRAVEL_TYPE' | translate }}</label>
+        <p-select
+          inputId="typeFilter"
+          [options]="travelTypeOptions"
+          formControlName="travelType"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'STUDENT_TRAVEL_TICKETS.FILTERS.ALL_TYPES' | translate"
+          [showClear]="true">
+        </p-select>
+      </div>
+    </div>
+
+    <!-- No "بحث" button: the filters search as they change, like the other
+         student lists (review S10). -->
+    <div class="filter-bar__actions">
+      <p-button
+        icon="pi pi-times"
+        [label]="'COMMON.CLEAR' | translate"
+        (onClick)="clearFilters()"
+        styleClass="p-button-action-outlined">
+      </p-button>
+    </div>
+  </form>
+
+  <!-- Summary statistics, collapsed until asked for. -->
+  @if (summary.total > 0) {
+    <p-panel
+      [toggleable]="true"
+      [collapsed]="true"
+      styleClass="summary-panel mt-3">
+      <ng-template pTemplate="header">
+        <div class="flex align-items-center gap-2">
+          <i class="pi pi-chart-bar text-primary"></i>
+          <span class="font-semibold">{{ 'STUDENT_TRAVEL_TICKETS.SUMMARY.TITLE' | translate }}</span>
+          <p-tag [value]="summary.total.toString()" severity="info" styleClass="ml-2"></p-tag>
+        </div>
+      </ng-template>
+      <div class="summary-cards" [ngClass]="'summary-cards--cols-' + summaryColumns">
+        <div class="summary-card total">
+          <div class="summary-icon">
+            <i class="pi pi-ticket"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'STUDENT_TRAVEL_TICKETS.SUMMARY.TOTAL' | translate }}</span>
+            <span class="summary-value">{{ summary.total }}</span>
+            @if (summary.lastUpdated) {
+              <span class="summary-meta">
+                {{ 'STUDENT_TRAVEL_TICKETS.SUMMARY.UPDATED' | translate }} {{ summary.lastUpdated | date:'short' }}
+              </span>
+            }
+          </div>
+        </div>
+        @for (type of summary.byType; track type.code) {
+          <div class="summary-card by-type" [class.with-family]="type.code === familyTravelType" [class.alone]="type.code !== familyTravelType">
+            <div class="summary-icon">
+              <i class="pi {{ (type.code | codeIcon:'travel-type') || (type.code === familyTravelType ? 'pi-users' : 'pi-user') }}"></i>
+            </div>
+            <div class="summary-content">
+              <span class="summary-label">{{ type.label }}</span>
+              <span class="summary-value">{{ type.count }}</span>
+            </div>
+          </div>
+        }
+        <div class="summary-card family-members">
+          <div class="summary-icon">
+            <i class="pi pi-id-card"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'STUDENT_TRAVEL_TICKETS.SUMMARY.TOTAL_FAMILY_MEMBERS' | translate }}</span>
+            <span class="summary-value">{{ summary.totalFamilyMembers }}</span>
+          </div>
+        </div>
+      </div>
+    </p-panel>
+  }
+</p-card>
+
+<!-- Data Table -->
+<p-card styleClass="table-card">
+  <p-table
+    [value]="travelTickets"
+    [loading]="loading"
+    [paginator]="true"
+    [rows]="10"
+    [(first)]="first"
+    [rowsPerPageOptions]="[10, 25, 50]"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="{{ 'COMMON.SHOWING' | translate }} {first} {{ 'COMMON.TO' | translate }} {last} {{ 'COMMON.OF' | translate }} {totalRecords}"
+    [globalFilterFields]="['ticketNumber', 'airline', 'flightNumber']"
+    responsiveLayout="scroll"
+    styleClass="p-datatable-sm p-datatable-striped">
+
+    <ng-template pTemplate="header">
+      <tr>
+        <th pSortableColumn="studentId">
+          {{ 'STUDENT_TRAVEL_TICKETS.TABLE.STUDENT' | translate }}
+          <p-sortIcon field="studentId"></p-sortIcon>
+        </th>
+        <th pSortableColumn="travelType">
+          {{ 'STUDENT_TRAVEL_TICKETS.TABLE.TRAVEL_TYPE' | translate }}
+          <p-sortIcon field="travelType"></p-sortIcon>
+        </th>
+        <th pSortableColumn="travelDate">
+          {{ 'STUDENT_TRAVEL_TICKETS.TABLE.TRAVEL_DATE' | translate }}
+          <p-sortIcon field="travelDate"></p-sortIcon>
+        </th>
+        <th>{{ 'STUDENT_TRAVEL_TICKETS.TABLE.DEPARTURE' | translate }}</th>
+        <th>{{ 'STUDENT_TRAVEL_TICKETS.TABLE.DESTINATION' | translate }}</th>
+        <th>{{ 'STUDENT_TRAVEL_TICKETS.TABLE.AIRLINE' | translate }}</th>
+        <th>{{ 'STUDENT_TRAVEL_TICKETS.TABLE.FLIGHT_NUMBER' | translate }}</th>
+        <th>{{ 'STUDENT_TRAVEL_TICKETS.TABLE.TICKET_NUMBER' | translate }}</th>
+        <th>{{ 'STUDENT_TRAVEL_TICKETS.TABLE.FAMILY_MEMBERS' | translate }}</th>
+        <th>{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-ticket>
+      <tr>
+        <td>
+          <div class="student-info">
+            <div class="student-name">{{ getStudentName(ticket.studentId) }}</div>
+            <small class="text-muted">ID: {{ ticket.studentId }}</small>
+          </div>
+        </td>
+        <td>
+          <p-tag
+            [value]="travelTypeLabel(ticket.travelType)"
+            [severity]="ticket.travelType | codeSeverity:'travel-type'">
+          </p-tag>
+        </td>
+        <td>{{ ticket.travelDate ? (ticket.travelDate | date:'mediumDate') : ('COMMON.NOT_AVAILABLE' | translate) }}</td>
+        <td>{{ ticket.departureCity || '' }}{{ ticket.departureCity && ticket.departureCountry ? ', ' : '' }}{{ ticket.departureCountry || '' }}</td>
+        <td>{{ ticket.destinationCity || '' }}{{ ticket.destinationCity && ticket.destinationCountry ? ', ' : '' }}{{ ticket.destinationCountry || '' }}</td>
+        <td>{{ ticket.airline || ('COMMON.NOT_AVAILABLE' | translate) }}</td>
+        <td>{{ ticket.flightNumber || ('COMMON.NOT_AVAILABLE' | translate) }}</td>
+        <td>{{ ticket.ticketNumber || ('COMMON.NOT_AVAILABLE' | translate) }}</td>
+        <td>
+          @if (ticket.travelType === familyTravelType) {
+            <span>
+              {{ getMemberCountText(ticket.familyMembers?.length || 0) }}
+            </span>
+          } @else {
+            <span>{{ 'STUDENT_TRAVEL_TICKETS.TABLE.NO_MEMBERS' | translate }}</span>
+          }
+        </td>
+        <td>
+          <div class="table-actions">
+            <p-button
+              icon="pi pi-eye"
+              [pTooltip]="'STUDENT_TRAVEL_TICKETS.ACTIONS.VIEW' | translate"
+              severity="info"
+              [rounded]="true"
+              [text]="true"
+              (onClick)="openView(ticket)">
+            </p-button>
+            <p-button
+              icon="pi pi-pencil"
+              [pTooltip]="'STUDENT_TRAVEL_TICKETS.ACTIONS.EDIT' | translate"
+              severity="warn"
+              [rounded]="true"
+              [text]="true"
+              (onClick)="openEdit(ticket)">
+            </p-button>
+            <p-button
+              icon="pi pi-trash"
+              [pTooltip]="'STUDENT_TRAVEL_TICKETS.ACTIONS.DELETE' | translate"
+              severity="danger"
+              [rounded]="true"
+              [text]="true"
+              [loading]="deletingIds.has(ticket.travelTicketId!)"
+              (onClick)="deleteTicket(ticket)">
+            </p-button>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="10" class="empty-message">
+          <div class="empty-state">
+            <i class="pi pi-inbox" style="font-size: 3rem; color: var(--text-color-secondary);"></i>
+            <p>{{ 'STUDENT_TRAVEL_TICKETS.TABLE.NO_TICKETS' | translate }}</p>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</p-card>
+
+<!-- Add/Edit Dialog -->
+<p-dialog
+  [header]="modalTitle"
+  [(visible)]="modalVisible"
+  [modal]="true"
+  [style]="{width: '90vw', maxWidth: '1100px'}"
+  [draggable]="false"
+  [resizable]="false"
+  [maximizable]="true"
+  styleClass="travel-ticket-dialog-compact"
+  (onHide)="closeModal()">
+
+  <form [formGroup]="travelTicketForm" (ngSubmit)="submitForm()">
+    <!-- Single compact grid layout -->
+    <div class="compact-form-grid">
+      <!-- Row 1: Basic Info -->
+      <div class="form-section">
+        <div class="section-header">
+          <i class="pi pi-info-circle"></i>
+          <span>{{ 'STUDENT_TRAVEL_TICKETS.FORM.SECTION_PRIMARY' | translate }}</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label for="student">{{ 'STUDENT_TRAVEL_TICKETS.FORM.STUDENT' | translate }} <span class="required">*</span></label>
+            <p-select
+              inputId="student"
+              [options]="studentOptions"
+              formControlName="studentId"
+              optionLabel="label"
+              optionValue="id"
+              [placeholder]="'STUDENT_TRAVEL_TICKETS.FORM.SELECT_STUDENT' | translate"
+              [filter]="true"
+              filterBy="label"
+              [resetFilterOnHide]="false"
+              (onFilter)="onStudentFilter($event)"
+              appendTo="body">
+            </p-select>
+            @if (travelTicketForm.get('studentId')?.invalid && travelTicketForm.get('studentId')?.touched) {
+              <small class="p-error">
+                {{ 'STUDENT_TRAVEL_TICKETS.VALIDATION.REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="form-col">
+            <label for="travelType">{{ 'STUDENT_TRAVEL_TICKETS.FORM.TRAVEL_TYPE' | translate }} <span class="required">*</span></label>
+            <p-select
+              inputId="travelType"
+              [options]="travelTypeOptions"
+              formControlName="travelType"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'STUDENT_TRAVEL_TICKETS.FORM.SELECT_TRAVEL_TYPE' | translate"
+              [filter]="true"
+              appendTo="body"
+              (onChange)="onTravelTypeChange()">
+            </p-select>
+            @if (travelTicketForm.get('travelType')?.invalid && travelTicketForm.get('travelType')?.touched) {
+              <small class="p-error">
+                {{ 'STUDENT_TRAVEL_TICKETS.VALIDATION.REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="form-col">
+            <label for="travelDate">{{ 'STUDENT_TRAVEL_TICKETS.FORM.TRAVEL_DATE' | translate }}</label>
+            <p-datepicker
+              inputId="travelDate"
+              formControlName="travelDate"
+              [showIcon]="true"
+              dateFormat="yy-mm-dd"
+              appendTo="body">
+            </p-datepicker>
+          </div>
+
+          <div class="form-col">
+            <label for="bookingDate">{{ 'STUDENT_TRAVEL_TICKETS.FORM.BOOKING_DATE' | translate }}</label>
+            <p-datepicker
+              inputId="bookingDate"
+              formControlName="bookingDate"
+              [showIcon]="true"
+              dateFormat="yy-mm-dd"
+              appendTo="body">
+            </p-datepicker>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Travel Details -->
+      <div class="form-section">
+        <div class="section-header">
+          <i class="pi pi-map-marker"></i>
+          <span>{{ 'STUDENT_TRAVEL_TICKETS.FORM.SECTION_TRAVEL' | translate }}</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label for="departureCountry">{{ 'STUDENT_TRAVEL_TICKETS.FORM.DEPARTURE_COUNTRY' | translate }}</label>
+            <input
+              pInputText
+              id="departureCountry"
+              formControlName="departureCountry">
+          </div>
+
+          <div class="form-col">
+            <label for="departureCity">{{ 'STUDENT_TRAVEL_TICKETS.FORM.DEPARTURE_CITY' | translate }}</label>
+            <input
+              pInputText
+              id="departureCity"
+              formControlName="departureCity">
+          </div>
+
+          <div class="form-col">
+            <label for="destinationCountry">{{ 'STUDENT_TRAVEL_TICKETS.FORM.DESTINATION_COUNTRY' | translate }}</label>
+            <input
+              pInputText
+              id="destinationCountry"
+              formControlName="destinationCountry">
+          </div>
+
+          <div class="form-col">
+            <label for="destinationCity">{{ 'STUDENT_TRAVEL_TICKETS.FORM.DESTINATION_CITY' | translate }}</label>
+            <input
+              pInputText
+              id="destinationCity"
+              formControlName="destinationCity">
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Flight Details -->
+      <div class="form-section">
+        <div class="section-header">
+          <i class="pi pi-plane"></i>
+          <span>{{ 'STUDENT_TRAVEL_TICKETS.FORM.SECTION_FLIGHT' | translate }}</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label for="airline">{{ 'STUDENT_TRAVEL_TICKETS.FORM.AIRLINE' | translate }}</label>
+            <input
+              pInputText
+              id="airline"
+              formControlName="airline">
+          </div>
+
+          <div class="form-col">
+            <label for="flightNumber">{{ 'STUDENT_TRAVEL_TICKETS.FORM.FLIGHT_NUMBER' | translate }}</label>
+            <input
+              pInputText
+              id="flightNumber"
+              formControlName="flightNumber">
+          </div>
+
+          <div class="form-col">
+            <label for="ticketNumber">{{ 'STUDENT_TRAVEL_TICKETS.FORM.TICKET_NUMBER' | translate }}</label>
+            <input
+              pInputText
+              id="ticketNumber"
+              formControlName="ticketNumber">
+          </div>
+
+          <div class="form-col">
+            <label for="ticketCost">{{ 'STUDENT_TRAVEL_TICKETS.FORM.STUDENT_TICKET_COST' | translate }}</label>
+            <p-inputnumber [min]="0"
+              id="ticketCost"
+              formControlName="ticketCost"
+              mode="decimal"
+              [minFractionDigits]="2"
+              [maxFractionDigits]="2"
+              [showButtons]="false">
+            </p-inputnumber>
+          </div>
+
+          <div class="form-col">
+            <label for="currencyId">{{ 'STUDENT_TRAVEL_TICKETS.FORM.CURRENCY' | translate }}</label>
+            <p-select
+              inputId="currencyId"
+              [options]="currencyOptions"
+              formControlName="currencyId"
+              optionLabel="name"
+              optionValue="id"
+              [filter]="true"
+              filterBy="name"
+              [showClear]="true"
+              [placeholder]="'STUDENT_TRAVEL_TICKETS.FORM.SELECT_CURRENCY' | translate"
+              appendTo="body">
+            </p-select>
+          </div>
+
+          <div class="form-col">
+            <label for="fundingSourceId">{{ 'STUDENT_TRAVEL_TICKETS.FORM.FUNDING_SOURCE' | translate }}</label>
+            <p-select
+              inputId="fundingSourceId"
+              [options]="fundingSourceOptions"
+              formControlName="fundingSourceId"
+              optionLabel="name"
+              optionValue="id"
+              [showClear]="true"
+              [placeholder]="'STUDENT_TRAVEL_TICKETS.FORM.SELECT_FUNDING_SOURCE' | translate"
+              appendTo="body">
+            </p-select>
+          </div>
+        </div>
+
+        <!-- Live total + Wafar balance -->
+        <div class="cost-summary">
+          <div class="cost-total">
+            <span class="cost-total-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.TOTAL_COST' | translate }}</span>
+            <span class="cost-total-value">{{ totalCost | number:'1.2-2' }}</span>
+          </div>
+          @if (isWafarFunding && wafarBalance) {
+            <div class="cost-wafar">
+              <span class="wafar-balance">
+                <i class="pi pi-wallet"></i>
+                {{ 'STUDENT_TRAVEL_TICKETS.FORM.WAFAR_BALANCE' | translate }}:
+                <strong>{{ wafarBalance.currentBalance | number:'1.2-2' }}</strong>
+              </span>
+              @if (wafarInsufficient) {
+                <span class="wafar-insufficient">
+                  <i class="pi pi-exclamation-triangle"></i>
+                  {{ 'STUDENT_TRAVEL_TICKETS.FORM.WAFAR_INSUFFICIENT' | translate }}
+                </span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Row 4: Notes (Compact) -->
+      <div class="form-section">
+        <div class="section-header">
+          <i class="pi pi-comment"></i>
+          <span>{{ 'STUDENT_TRAVEL_TICKETS.FORM.SECTION_NOTES' | translate }}</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label for="travelPurpose">{{ 'STUDENT_TRAVEL_TICKETS.FORM.TRAVEL_PURPOSE' | translate }}</label>
+            <textarea
+              pTextarea
+              id="travelPurpose"
+              formControlName="travelPurpose"
+              rows="2"
+              [autoResize]="true">
+            </textarea>
+          </div>
+
+          <div class="form-col">
+            <label for="notes">{{ 'STUDENT_TRAVEL_TICKETS.FORM.NOTES' | translate }}</label>
+            <textarea
+              pTextarea
+              id="notes"
+              formControlName="notes"
+              rows="2"
+              [autoResize]="true">
+            </textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ticket PDF (review T3). Uploaded as soon as it is chosen, hidden from the
+           student's documents until the ticket is approved. -->
+      <div class="form-section">
+        <div class="section-header">
+          <i class="pi pi-file-pdf"></i>
+          <span>{{ 'STUDENT_TRAVEL_TICKETS.DOCUMENT.SECTION' | translate }}</span>
+        </div>
+        <div class="flex align-items-center gap-2 flex-wrap">
+          <input #ticketFileInput type="file" accept="application/pdf,.pdf" class="hidden"
+            (change)="onTicketFileSelected($event)" />
+          <p-button type="button" icon="pi pi-upload" [outlined]="true" [loading]="ticketUploading"
+            [label]="(travelTicketForm.get('documentId')?.value ? 'STUDENT_TRAVEL_TICKETS.DOCUMENT.REPLACE' : 'STUDENT_TRAVEL_TICKETS.DOCUMENT.ATTACH') | translate"
+            (onClick)="ticketFileInput.click()"></p-button>
+          @if (travelTicketForm.get('documentId')?.value) {
+            <span class="text-sm"><i class="pi pi-check-circle text-green-500 mx-1"></i>{{ ticketFileName }}</span>
+            <p-button type="button" icon="pi pi-eye" [text]="true" [rounded]="true"
+              [pTooltip]="'STUDENT_TRAVEL_TICKETS.DOCUMENT.VIEW' | translate"
+              (onClick)="openTicketDocument(travelTicketForm.get('documentId')?.value)"></p-button>
+            <p-button type="button" icon="pi pi-times" [text]="true" [rounded]="true" severity="danger"
+              [pTooltip]="'COMMON.REMOVE' | translate" (onClick)="removeTicketFile()"></p-button>
+          }
+        </div>
+        <small class="text-500 block mt-1">{{ 'STUDENT_TRAVEL_TICKETS.DOCUMENT.HINT' | translate }}</small>
+      </div>
+
+      <!-- Family Members Section -->
+      @if (travelTicketForm.get('travelType')?.value === familyTravelType) {
+        <div class="form-section">
+          <div class="section-header">
+            <i class="pi pi-users"></i>
+            <span>{{ 'STUDENT_TRAVEL_TICKETS.FORM.FAMILY_MEMBERS' | translate }}</span>
+          </div>
+          <div formArrayName="familyMembers">
+            @for (member of familyMembersFormArray.controls; track member; let i = $index) {
+              <div [formGroupName]="i" class="family-member-card">
+                <div class="member-header">
+                  <h4>{{ 'STUDENT_TRAVEL_TICKETS.FORM.FAMILY_MEMBER' | translate }} {{ i + 1 }}</h4>
+                  <p-button
+                    icon="pi pi-times"
+                    severity="danger"
+                    [rounded]="true"
+                    [text]="true"
+                    (onClick)="removeFamilyMember(i)"
+                    [pTooltip]="'STUDENT_TRAVEL_TICKETS.FORM.REMOVE_MEMBER' | translate">
+                  </p-button>
+                </div>
+                <div class="form-row">
+                  <div class="form-col">
+                    <label [for]="'memberName' + i">{{ 'STUDENT_TRAVEL_TICKETS.FORM.MEMBER_NAME' | translate }} <span class="required">*</span></label>
+                    <input
+                      [id]="'memberName' + i"
+                      pInputText
+                      formControlName="memberName">
+                    @if (member.get('memberName')?.invalid && member.get('memberName')?.touched) {
+                      <small class="p-error">
+                        {{ 'STUDENT_TRAVEL_TICKETS.VALIDATION.REQUIRED' | translate }}
+                      </small>
+                    }
+                  </div>
+                  <div class="form-col">
+                    <label [for]="'relationship' + i">{{ 'STUDENT_TRAVEL_TICKETS.FORM.RELATIONSHIP' | translate }}</label>
+                    <p-select
+                      [id]="'relationship' + i"
+                      [options]="relationshipOptions"
+                      formControlName="relationship"
+                      optionLabel="label"
+                      optionValue="value"
+                      appendTo="body">
+                    </p-select>
+                  </div>
+                  <div class="form-col">
+                    <label [for]="'birthdate' + i">{{ 'STUDENT_TRAVEL_TICKETS.FORM.BIRTHDATE' | translate }} <span class="required">*</span></label>
+                    <p-datepicker
+                      [id]="'birthdate' + i"
+                      formControlName="birthdate"
+                      [showIcon]="true"
+                      dateFormat="yy-mm-dd"
+                      [maxDate]="today"
+                      appendTo="body">
+                    </p-datepicker>
+                    @if (member.get('birthdate')?.invalid && member.get('birthdate')?.touched) {
+                      <small class="p-error">
+                        {{ 'STUDENT_TRAVEL_TICKETS.VALIDATION.REQUIRED' | translate }}
+                      </small>
+                    }
+                  </div>
+                  <div class="form-col">
+                    <label [for]="'age' + i">{{ 'STUDENT_TRAVEL_TICKETS.FORM.AGE' | translate }}</label>
+                    <p-inputnumber
+                      [id]="'age' + i"
+                      formControlName="age"
+                      [readonly]="true"
+                      [showButtons]="false">
+                    </p-inputnumber>
+                  </div>
+                  <div class="form-col">
+                    <label [for]="'memberTicketCost' + i">{{ 'STUDENT_TRAVEL_TICKETS.FORM.MEMBER_TICKET_COST' | translate }}</label>
+                    <p-inputnumber [min]="0"
+                      [id]="'memberTicketCost' + i"
+                      formControlName="ticketCost"
+                      mode="decimal"
+                      [minFractionDigits]="2"
+                      [maxFractionDigits]="2"
+                      [showButtons]="false">
+                    </p-inputnumber>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-col">
+                    <label [for]="'gender' + i">{{ 'STUDENT_TRAVEL_TICKETS.FORM.GENDER' | translate }}</label>
+                    <p-select
+                      [id]="'gender' + i"
+                      [options]="genderOptions"
+                      formControlName="gender"
+                      optionLabel="name"
+                      optionValue="id"
+                      appendTo="body">
+                    </p-select>
+                  </div>
+                  <div class="form-col">
+                    <label [for]="'passportNumber' + i">{{ 'STUDENT_TRAVEL_TICKETS.FORM.PASSPORT_NUMBER' | translate }}</label>
+                    <input
+                      [id]="'passportNumber' + i"
+                      pInputText
+                      formControlName="passportNumber">
+                  </div>
+                  <div class="form-col">
+                    <label [for]="'passportExpiryDate' + i">{{ 'STUDENT_TRAVEL_TICKETS.FORM.PASSPORT_EXPIRY_DATE' | translate }}</label>
+                    <p-datepicker
+                      [id]="'passportExpiryDate' + i"
+                      formControlName="passportExpiryDate"
+                      [showIcon]="true"
+                      dateFormat="yy-mm-dd"
+                      appendTo="body">
+                    </p-datepicker>
+                  </div>
+                  <div class="form-col">
+                    <label [for]="'memberNotes' + i">{{ 'STUDENT_TRAVEL_TICKETS.FORM.MEMBER_NOTES' | translate }}</label>
+                    <textarea
+                      [id]="'memberNotes' + i"
+                      pTextarea
+                      formControlName="notes"
+                      rows="2"
+                      [autoResize]="true">
+                    </textarea>
+                  </div>
+                </div>
+              </div>
+            }
+            <div class="add-member-button">
+              <p-button
+                icon="pi pi-plus"
+                [label]="'STUDENT_TRAVEL_TICKETS.FORM.ADD_FAMILY_MEMBER' | translate"
+                severity="secondary"
+                (onClick)="addFamilyMember()"
+                styleClass="p-button-outlined">
+              </p-button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="dialog-footer-compact">
+      <p-button
+        [label]="'COMMON.CANCEL' | translate"
+        icon="pi pi-times"
+        severity="secondary"
+        (onClick)="closeModal()"
+        styleClass="p-button-outlined">
+      </p-button>
+      <p-button
+        [label]="'COMMON.SAVE' | translate"
+        icon="pi pi-check"
+        type="submit"
+        [loading]="modalSubmitting"
+        [disabled]="travelTicketForm.invalid || wafarInsufficient">
+      </p-button>
+    </div>
+  </form>
+</p-dialog>
+
+<!-- View Details Dialog -->
+<p-dialog
+  [(visible)]="drawerVisible"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [maximizable]="true"
+  [style]="{width: '90vw', maxWidth: '1100px'}"
+  styleClass="travel-ticket-view-dialog"
+  [attr.dir]="translation.isRTL() ? 'rtl' : 'ltr'"
+  (onHide)="closeDrawer()">
+
+  <!-- Header -->
+  <ng-template pTemplate="header">
+    <div class="flex align-items-center gap-3 w-full">
+      <i class="pi pi-ticket text-xl view-dialog-header__icon"></i>
+      <div>
+        <div class="font-semibold text-lg">{{ 'STUDENT_TRAVEL_TICKETS.VIEW.TITLE' | translate }}</div>
+        @if (viewingTicket) {
+          <div class="text-sm view-dialog-header__sub">
+            {{ getStudentName(viewingTicket.studentId) }}
+            @if (viewingTicket.travelTicketId) {
+              <span> &bull; #{{ viewingTicket.travelTicketId }}</span>
+            }
+          </div>
+        }
+      </div>
+      @if (viewingTicket?.travelType) {
+        <div class="ml-auto mr-3">
+          <p-tag
+            [value]="travelTypeLabel(viewingTicket!.travelType)"
+            [severity]="viewingTicket!.travelType | codeSeverity:'travel-type'">
+          </p-tag>
+        </div>
+      }
+    </div>
+  </ng-template>
+
+  <!-- Content — form-module layout mirroring the edit dialog -->
+  @if (viewingTicket) {
+    <div class="view-compact-grid">
+      <!-- Section 1: Basic Info -->
+      <div class="view-section">
+        <div class="section-header">
+          <i class="pi pi-info-circle"></i>
+          <span>{{ 'STUDENT_TRAVEL_TICKETS.FORM.SECTION_PRIMARY' | translate }}</span>
+        </div>
+        <div class="view-row">
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.STUDENT' | translate }}</span>
+            <span class="vf-value">{{ getStudentName(viewingTicket.studentId) }}</span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.TABLE.TRAVEL_TYPE' | translate }}</span>
+            <span class="vf-value">
+              <p-tag
+                [value]="travelTypeLabel(viewingTicket.travelType)"
+                [severity]="viewingTicket.travelType | codeSeverity:'travel-type'">
+              </p-tag>
+            </span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.TABLE.TRAVEL_DATE' | translate }}</span>
+            <span class="vf-value">{{ viewingTicket.travelDate ? (viewingTicket.travelDate | date:'mediumDate') : ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.BOOKING_DATE' | translate }}</span>
+            <span class="vf-value">{{ viewingTicket.bookingDate ? (viewingTicket.bookingDate | date:'mediumDate') : ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+        </div>
+      </div>
+      <!-- Section 2: Travel Route -->
+      <div class="view-section">
+        <div class="section-header">
+          <i class="pi pi-map-marker"></i>
+          <span>{{ 'STUDENT_TRAVEL_TICKETS.FORM.SECTION_TRAVEL' | translate }}</span>
+        </div>
+        <div class="view-row">
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.DEPARTURE_COUNTRY' | translate }}</span>
+            <span class="vf-value">{{ viewingTicket.departureCountry || ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.DEPARTURE_CITY' | translate }}</span>
+            <span class="vf-value">{{ viewingTicket.departureCity || ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.DESTINATION_COUNTRY' | translate }}</span>
+            <span class="vf-value">{{ viewingTicket.destinationCountry || ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.DESTINATION_CITY' | translate }}</span>
+            <span class="vf-value">{{ viewingTicket.destinationCity || ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+        </div>
+      </div>
+      <!-- Section 3: Flight Info -->
+      <div class="view-section">
+        <div class="section-header">
+          <i class="pi pi-send"></i>
+          <span>{{ 'STUDENT_TRAVEL_TICKETS.FORM.SECTION_FLIGHT' | translate }}</span>
+        </div>
+        <div class="view-row">
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.TABLE.AIRLINE' | translate }}</span>
+            <span class="vf-value">{{ viewingTicket.airline || ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.TABLE.FLIGHT_NUMBER' | translate }}</span>
+            <span class="vf-value">{{ viewingTicket.flightNumber || ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.TABLE.TICKET_NUMBER' | translate }}</span>
+            <span class="vf-value">{{ viewingTicket.ticketNumber || ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.STUDENT_TICKET_COST' | translate }}</span>
+            <span class="vf-value">{{ viewingTicket.ticketCost != null ? (viewingTicket.ticketCost | number:'1.2-2') : ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.CURRENCY' | translate }}</span>
+            <span class="vf-value">{{ getCurrencyName(viewingTicket.currencyId) || ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.FUNDING_SOURCE' | translate }}</span>
+            <span class="vf-value">{{ getFundingSourceName(viewingTicket.fundingSourceId) || ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.TOTAL_COST' | translate }}</span>
+            <span class="vf-value vf-strong">{{ (viewingTicket.totalTicketCost != null ? viewingTicket.totalTicketCost : viewingTicket.ticketCost) | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+      <!-- Section 4: Family Members (conditional) -->
+      @if (viewingTicket.travelType === familyTravelType && viewingTicket.familyMembers && viewingTicket.familyMembers.length > 0) {
+        <div class="view-section"
+          >
+          <div class="section-header">
+            <i class="pi pi-users"></i>
+            <span>{{ 'STUDENT_TRAVEL_TICKETS.FORM.FAMILY_MEMBERS' | translate }}</span>
+          </div>
+          <div class="view-family-list">
+            @for (member of viewingTicket.familyMembers; track member; let i = $index) {
+              <div class="view-family-card">
+                <div class="view-family-card-header">
+                  <i class="pi pi-user"></i>
+                  <span>{{ 'STUDENT_TRAVEL_TICKETS.FORM.FAMILY_MEMBER' | translate }} {{ i + 1 }}</span>
+                </div>
+                <div class="view-row">
+                  <div class="view-col">
+                    <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.MEMBER_NAME' | translate }}</span>
+                    <span class="vf-value">{{ member.memberName }}</span>
+                  </div>
+                  @if (member.relationship) {
+                    <div class="view-col">
+                      <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.RELATIONSHIP' | translate }}</span>
+                      <span class="vf-value">{{ getRelationshipLabel(member.relationship) }}</span>
+                    </div>
+                  }
+                  <div class="view-col">
+                    <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.BIRTHDATE' | translate }}</span>
+                    <span class="vf-value">{{ member.birthdate ? (member.birthdate | date:'mediumDate') : ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+                  </div>
+                  <div class="view-col">
+                    <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.AGE' | translate }}</span>
+                    <span class="vf-value">{{ member.age != null ? member.age : ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+                  </div>
+                  <div class="view-col">
+                    <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.MEMBER_TICKET_COST' | translate }}</span>
+                    <span class="vf-value">{{ member.ticketCost != null ? (member.ticketCost | number:'1.2-2') : ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+                  </div>
+                  @if (member.passportNumber) {
+                    <div class="view-col">
+                      <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.PASSPORT_NUMBER' | translate }}</span>
+                      <span class="vf-value">{{ member.passportNumber }}</span>
+                    </div>
+                  }
+                  @if (member.notes) {
+                    <div class="view-col">
+                      <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.MEMBER_NOTES' | translate }}</span>
+                      <span class="vf-value vf-multiline">{{ member.notes }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+      <!-- Section 5: Notes (conditional) -->
+      @if (viewingTicket.travelPurpose || viewingTicket.notes) {
+        <div class="view-section">
+          <div class="section-header">
+            <i class="pi pi-comment"></i>
+            <span>{{ 'STUDENT_TRAVEL_TICKETS.FORM.SECTION_NOTES' | translate }}</span>
+          </div>
+          <div class="view-row">
+            @if (viewingTicket.travelPurpose) {
+              <div class="view-col">
+                <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.TRAVEL_PURPOSE' | translate }}</span>
+                <span class="vf-value vf-multiline">{{ viewingTicket.travelPurpose }}</span>
+              </div>
+            }
+            @if (viewingTicket.notes) {
+              <div class="view-col">
+                <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.FORM.NOTES' | translate }}</span>
+                <span class="vf-value vf-multiline">{{ viewingTicket.notes }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+      <!-- Section 6: Audit -->
+      <div class="view-section view-section-audit">
+        <div class="section-header">
+          <i class="pi pi-clock"></i>
+          <span>{{ 'STUDENT_TRAVEL_TICKETS.TABLE.CREATED' | translate }}</span>
+        </div>
+        <div class="view-row">
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.TABLE.CREATED' | translate }}</span>
+            <span class="vf-value">
+              {{ viewingTicket.createdDate ? (viewingTicket.createdDate | date:'short') : ('COMMON.NOT_AVAILABLE' | translate) }}
+              @if (viewingTicket.createdBy) {
+                <span class="vf-meta">({{ viewingTicket.createdBy }})</span>
+              }
+            </span>
+          </div>
+          <div class="view-col">
+            <span class="vf-label">{{ 'STUDENT_TRAVEL_TICKETS.TABLE.MODIFIED' | translate }}</span>
+            <span class="vf-value">
+              {{ viewingTicket.modifiedDate ? (viewingTicket.modifiedDate | date:'short') : ('COMMON.NOT_AVAILABLE' | translate) }}
+              @if (viewingTicket.modifiedBy) {
+                <span class="vf-meta">({{ viewingTicket.modifiedBy }})</span>
+              }
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Footer -->
+  <ng-template pTemplate="footer">
+    <div class="flex justify-content-end gap-2">
+      @if (viewingTicket?.documentId) {
+        <p-button
+          icon="pi pi-file-pdf"
+          [label]="'STUDENT_TRAVEL_TICKETS.DOCUMENT.VIEW' | translate"
+          [outlined]="true"
+          (onClick)="openTicketDocument(viewingTicket?.documentId)">
+        </p-button>
+      }
+      <p-button
+        icon="pi pi-pencil"
+        [label]="'STUDENT_TRAVEL_TICKETS.ACTIONS.EDIT' | translate"
+        severity="warn"
+        [outlined]="true"
+        (onClick)="editFromView()">
+      </p-button>
+      <p-button
+        icon="pi pi-times"
+        [label]="'COMMON.CLOSE' | translate"
+        severity="secondary"
+        (onClick)="closeDrawer()">
+      </p-button>
+    </div>
+  </ng-template>
+
+</p-dialog>

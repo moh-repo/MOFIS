@@ -1,0 +1,225 @@
+<div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="card-header">
+    <!-- Header Section. `flex-1` on the leading block, not
+         `justify-content-between`: under `direction: rtl` a flex row already
+         runs right to left, and the global rule in styles.scss reverses every
+         `.flex.justify-content-between` again, which put the heading back on
+         the left and the actions on the right in Arabic. See
+         src/app/demo/components/page-headings.spec.ts. -->
+    <div class="flex align-items-center">
+      <div class="flex-1">
+        <h3 class="m-0">{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.TITLE' | translate }}</h3>
+        <p class="text-color-secondary mt-2">{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.DESCRIPTION' | translate }}</p>
+      </div>
+      <div class="flex gap-2">
+        <p-button [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'" [label]="'REPORTS.REPORT_SUBPAGES.BACK_TO_STATISTICAL_REPORTS' | translate" [outlined]="true" routerLink="/reports/statistical" />
+        <app-report-actions
+          pdfApiPath="/api/reports/statistical/student-extension/export-report"
+          [query]="reportQuery()"
+          baseFilename="student-extension-statistics">
+        </app-report-actions>
+
+      </div>
+    </div>
+  </div>
+
+  <p-divider />
+
+  <!-- Filters -->
+  <div class="grid p-3">
+    @if (hasMultiCountry) {
+      <div class="col-12 md:col-4">
+        <label class="block mb-2 font-semibold">{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</label>
+        <p-multiselect
+          [options]="allowedCountries"
+          [(ngModel)]="selectedCountryIds"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_COUNTRIES' | translate"
+          (onChange)="onCountryChange()"
+          styleClass="w-full"
+          appendTo="body">
+        </p-multiselect>
+      </div>
+    }
+    <div class="col-12 md:col-6 lg:col-4">
+      <label for="extensionType" class="block mb-2 font-semibold">{{ 'STUDENT_EXTENSION.FILTERS.EXTENSION_TYPE' | translate }}</label>
+      <p-select
+        id="extensionType"
+        [options]="extensionTypes"
+        [(ngModel)]="selectedType"
+        [placeholder]="'STUDENT_EXTENSION.FILTERS.ALL_TYPES' | translate"
+        [showClear]="true"
+        (onChange)="filterData()"
+        styleClass="w-full"
+        appendTo="body" />
+    </div>
+    <div class="col-12 md:col-6 lg:col-4">
+      <label for="year" class="block mb-2 font-semibold">{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.YEAR' | translate }}</label>
+      <p-select
+        id="year"
+        [options]="years"
+        [(ngModel)]="selectedYear"
+        [placeholder]="'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.ALL_YEARS' | translate"
+        [showClear]="true"
+        (onChange)="filterData()"
+        styleClass="w-full"
+        appendTo="body" />
+    </div>
+    <div class="col-12 md:col-6 lg:col-4 flex align-items-end">
+      <p-button
+        icon="pi pi-filter-slash"
+        [label]="'COMMON.CLEAR' | translate"
+        (onClick)="clearFilters()"
+        [outlined]="true"
+        styleClass="w-full" />
+    </div>
+  </div>
+
+  <p-divider />
+
+  <!-- Chart Section -->
+  <div class="p-3">
+    <h4 class="mb-3">{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.CHART_TITLE' | translate }}</h4>
+    <p-chart type="bar" [data]="chartData" [options]="chartOptions" [style]="{'height': '400px'}"></p-chart>
+  </div>
+
+  <p-divider />
+
+  <!-- Statistics Table -->
+  <div class="p-3">
+    <h4 class="mb-3">{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.STATISTICS_TABLE' | translate }}</h4>
+    <p-table
+      [value]="filteredStatistics"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="10"
+      [rowsPerPageOptions]="[10, 25, 50]"
+      [tableStyle]="{'min-width': '50rem'}"
+      styleClass="p-datatable-gridlines">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th>{{ 'STUDENT_EXTENSION.TABLE.EXTENSION_TYPE' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.TOTAL' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.APPROVED' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.PENDING' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.REJECTED' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.AVG_QUARTERS' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.APPROVAL_RATE' | translate }}</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-stat>
+        <tr>
+          <td class="font-semibold">{{ stat.extensionType }}</td>
+          <td>{{ stat.totalExtensions }}</td>
+          <td>
+            <p-tag
+              [value]="stat.approvedCount.toString()"
+              severity="success" />
+          </td>
+          <td>
+            <p-tag
+              [value]="stat.pendingCount.toString()"
+              severity="warn" />
+          </td>
+          <td>
+            <p-tag
+              [value]="stat.rejectedCount.toString()"
+              severity="danger" />
+          </td>
+          <td>{{ stat.averageQuarters | number:'1.1-1' }}</td>
+          <td>
+            <p-progressBar
+              [value]="stat.approvalRate"
+              [showValue]="true"
+              [style]="{'height': '1.5rem'}">
+            </p-progressBar>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="7" class="text-center">{{ 'REPORTS.REPORT_SUBPAGES.NO_DATA_FOUND' | translate }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <p-divider />
+
+  <!-- Trends Table -->
+  <div class="p-3">
+    <h4 class="mb-3">{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.TRENDS_TABLE' | translate }}</h4>
+    <p-table
+      [value]="filteredTrends"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="10"
+      [rowsPerPageOptions]="[10, 25, 50]"
+      [tableStyle]="{'min-width': '50rem'}"
+      styleClass="p-datatable-gridlines">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.YEAR' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.QUARTER' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.EXTENSION_COUNT' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.APPROVED_COUNT' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_EXTENSION_STATS.TREND' | translate }}</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-trend>
+        <tr>
+          <td>{{ trend.year }}</td>
+          <td>{{ trend.quarter }}</td>
+          <td class="font-semibold">{{ trend.extensionCount }}</td>
+          <td>{{ trend.approvedCount }}</td>
+          <td>
+            <p-tag
+              [value]="trend.trend"
+              [severity]="getTrendSeverity(trend.trend)" />
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5" class="text-center">{{ 'REPORTS.REPORT_SUBPAGES.NO_DATA_FOUND' | translate }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <!-- PDF Report Viewer -->
+  <div class="card mt-3">
+    <!-- Heading leads this row too; see the comment on the page header above. -->
+    <div class="flex align-items-center mb-3 flex-wrap gap-2">
+      <div class="flex align-items-center gap-2 flex-1">
+        <i class="pi pi-file-pdf" style="font-size:1.4rem;color:#6b2737"></i>
+        <h4 class="m-0" style="color:#6b2737">{{ 'REPORTS.VIEWER.GENERATE_REPORT' | translate }}</h4>
+      </div>
+      <div class="flex align-items-center gap-3 flex-wrap">
+        <div class="flex align-items-center gap-2">
+          <span class="font-semibold text-sm">{{ 'REPORTS.VIEWER.LANGUAGE' | translate }}: </span>
+          <p-selectButton [options]="reportLangOptions"
+            [(ngModel)]="selectedLang" optionLabel="label" optionValue="value">
+          </p-selectButton>
+        </div>
+        <p-button icon="pi pi-play"
+          [label]="'REPORTS.VIEWER.GENERATE_REPORT' | translate"
+          [loading]="reportLoading"
+          (onClick)="generateReport()">
+        </p-button>
+      </div>
+    </div>
+    <app-report-viewer [pdfApiPath]="pdfApiPath" [pdfQuery]="pdfQuery" [loadTrigger]="loadTrigger" [loading]="reportLoading" [filename]="'student-extension-statistics.pdf'">
+    </app-report-viewer>
+  </div>
+
+  <p-toast></p-toast>
+</div>
+

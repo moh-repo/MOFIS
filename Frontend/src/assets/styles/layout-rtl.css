@@ -1,0 +1,289 @@
+/* ── RTL Layout Overrides ──────────────────────────────────────────────
+   Mirrors the shell layout for right-to-left mode (Arabic). Only targets
+   structural layout containers: sidebar, topbar, main content area.
+
+   The previous version of this file applied blanket rules like
+     .rtl .flex { flex-direction: row-reverse }
+   which broke every flex-column layout (dashboard stat cards, notification
+   lists, form layouts). That is now removed — PrimeFlex utility classes
+   (.flex, .grid, .card, .col-*) are NOT overridden here.
+
+   NOTE: component-level RTL adjustments that deal with PrimeFlex utilities
+   live in styles.scss (the `[dir="rtl"] .flex.justify-content-*` rules).
+   ──────────────────────────────────────────────────────────────────── */
+
+/* ── Layout wrapper ───────────────────────────────────────────────── */
+.rtl .layout-wrapper {
+  direction: rtl;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────── */
+.rtl .layout-sidebar {
+  left: auto;
+  transform-origin: right center;
+  direction: rtl;
+  text-align: right;
+}
+
+/* The floating 2rem inset is the desktop card. Below 992px the sidebar is an
+   off-canvas sheet that slides out by its own width, so the inset left a 2rem
+   strip of it over the page's first column (live QA #11). */
+@media (min-width: 992px) {
+  .rtl .layout-sidebar {
+    right: 2rem;
+  }
+}
+
+.rtl .layout-overlay .layout-sidebar {
+  transform: translateX(100%);
+  right: 0;
+  left: auto;
+}
+
+.rtl .layout-overlay.layout-overlay-active .layout-sidebar {
+  transform: translateX(0);
+}
+
+@media (min-width: 992px) {
+  .rtl .layout-static .layout-sidebar {
+    right: 2rem;
+    left: auto;
+  }
+}
+
+.rtl .layout-static.layout-static-inactive .layout-sidebar {
+  transform: translateX(100%);
+  right: 0;
+  left: auto;
+}
+
+/* ── Main content container ───────────────────────────────────────── */
+.rtl .layout-main-container {
+  margin-left: 0;
+  margin-right: var(--layout-sidebar-width);
+  padding: 7rem 3.5rem 2rem 1.5rem;
+  width: calc(100% - var(--layout-sidebar-width));
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.rtl .layout-overlay .layout-main-container {
+  margin-right: 0;
+  padding: 7rem 1.5rem 2rem 1.5rem;
+  width: 100%;
+  max-width: none;
+}
+
+.rtl .layout-static.layout-static-inactive .layout-main-container {
+  margin-right: 0;
+  padding: 7rem 1.5rem 2rem 1.5rem;
+  width: 100%;
+  max-width: none;
+}
+
+/* ── Content ──────────────────────────────────────────────────────── */
+.rtl .layout-main {
+  text-align: right;
+}
+
+/* ── Menu ─────────────────────────────────────────────────────────── */
+.rtl .layout-menu {
+  direction: rtl;
+  text-align: right;
+}
+
+.rtl .layout-menu ul li a {
+  display: flex;
+  flex-direction: row;
+  direction: rtl;
+  text-align: right;
+  justify-content: flex-start;
+}
+
+.rtl .layout-menu .layout-menuitem-icon {
+  margin-right: 0;
+  margin-left: 0.5rem;
+  order: 1;
+}
+
+.rtl .layout-menu .layout-menuitem-text {
+  text-align: right;
+  order: 2;
+  flex: 1;
+}
+
+.rtl .layout-menu .layout-submenu-toggler {
+  margin-left: 0;
+  margin-right: auto;
+  order: 3;
+}
+
+.rtl .layout-menu .layout-menuitem-root-text {
+  text-align: right;
+}
+
+.rtl .layout-menu .active-menuitem > .layout-submenu-toggler {
+  transform: rotate(180deg);
+}
+
+.rtl .layout-menu li.active-menuitem > a .layout-submenu-toggler {
+  transform: rotate(180deg);
+}
+
+/* ── Menu indentation (RTL) ───────────────────────────────────────── */
+.rtl .layout-menu ul li a                             { margin-left: 0; margin-right: 1rem; }
+.rtl .layout-menu ul li li a                          { margin-left: 0; margin-right: 2rem; }
+.rtl .layout-menu ul li li li a                       { margin-left: 0; margin-right: 2.5rem; }
+.rtl .layout-menu ul li li li li a                    { margin-left: 0; margin-right: 3rem; }
+.rtl .layout-menu ul li li li li li a                 { margin-left: 0; margin-right: 3.5rem; }
+.rtl .layout-menu ul li li li li li li a              { margin-left: 0; margin-right: 4rem; }
+
+/* ── Topbar ───────────────────────────────────────────────────────── */
+/* The topbar mirrors itself: assets/layout/styles/layout/_topbar.scss places
+   every part with logical properties (margin-inline-*, inset-inline-*), and the
+   wrapper's dir="rtl" flips them. This file used to re-declare the bar as a
+   row-reverse flex row with an explicit `order` on each child *and* an auto
+   margin on both the logo and the menu — the two autos halved the free space
+   between them and left the hamburger stranded mid-bar. Only the text
+   direction belongs here now. */
+.rtl .layout-topbar {
+  text-align: right;
+  direction: rtl;
+}
+
+/* ── Cards & Grid (RTL text alignment) ────────────────────────────── */
+.rtl .p-card,
+.rtl .card {
+  text-align: right;
+  box-sizing: border-box;
+}
+
+.rtl .grid {
+  direction: rtl;
+}
+
+/* ── Config sidebar ───────────────────────────────────────────────── */
+/* The drawer flips sides through p-drawer's own [position] binding (see
+   AppConfigComponent.drawerPosition). Pinning the panel to left: 0 here left it
+   fighting the right-hand slide-in animation, and `.layout-config` never
+   existed — the old trigger was `.layout-config-button`, now removed. */
+
+/* ── Footer ───────────────────────────────────────────────────────── */
+.rtl .layout-footer {
+  text-align: right;
+}
+
+/* ── Mask ─────────────────────────────────────────────────────────── */
+.rtl .layout-mask {
+  right: auto;
+  left: 0;
+}
+
+/* ── Responsive (tablet and below) ────────────────────────────────── */
+@media (max-width: 991px) {
+  /* Off-canvas on the right, the side it opens from in Arabic, flush with the
+     edge — the same place _responsive.scss slides it in from. */
+  .rtl .layout-sidebar {
+    right: 0;
+    left: auto;
+    transform: translateX(100%);
+  }
+
+  .rtl .layout-wrapper.layout-mobile-active .layout-sidebar,
+  .layout-wrapper.rtl.layout-mobile-active .layout-sidebar {
+    transform: translateX(0);
+  }
+
+  .rtl .layout-main-container {
+    margin-right: 0;
+    padding: 7rem 1.5rem 2rem 1.5rem;
+    width: 100%;
+    max-width: none;
+  }
+
+  /* Position and icon spacing come from _topbar.scss's logical properties;
+     only the text direction of the mobile sheet is stated here. */
+  .rtl .layout-topbar-menu {
+    text-align: right;
+    direction: rtl;
+  }
+}
+
+@media (max-width: 768px) {
+  .rtl .layout-main-container {
+    padding: 7rem 1rem 2rem 1rem;
+    width: 100%;
+    max-width: none;
+  }
+
+  .rtl .layout-sidebar {
+    width: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .rtl .layout-main-container {
+    padding: 7rem 0.5rem 2rem 0.5rem;
+    width: 100%;
+    max-width: none;
+  }
+
+  .rtl .layout-sidebar {
+    width: 260px;
+  }
+}
+
+/* ── Widescreen — keep content full-width ─────────────────────────── */
+@media screen and (min-width: 1960px) {
+  .rtl .layout-main-container {
+    width: calc(100% - var(--layout-sidebar-width));
+    max-width: none;
+  }
+}
+
+/* ── Transitions ──────────────────────────────────────────────────── */
+.rtl .layout-sidebar {
+  transition: transform 0.3s ease, right 0.3s ease;
+}
+
+.rtl .layout-main-container {
+  transition: margin-right 0.3s ease;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────── */
+.rtl .layout-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.rtl .layout-sidebar::-webkit-scrollbar-track {
+  background: var(--surface-100);
+}
+
+.rtl .layout-sidebar::-webkit-scrollbar-thumb {
+  background: var(--surface-300);
+  border-radius: 3px;
+}
+
+.rtl .layout-sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-400);
+}
+
+/* ── Accessibility ────────────────────────────────────────────────── */
+.rtl .layout-menu a[aria-expanded="true"] .layout-submenu-toggler {
+  transform: rotate(180deg);
+}
+
+.rtl .layout-menu a[aria-expanded="false"] .layout-submenu-toggler {
+  transform: rotate(0deg);
+}
+
+/* ── Print ────────────────────────────────────────────────────────── */
+@media print {
+  .rtl .layout-wrapper { direction: rtl; }
+  .rtl .layout-sidebar { display: none; }
+  .rtl .layout-main-container { margin-right: 0; padding-right: 0; }
+  .rtl .layout-main { text-align: right; }
+}

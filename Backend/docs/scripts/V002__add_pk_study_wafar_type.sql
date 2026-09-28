@@ -1,0 +1,11 @@
+-- Add primary key to MOHECORE.STUDY_WAFAR_TYPE.
+-- WAFAR_TYPE_ID is unique in current data and is the JPA @Id column.
+IF NOT EXISTS (
+    SELECT 1 FROM sys.key_constraints
+    WHERE parent_object_id = OBJECT_ID('MOHECORE.STUDY_WAFAR_TYPE') AND type = 'PK'
+)
+BEGIN
+    ALTER TABLE MOHECORE.STUDY_WAFAR_TYPE
+        ADD CONSTRAINT PK_STUDY_WAFAR_TYPE PRIMARY KEY CLUSTERED (WAFAR_TYPE_ID);
+END
+GO

@@ -1,0 +1,255 @@
+@use '../finance-shared' as fin;
+
+.fin-form-page {
+    padding-bottom: 0.5rem;
+}
+
+// ─── Hero ────────────────────────────────────────────────────────────────────
+
+.fin-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+
+    @media (max-width: 640px) {
+        align-items: flex-start;
+    }
+}
+
+.fin-hero__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--green-600, #059669);
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 0.55rem;
+}
+
+.fin-hero__title {
+    margin: 0 0 0.25rem;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text-color);
+
+    @media (max-width: 640px) {
+        font-size: 1.3rem;
+    }
+}
+
+.fin-hero__subtitle {
+    margin: 0;
+    color: var(--text-color-secondary);
+    font-size: 0.88rem;
+}
+
+// ─── Sections ────────────────────────────────────────────────────────────────
+
+.fin-section {
+    @include fin.fin-section-card;
+}
+
+.fin-section__header {
+    @include fin.fin-section-header;
+}
+
+.fin-section__title {
+    @include fin.fin-section-title;
+}
+
+.fin-section__subtitle {
+    @include fin.fin-section-subtitle;
+}
+
+.fin-section__icon {
+    &--primary { @include fin.fin-section-icon(99, 102, 241); }
+    &--green   { @include fin.fin-section-icon(16, 185, 129); }
+    &--cyan    { @include fin.fin-section-icon(6, 182, 212); }
+    &--orange  { @include fin.fin-section-icon(249, 115, 22); }
+    &--purple  { @include fin.fin-section-icon(168, 85, 247); }
+    &--indigo  { @include fin.fin-section-icon(79, 70, 229); }
+    &--teal    { @include fin.fin-section-icon(20, 184, 166); }
+    &--slate   { @include fin.fin-section-icon(100, 116, 139); }
+}
+
+.fin-label {
+    @include fin.fin-field-label;
+}
+
+// ─── Field extras ────────────────────────────────────────────────────────────
+
+.fin-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 0.9rem;
+    border: 1px dashed var(--surface-border);
+    border-radius: 10px;
+    background: var(--surface-ground);
+
+    label {
+        margin: 0;
+        font-weight: 600;
+        cursor: pointer;
+        color: var(--text-color);
+    }
+}
+
+/* Read-only computed value — styled as a field, but never an input. */
+.fin-computed {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.6rem;
+    padding: 0 0.85rem;
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    background: var(--surface-ground);
+    font-weight: 700;
+    color: var(--green-600, #059669);
+
+    > i {
+        color: var(--text-color-secondary);
+        font-weight: 400;
+    }
+
+    > small {
+        font-weight: 500;
+        font-size: 0.75rem;
+        color: var(--text-color-secondary);
+    }
+}
+
+.fin-student-option {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+}
+
+.fin-student-option__name {
+    font-weight: 600;
+}
+
+.fin-student-option__id {
+    font-size: 0.75rem;
+    color: var(--text-color-secondary);
+}
+
+/*
+ * The "Received Whom" field used to force `display: flex` on the p-select host
+ * here, to work around PrimeNG's `.p-inputgroup .p-inputwrapper > .p-component
+ * { flex: 1 1 auto; width: 1% }` rule: the host computed to `display: block`, so
+ * the flex declaration was inert and the 1% flex-basis applied literally.
+ *
+ * PrimeNG 21 dropped that `width: 1%` rule, which makes the workaround not just
+ * unnecessary but harmful — it shrink-wrapped the whole input group to the
+ * control's content width (measured at 84px against a 400px row). The sizing is
+ * now handled by the p-fluid compatibility block in styles.scss.
+ */
+
+// ─── Pending-approval notice ─────────────────────────────────────────────────
+
+.fin-pending {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 1rem 1.15rem;
+    margin-bottom: 1.15rem;
+    border-radius: 12px;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-inline-start: 4px solid #f59e0b;
+    background: rgba(245, 158, 11, 0.08);
+
+    > i {
+        font-size: 1.25rem;
+        color: #d97706;
+        margin-top: 0.1rem;
+    }
+}
+
+.fin-pending__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1 1 auto;
+
+    strong {
+        color: var(--text-color);
+    }
+
+    span,
+    small {
+        color: var(--text-color-secondary);
+    }
+
+    small {
+        font-size: 0.78rem;
+    }
+}
+
+.fin-pending__action {
+    flex: 0 0 auto;
+    align-self: center;
+}
+
+/*
+ * The record is locked until the outstanding request is decided. Kept readable
+ * rather than hidden so the user can still see what was submitted.
+ */
+.fin-form--locked {
+    .fin-section {
+        opacity: 0.72;
+        pointer-events: none;
+    }
+}
+
+// ─── States ──────────────────────────────────────────────────────────────────
+
+.fin-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 1rem;
+}
+
+.fin-empty {
+    @include fin.fin-empty-state;
+}
+
+.fin-empty__title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+}
+
+// ─── Action bar ──────────────────────────────────────────────────────────────
+
+.fin-actions {
+    @include fin.fin-action-bar;
+}
+
+// ─── Recipient dialog ────────────────────────────────────────────────────────
+
+.fin-recipient {
+    padding: 0.25rem 0;
+
+    .fin-section {
+        background: var(--surface-ground);
+    }
+}
+
+.fin-dialog-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+
+:host ::ng-deep .fin-recipient-dialog .p-dialog-content {
+    padding-top: 1rem;
+}

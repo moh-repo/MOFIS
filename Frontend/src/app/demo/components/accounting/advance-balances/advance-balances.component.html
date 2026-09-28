@@ -1,0 +1,101 @@
+<p-toast></p-toast>
+
+<div class="card">
+    <!-- Header. `flex-1` on the icon-and-title block, not
+         `justify-content-between` — see chart-of-accounts.component.html and
+         src/app/demo/components/page-headings.spec.ts. This page has nothing
+         opposite the heading; the block still leads the row so it is laid out
+         the same way as the other five. -->
+    <div class="flex align-items-center mb-4 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3 flex-1">
+            <i class="pi pi-wallet text-primary" style="font-size: 2.5rem"></i>
+            <div>
+                <h2 class="m-0 text-primary">{{ 'ACCOUNTING.ADVANCES_TITLE' | translate }}</h2>
+                <p class="text-600 mt-1 mb-0">{{ 'ACCOUNTING.ADVANCES_SUBTITLE' | translate }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!--
+        Filter. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+        The fiscal year picker was an unlabelled 8rem box floating at the end of
+        the heading row. Every figure on this page is scoped to it, so which
+        year is selected is the most important thing on the screen and needs
+        saying rather than inferring from the heading it sat beside.
+    -->
+    <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-4">
+            <div class="filter-bar__field"
+                 [class.filter-bar__field--active]="selectedFiscalYearId">
+                <label for="advFiscalYear">{{ 'ACCOUNTING.FISCAL_YEAR' | translate }}</label>
+                <p-select inputId="advFiscalYear" [options]="fiscalYears"
+                          [(ngModel)]="selectedFiscalYearId"
+                          optionLabel="yearNo" optionValue="id"
+                          [placeholder]="'ACCOUNTING.FISCAL_YEAR' | translate"
+                          (onChange)="reload()"></p-select>
+            </div>
+        </div>
+    </div>
+
+    <!-- A stored total disagreeing with its own detail is the one failure this
+         page exists to surface: no report built on either figure is trustworthy
+         until it is resolved. -->
+    <p-message *ngIf="reconciliation && !reconciliation.reconciled"
+               severity="error" styleClass="w-full mb-3">
+        <div class="flex flex-column gap-1">
+            <span class="font-medium">{{ 'ACCOUNTING.RECONCILE_FAILED' | translate }}</span>
+            <span class="text-sm" *ngFor="let d of reconciliation.discrepancies">
+                {{ 'ACCOUNTING.COUNTRY' | translate }} {{ countryName(d.countryId) }} —
+                {{ 'ACCOUNTING.TRANSFERRED' | translate }} {{ d.transferredDelta }},
+                {{ 'ACCOUNTING.WAFAR_EARMARKED' | translate }} {{ d.earmarkedDelta }},
+                {{ 'ACCOUNTING.WAFAR_SPENT' | translate }} {{ d.spentDelta }}
+            </span>
+        </div>
+    </p-message>
+
+    <p-message *ngIf="reconciliation?.reconciled && balances.length > 0"
+               severity="success" styleClass="w-full mb-3"
+               [text]="'ACCOUNTING.RECONCILE_OK' | translate"></p-message>
+
+    <p-progressSpinner *ngIf="loading" styleClass="w-2rem h-2rem"></p-progressSpinner>
+
+    <p-table *ngIf="!loading" [value]="balances" [scrollable]="true"
+             [customSort]="true" (sortFunction)="sortTable($event)">
+        <ng-template pTemplate="header">
+            <tr>
+                <th pSortableColumn="attache">{{ 'ACCOUNTING.ATTACHE' | translate }} <p-sortIcon field="attache"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="openingBalance">{{ 'ACCOUNTING.OPENING' | translate }} <p-sortIcon field="openingBalance"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="transferred">{{ 'ACCOUNTING.TRANSFERRED' | translate }} <p-sortIcon field="transferred"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="disbursed">{{ 'ACCOUNTING.DISBURSED' | translate }} <p-sortIcon field="disbursed"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="returned">{{ 'ACCOUNTING.RETURNED' | translate }} <p-sortIcon field="returned"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="wafarBalance">{{ 'ACCOUNTING.WAFAR_BALANCE' | translate }} <p-sortIcon field="wafarBalance"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="available">{{ 'ACCOUNTING.AVAILABLE' | translate }} <p-sortIcon field="available"></p-sortIcon></th>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-row>
+            <tr [class.bg-red-50]="isBroken(row)">
+                <td>{{ countryName(row.studyCountryInId) }}</td>
+                <td class="text-right">{{ row.openingBalance | number:'1.2-2' }}</td>
+                <td class="text-right">{{ row.transferred | number:'1.2-2' }}</td>
+                <td class="text-right">{{ row.disbursed | number:'1.2-2' }}</td>
+                <td class="text-right">{{ row.returned | number:'1.2-2' }}</td>
+                <td class="text-right font-medium">{{ row.wafarBalance | number:'1.2-2' }}</td>
+                <td class="text-right font-medium">{{ row.available | number:'1.2-2' }}</td>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+            <tr>
+                <td colspan="7" class="text-center text-color-secondary py-4">
+                    {{ 'ACCOUNTING.NO_ADVANCES' | translate }}
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+    <!-- Stated on the page because it is the whole point of the Wafar column:
+         savings are budget already transferred, never new money. -->
+    <small class="block mt-3 text-color-secondary">{{ 'ACCOUNTING.WAFAR_NOTE' | translate }}</small>
+</div>

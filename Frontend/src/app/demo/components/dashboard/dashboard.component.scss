@@ -1,0 +1,171 @@
+/* Summary palette for the dashboard tiles. Structure is shared — see
+   assets/layout/styles/_summary-cards.scss; only the accents are local, one
+   per figure, read by the edge bar, the icon tile and the hover border. */
+.summary-card {
+    &.students-total {
+        --summary-accent: #3b82f6;
+        .summary-icon { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+    }
+    &.students-active {
+        --summary-accent: #22c55e;
+        .summary-icon { background: linear-gradient(135deg, #4ade80, #22c55e); }
+    }
+    &.students-new {
+        --summary-accent: #f97316;
+        .summary-icon { background: linear-gradient(135deg, #fb923c, #f97316); }
+    }
+    &.students-inactive {
+        --summary-accent: #94a3b8;
+        .summary-icon { background: linear-gradient(135deg, #cbd5e1, #94a3b8); }
+    }
+
+    &.finance-total {
+        --summary-accent: #16a34a;
+        .summary-icon { background: linear-gradient(135deg, #4ade80, #16a34a); }
+    }
+    &.finance-average {
+        --summary-accent: #0ea5e9;
+        .summary-icon { background: linear-gradient(135deg, #38bdf8, #0ea5e9); }
+    }
+    &.finance-wafar {
+        --summary-accent: #2196f3;
+        .summary-icon { background: linear-gradient(135deg, #42a5f5, #2196f3); }
+        &.negative {
+            --summary-accent: #f44336;
+            .summary-icon { background: linear-gradient(135deg, #ef5350, #f44336); }
+        }
+    }
+    &.finance-pending {
+        --summary-accent: #ff9800;
+        .summary-icon { background: linear-gradient(135deg, #ffa726, #ff9800); }
+    }
+
+    &.approvals-pending {
+        --summary-accent: #a855f7;
+        .summary-icon { background: linear-gradient(135deg, #c084fc, #a855f7); }
+    }
+    &.approvals-mine {
+        --summary-accent: #6366f1;
+        .summary-icon { background: linear-gradient(135deg, #818cf8, #6366f1); }
+    }
+    &.alerts-open {
+        --summary-accent: #ef4444;
+        .summary-icon { background: linear-gradient(135deg, #f87171, #ef4444); }
+    }
+
+    &.users-total {
+        --summary-accent: #14b8a6;
+        .summary-icon { background: linear-gradient(135deg, #2dd4bf, #14b8a6); }
+    }
+    &.users-new {
+        --summary-accent: #f59e0b;
+        .summary-icon { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+    }
+
+    &.quarter-budget {
+        --summary-accent: #3b82f6;
+        .summary-icon { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+    }
+    &.quarter-paid {
+        --summary-accent: #16a34a;
+        .summary-icon { background: linear-gradient(135deg, #4ade80, #16a34a); }
+    }
+    &.quarter-students {
+        --summary-accent: #f97316;
+        .summary-icon { background: linear-gradient(135deg, #fb923c, #f97316); }
+    }
+}
+
+/* Severity chips under the open-cases figure sit in a row, not one per line. */
+.summary-severities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.45rem;
+}
+
+/* The per-type list beside the approvals tiles. */
+.dashboard-kv {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--surface-border);
+
+        &:last-child {
+            border-bottom: 0;
+        }
+    }
+}
+
+.dashboard-section-empty {
+    min-height: 8rem;
+}
+
+/* Section headings follow the reading direction — right edge in Arabic, left
+   edge in English — stated here rather than inherited: the layout sets `dir`
+   on its wrapper and the flex row follows it, but a heading that stayed on the
+   left under Arabic (owner, 29 Aug 2026) is not worth debugging through the
+   mirror stylesheets. `:host-context` reads the wrapper's `dir`. */
+.dashboard-section-head {
+    direction: inherit;
+
+    h5 {
+        text-align: start;
+        flex: 1 1 auto;
+    }
+}
+
+:host-context([dir='rtl']) {
+    .dashboard-section-head {
+        direction: rtl;
+        flex-direction: row;
+    }
+    .dashboard-section-head h5,
+    h6 {
+        text-align: right;
+    }
+}
+
+:host-context([dir='ltr']) {
+    .dashboard-section-head {
+        direction: ltr;
+        flex-direction: row;
+    }
+    .dashboard-section-head h5,
+    h6 {
+        text-align: left;
+    }
+}
+
+/**
+ * Charts open at full size when clicked.
+ *
+ * The wrapper is a real <button> rather than a div with a click handler: it is
+ * the only way the keyboard reaches the chart, and it carries the tooltip and
+ * the accessible name. Everything a button normally paints is stripped, so the
+ * card looks exactly as it did before — only the cursor says it can be opened.
+ */
+.dashboard-chart-open {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: inherit;
+    cursor: zoom-in;
+    border-radius: 6px;
+
+    &:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+    }
+}

@@ -1,0 +1,85 @@
+/**
+ * Page header: title and subtitle on the leading edge, refresh and add on the
+ * trailing edge — left/right in English, right/left in Arabic.
+ *
+ * `justify-content: space-between` inside an RTL document already puts the
+ * first child at the right edge, so nothing else is needed. What has to be
+ * undone is the app-wide rule in styles.scss:
+ *
+ *   [dir="rtl"] .flex.justify-content-between { flex-direction: row-reverse; }
+ *
+ * which flips the row a second time and lands the Arabic header back in the
+ * English arrangement. `:host-context` rather than a plain descendant selector
+ * because this page takes its direction from the document element, above the
+ * component — the same reason the dashboard's mirror rules use it.
+ */
+:host-context([dir="rtl"]) .mq-page-header.flex.justify-content-between {
+    flex-direction: row;
+}
+
+/* Dialog styling (.dv-*) is shared: assets/layout/styles/_detail-dialog.scss. */
+:host ::ng-deep {
+    .p-datatable {
+        /*
+         * Each of the eight columns used to carry an inline min-width (8, 8, 8,
+         * 14, 10, 10, 9 and 12rem). Their sum is the table's minimum — 79rem, or
+         * 995px at this app's 12.6px root size — so the table could not shrink
+         * with the page, and any window under roughly 1330px pushed the Actions
+         * column behind the card's horizontal scrollbar.
+         *
+         * PrimeNG stretches .p-datatable-table to 100% of the card, so with the
+         * floors gone the table is exactly as wide as the page. These rules
+         * decide what gives way: Name (4th) and Country (6th) wrap, while the
+         * quarter badge, the numbers, the amount, the status tag and the four
+         * action buttons keep their line. When there is genuinely no room left,
+         * .p-datatable-table-container (overflow-x: auto) scrolls.
+         */
+        th,
+        td {
+            white-space: nowrap;
+        }
+
+        th:nth-child(4), td:nth-child(4),
+        th:nth-child(6), td:nth-child(6) {
+            white-space: normal;
+            min-width: 9rem;
+            word-break: break-word;
+        }
+
+        .p-datatable-thead > tr > th {
+            background-color: var(--surface-50);
+            font-weight: 600;
+            border-bottom: 2px solid var(--surface-border);
+        }
+
+        .p-datatable-tbody > tr {
+            transition: all 0.2s;
+
+            &:hover {
+                background-color: var(--surface-hover) !important;
+            }
+        }
+    }
+
+    .p-button-rounded {
+        width: 2.5rem;
+        height: 2.5rem;
+
+        &:hover {
+            transform: scale(1.1);
+        }
+    }
+
+    .bg-primary-100 {
+        background-color: var(--primary-100);
+    }
+
+    .text-primary-700 {
+        color: var(--primary-700);
+    }
+}
+
+// Quarter creation in progress (review Q4).
+.mq-create-job__icon {
+  margin-inline-end: 0.5rem;
+}

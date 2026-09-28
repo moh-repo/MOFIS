@@ -1,0 +1,447 @@
+<div class="notification-history-container" [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+
+  <!-- Header -->
+  <div class="card mb-3">
+    <!--
+      The heading block takes the free space rather than the row carrying
+      justify-content-between: styles.scss reverses that class again for RTL,
+      which put the title on the left and Refresh on the right in Arabic.
+    -->
+    <div class="flex align-items-center">
+      <div class="flex align-items-center gap-3 flex-1">
+        <i class="pi pi-history text-primary" style="font-size: 2rem"></i>
+        <div>
+          <h3 class="m-0 text-primary">{{ 'NOTIFICATIONS.HISTORY.TITLE' | translate }}</h3>
+          <p class="text-600 mt-1 mb-0">{{ 'NOTIFICATIONS.HISTORY.DESCRIPTION' | translate }}</p>
+        </div>
+      </div>
+      <p-button icon="pi pi-refresh" [label]="'COMMON.REFRESH' | translate"
+      styleClass="p-button-action-outlined" (onClick)="loadHistory()"></p-button>
+    </div>
+  </div>
+
+  <!--
+    Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+    Seven fields, seven tracks, none wide: the attaché, four dropdowns over the
+    same code lists the row's own cells are named from, and the two ends of the
+    range the list is ordered by. Narrowing is the server's job — the table is
+    lazy and holds one page at a time, so a filter applied here would search
+    that page only.
+  -->
+  <div class="filter-bar">
+    <div class="filter-bar__grid filter-bar__grid--cols-7">
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterCountryId != null">
+        <label for="nhCountry">{{ 'NOTIFICATIONS.HISTORY.COUNTRY_FILTER' | translate }}</label>
+        <p-select inputId="nhCountry" [options]="countryOptions"
+          [(ngModel)]="filterCountryId" optionLabel="name" optionValue="id"
+          [filter]="true" filterBy="name" appendTo="body"
+          [showClear]="true" [placeholder]="'NOTIFICATIONS.HISTORY.ALL_COUNTRIES' | translate"
+          (onChange)="applyFilters()"></p-select>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterChannel">
+        <label for="nhChannel">{{ 'NOTIFICATIONS.HISTORY.CHANNEL' | translate }}</label>
+        <p-select inputId="nhChannel" [options]="options('notification-channel')"
+          [(ngModel)]="filterChannel" optionLabel="label" optionValue="value"
+          [showClear]="true" [placeholder]="'COMMON.ALL' | translate"
+          (onChange)="applyFilters()"></p-select>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterRecipientType">
+        <label for="nhType">{{ 'NOTIFICATIONS.HISTORY.TYPE' | translate }}</label>
+        <p-select inputId="nhType" [options]="options('notification-recipient-type')"
+          [(ngModel)]="filterRecipientType" optionLabel="label" optionValue="value"
+          [showClear]="true" [placeholder]="'COMMON.ALL' | translate"
+          (onChange)="applyFilters()"></p-select>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterScope">
+        <label for="nhScope">{{ 'NOTIFICATIONS.HISTORY.SCOPE' | translate }}</label>
+        <p-select inputId="nhScope" [options]="options('notification-scope')"
+          [(ngModel)]="filterScope" optionLabel="label" optionValue="value"
+          [showClear]="true" [placeholder]="'COMMON.ALL' | translate"
+          (onChange)="applyFilters()"></p-select>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterStatus">
+        <label for="nhStatus">{{ 'NOTIFICATIONS.HISTORY.STATUS' | translate }}</label>
+        <p-select inputId="nhStatus" [options]="options('notification-send-status')"
+          [(ngModel)]="filterStatus" optionLabel="label" optionValue="value"
+          [showClear]="true" [placeholder]="'COMMON.ALL' | translate"
+          (onChange)="applyFilters()"></p-select>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterSentFrom">
+        <label for="nhFrom">{{ 'NOTIFICATIONS.HISTORY.SENT_FROM' | translate }}</label>
+        <p-datepicker inputId="nhFrom" [(ngModel)]="filterSentFrom"
+          dateFormat="yy-mm-dd" [showClear]="true" [maxDate]="filterSentTo ?? undefined"
+          (onSelect)="applyFilters()" (onClearClick)="applyFilters()"></p-datepicker>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterSentTo">
+        <label for="nhTo">{{ 'NOTIFICATIONS.HISTORY.SENT_TO' | translate }}</label>
+        <p-datepicker inputId="nhTo" [(ngModel)]="filterSentTo"
+          dateFormat="yy-mm-dd" [showClear]="true" [minDate]="filterSentFrom ?? undefined"
+          (onSelect)="applyFilters()" (onClearClick)="applyFilters()"></p-datepicker>
+      </div>
+    </div>
+
+    <div class="filter-bar__actions">
+      <p-button icon="pi pi-search" [label]="'COMMON.SEARCH' | translate"
+        styleClass="p-button-search" (onClick)="applyFilters()"></p-button>
+      <p-button icon="pi pi-filter-slash" [label]="'COMMON.RESET' | translate"
+        styleClass="p-button-action-outlined"
+        [disabled]="!hasFilters" (onClick)="clearFilters()"></p-button>
+    </div>
+  </div>
+
+  <div class="card">
+    <p-table
+      [value]="logs"
+      [lazy]="true"
+      [paginator]="true"
+      [rows]="pageSize"
+      [(first)]="first"
+      [totalRecords]="totalRecords"
+      [loading]="loading"
+      [rowsPerPageOptions]="[10, 20, 50]"
+      (onPage)="onPage($event)"
+      dataKey="id"
+      [expandedRowKeys]="expandedRows"
+      styleClass="p-datatable-gridlines p-datatable-sm">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th style="width: 3rem"></th>
+          <th pSortableColumn="createdAt">{{ 'NOTIFICATIONS.HISTORY.DATE' | translate }} <p-sortIcon field="createdAt"></p-sortIcon></th>
+          <th pSortableColumn="channel">{{ 'NOTIFICATIONS.HISTORY.CHANNEL' | translate }} <p-sortIcon field="channel"></p-sortIcon></th>
+          <th pSortableColumn="recipientType">{{ 'NOTIFICATIONS.HISTORY.TYPE' | translate }} <p-sortIcon field="recipientType"></p-sortIcon></th>
+          <th pSortableColumn="scope">{{ 'NOTIFICATIONS.HISTORY.SCOPE' | translate }} <p-sortIcon field="scope"></p-sortIcon></th>
+          <th>{{ 'NOTIFICATIONS.HISTORY.COUNTRIES' | translate }}</th>
+          <th pSortableColumn="subject">{{ 'NOTIFICATIONS.HISTORY.SUBJECT' | translate }} <p-sortIcon field="subject"></p-sortIcon></th>
+          <th pSortableColumn="totalCount">{{ 'NOTIFICATIONS.HISTORY.TOTAL' | translate }} <p-sortIcon field="totalCount"></p-sortIcon></th>
+          <th pSortableColumn="sentCount">{{ 'NOTIFICATIONS.HISTORY.SENT' | translate }} <p-sortIcon field="sentCount"></p-sortIcon></th>
+          <th pSortableColumn="failedCount">{{ 'NOTIFICATIONS.HISTORY.FAILED' | translate }} <p-sortIcon field="failedCount"></p-sortIcon></th>
+          <th pSortableColumn="status">{{ 'NOTIFICATIONS.HISTORY.STATUS' | translate }} <p-sortIcon field="status"></p-sortIcon></th>
+          <th style="width: 4rem">{{ 'COMMON.ACTIONS' | translate }}</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-log let-expanded="expanded">
+        <tr>
+          <td>
+            <!-- Closed, the chevron points the way the row will open, which is
+                 the direction the language reads: right in English, left in
+                 Arabic. It was `pi-chevron-right` either way. -->
+            <p-button type="button" [pRowToggler]="log"
+              [icon]="expanded ? 'pi pi-chevron-down' : (isRtl ? 'pi pi-chevron-left' : 'pi pi-chevron-right')"
+            severity="secondary" [text]="true" size="small"></p-button>
+          </td>
+          <td>{{ log.createdAt | date:'yyyy-MM-dd HH:mm' }}</td>
+          <td>
+            <span class="flex align-items-center gap-1">
+              <i class="pi {{ log.channel | codeIcon:'notification-channel' }}"></i>
+              {{ log.channel | codeLabel:'notification-channel':currentLanguage }}
+            </span>
+          </td>
+          <!-- Named from the lookup tables, like the channel and status beside
+               them. These two printed the raw code, so a reader in Arabic got
+               STUDENT and GROUP in the middle of an Arabic row. -->
+          <td>{{ log.recipientType | codeLabel:'notification-recipient-type':currentLanguage }}</td>
+          <td>{{ log.scope | codeLabel:'notification-scope':currentLanguage }}</td>
+          <td class="max-w-12rem overflow-hidden text-overflow-ellipsis white-space-nowrap">{{ formatCountries(log) }}</td>
+          <td class="max-w-15rem overflow-hidden text-overflow-ellipsis white-space-nowrap">
+            {{ log.subject || '—' }}
+          </td>
+          <td class="text-center">{{ log.totalCount }}</td>
+          <td class="text-center text-green-600 font-bold">{{ log.sentCount }}</td>
+          <td class="text-center text-red-500">{{ log.failedCount }}</td>
+          <td>
+            <p-tag [value]="log.status | codeLabel:'notification-send-status':currentLanguage" [severity]="log.status | codeSeverity:'notification-send-status'"></p-tag>
+          </td>
+          <td>
+            <!-- The message in full, and who it went to (V140). -->
+            <p-button icon="pi pi-eye" [rounded]="true" [text]="true" severity="secondary"
+              [ariaLabel]="'COMMON.VIEW' | translate" [attr.title]="'COMMON.VIEW' | translate"
+              (onClick)="openView(log)"></p-button>
+          </td>
+        </tr>
+      </ng-template>
+
+      <!--
+        `expandedrow`, not `rowexpansion`. PrimeNG 21's Table matches this
+        template by name against a fixed list, and `rowexpansion` is not on it —
+        so the template was never claimed, `expandedRowTemplate` stayed
+        undefined and the *ngIf guarding the expansion row was permanently
+        false. The chevron toggled the row's state correctly the whole time and
+        nothing appeared, which is why the message body and the delivery errors
+        could not be reached. It is the only template in the project that was
+        named this way; every other pTemplate here is still a name the table
+        knows.
+      -->
+      <ng-template pTemplate="expandedrow" let-log>
+        <tr>
+          <td colspan="12">
+            <div class="p-3">
+              <div class="grid">
+                <div class="col-12 md:col-6">
+                  <h6 class="mb-2">{{ 'NOTIFICATIONS.HISTORY.MESSAGE_BODY' | translate }}</h6>
+                  <div class="surface-100 border-round p-3 overflow-auto white-space-pre-wrap" style="max-height: 200px">{{ log.body }}</div>
+                </div>
+                @if (log.errorSummary) {
+                  <div class="col-12 md:col-6">
+                    <h6 class="mb-2 text-red-500">{{ 'NOTIFICATIONS.HISTORY.ERRORS' | translate }}</h6>
+                    <pre class="surface-100 border-round p-3 overflow-auto text-sm" style="max-height: 200px">{{ log.errorSummary }}</pre>
+                  </div>
+                }
+                @if (!log.errorSummary) {
+                  <div class="col-12 md:col-6">
+                    <p-tag [value]="'NOTIFICATIONS.HISTORY.NO_ERRORS' | translate" severity="success"></p-tag>
+                  </div>
+                }
+              </div>
+              <div class="text-500 text-sm mt-2">
+                {{ 'NOTIFICATIONS.HISTORY.BATCH_ID' | translate }}: {{ log.batchId }}
+                @if (log.sentAt) {
+                  <span> &bull; {{ 'NOTIFICATIONS.HISTORY.SENT_AT' | translate }}: {{ log.sentAt | date:'yyyy-MM-dd HH:mm:ss' }}</span>
+                }
+              </div>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <!-- Twelve columns: the toggler, ten of data, and the view button. -->
+          <td colspan="12" class="text-center text-500 py-4">
+            <!-- "Nothing has been sent yet" is a different statement from
+                 "nothing matches what you asked for", and with the filter bar
+                 on the page the first one would often be untrue. -->
+            {{ (hasFilters ? 'NOTIFICATIONS.HISTORY.NO_MATCH' : 'NOTIFICATIONS.HISTORY.EMPTY') | translate }}
+          </td>
+        </tr>
+      </ng-template>
+
+    </p-table>
+  </div>
+
+  <!-- ═══════════════════════════ VIEW ═══════════════════════════
+
+       One message, and who it went to. Layout (styles: .dv-* in
+       assets/layout/styles/_detail-dialog.scss, the vocabulary every record's
+       View dialog shares):
+
+         hero     → channel, subject, audience line; status, dates
+         kpis     → addressed / sent / failed
+         columns  → the message | the audience (type, scope, countries, batch)
+         section  → recipients: one row per person with the address the channel
+                    used and the outcome (V140); older batches have none
+         section  → delivery errors, when there were any
+         footer   → batch id; close
+  -->
+  <p-dialog [(visible)]="viewVisible" [modal]="true" [maximizable]="true"
+    [style]="{ width: '960px', maxWidth: '96vw' }"
+    [header]="'NOTIFICATIONS.HISTORY.VIEW_TITLE' | translate"
+    [draggable]="false" [resizable]="false"
+    styleClass="dv-dialog"
+    [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+
+    <ng-template pTemplate="content">
+      @if (viewing; as log) {
+        <div class="dv-view">
+
+          <!-- Hero -->
+          <div [class]="'dv-hero ' + heroClassFor(log)">
+            <div class="dv-hero__badge">
+              <i class="pi" [ngClass]="(log.channel | codeIcon:'notification-channel') || 'pi-send'"></i>
+            </div>
+            <div class="dv-hero__body">
+              <div class="dv-hero__eyebrow">{{ log.channel | codeLabel:'notification-channel':currentLanguage }}</div>
+              <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!log.subject">
+                {{ log.subject || ('NOTIFICATIONS.HISTORY.NO_SUBJECT' | translate) }}
+              </div>
+              <div class="dv-hero__subtitle">
+                {{ log.recipientType | codeLabel:'notification-recipient-type':currentLanguage }}
+                · {{ log.scope | codeLabel:'notification-scope':currentLanguage }}
+                · {{ formatCountries(log) }}
+              </div>
+              <div class="dv-hero__meta">
+                <p-tag [value]="log.status | codeLabel:'notification-send-status':currentLanguage"
+                  [severity]="log.status | codeSeverity:'notification-send-status'" [rounded]="true"></p-tag>
+                <span class="dv-chip">
+                  <i class="pi pi-calendar"></i>
+                  {{ 'NOTIFICATIONS.HISTORY.DATE' | translate }}: {{ log.createdAt | date:'medium' }}
+                </span>
+                @if (log.sentAt) {
+                  <span class="dv-chip dv-chip--green">
+                    <i class="pi pi-send"></i>
+                    {{ 'NOTIFICATIONS.HISTORY.SENT_AT' | translate }}: {{ log.sentAt | date:'medium' }}
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- KPIs -->
+          <div class="dv-kpis dv-kpis--cols-3">
+            <div class="dv-kpi dv-kpi--blue">
+              <span class="dv-kpi__icon"><i class="pi pi-users"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'NOTIFICATIONS.HISTORY.TOTAL' | translate }}</div>
+                <div class="dv-kpi__value">{{ log.totalCount }}</div>
+              </div>
+            </div>
+            <div class="dv-kpi dv-kpi--green">
+              <span class="dv-kpi__icon"><i class="pi pi-check"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'NOTIFICATIONS.HISTORY.SENT' | translate }}</div>
+                <div class="dv-kpi__value">{{ log.sentCount }}</div>
+              </div>
+            </div>
+            <div [class]="'dv-kpi ' + (log.failedCount > 0 ? 'dv-kpi--red' : 'dv-kpi--gray')">
+              <span class="dv-kpi__icon"><i class="pi pi-times"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'NOTIFICATIONS.HISTORY.FAILED' | translate }}</div>
+                <div class="dv-kpi__value">{{ log.failedCount }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dv-columns">
+            <!-- The message -->
+            <section class="dv-section">
+              <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-envelope"></i></span>
+                <div class="dv-section__title">{{ 'NOTIFICATIONS.HISTORY.MESSAGE' | translate }}</div>
+              </header>
+              <dl class="dv-dl">
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.HISTORY.SUBJECT' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!log.subject">{{ log.subject || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'NOTIFICATIONS.HISTORY.MESSAGE_BODY' | translate }}</dt>
+                  <dd><p class="dv-notes font-normal">{{ log.body }}</p></dd>
+                </div>
+              </dl>
+            </section>
+
+            <!-- The audience -->
+            <section class="dv-section">
+              <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-users"></i></span>
+                <div class="dv-section__title">{{ 'NOTIFICATIONS.HISTORY.AUDIENCE' | translate }}</div>
+              </header>
+              <dl class="dv-dl">
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.HISTORY.TYPE' | translate }}</dt>
+                  <dd>{{ log.recipientType | codeLabel:'notification-recipient-type':currentLanguage }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.HISTORY.SCOPE' | translate }}</dt>
+                  <dd>{{ log.scope | codeLabel:'notification-scope':currentLanguage }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.HISTORY.COUNTRIES' | translate }}</dt>
+                  <dd>{{ formatCountries(log) }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.HISTORY.CHANNEL' | translate }}</dt>
+                  <dd>{{ log.channel | codeLabel:'notification-channel':currentLanguage }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.HISTORY.DATE' | translate }}</dt>
+                  <dd>{{ log.createdAt | date:'medium' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.HISTORY.SENT_AT' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!log.sentAt">{{ (log.sentAt | date:'medium') || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'NOTIFICATIONS.HISTORY.BATCH_ID' | translate }}</dt>
+                  <dd class="font-monospace text-sm" dir="ltr">{{ log.batchId }}</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+
+          <!-- Recipients -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-address-book"></i></span>
+              <div class="dv-section__title">{{ 'NOTIFICATIONS.HISTORY.RECIPIENTS' | translate }}</div>
+              @if (recipients.length) {
+                <span class="dv-section__aside">
+                  <p-tag [value]="recipientsCountText()" severity="secondary" [rounded]="true"></p-tag>
+                </span>
+              }
+            </header>
+            @if (recipientsLoading) {
+              <div class="dv-notice dv-notice--muted">
+                <i class="pi pi-spin pi-spinner"></i>
+                <span>{{ 'NOTIFICATIONS.HISTORY.RECIPIENTS_LOADING' | translate }}</span>
+              </div>
+            } @else if (recipientsFailed) {
+              <div class="dv-notice dv-notice--danger">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span>{{ 'NOTIFICATIONS.HISTORY.RECIPIENTS_LOAD_FAILED' | translate }}</span>
+              </div>
+            } @else if (!recipients.length) {
+              <div class="dv-notice dv-notice--muted">
+                <i class="pi pi-info-circle"></i>
+                <span>{{ 'NOTIFICATIONS.HISTORY.RECIPIENTS_NOT_RECORDED' | translate }}</span>
+              </div>
+            } @else {
+              <p-table [value]="recipients" [paginator]="recipients.length > 10" [rows]="10"
+                styleClass="p-datatable-sm" dataKey="id">
+                <ng-template pTemplate="header">
+                  <tr>
+                    <th>{{ 'NOTIFICATIONS.HISTORY.RECIPIENT_NAME' | translate }}</th>
+                    <th style="width: 7rem">{{ 'NOTIFICATIONS.HISTORY.RECIPIENT_ID' | translate }}</th>
+                    <th>{{ 'NOTIFICATIONS.HISTORY.RECIPIENT_ADDRESS' | translate }}</th>
+                    <th style="width: 8rem">{{ 'NOTIFICATIONS.HISTORY.STATUS' | translate }}</th>
+                    <th>{{ 'NOTIFICATIONS.HISTORY.RECIPIENT_ERROR' | translate }}</th>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-r>
+                  <tr>
+                    <td class="font-medium">{{ r.name || '—' }}</td>
+                    <td>{{ r.recipientId ?? '—' }}</td>
+                    <td dir="ltr" [class.text-500]="!r.address">{{ r.address || '—' }}</td>
+                    <td>
+                      <p-tag [value]="r.status | codeLabel:'notification-send-status':currentLanguage"
+                        [severity]="r.status | codeSeverity:'notification-send-status'"></p-tag>
+                    </td>
+                    <td class="text-500 text-sm">{{ r.error || '' }}</td>
+                  </tr>
+                </ng-template>
+              </p-table>
+            }
+          </section>
+
+          <!-- Delivery errors -->
+          @if (log.errorSummary) {
+            <section class="dv-section">
+              <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--red"><i class="pi pi-exclamation-triangle"></i></span>
+                <div class="dv-section__title">{{ 'NOTIFICATIONS.HISTORY.ERRORS' | translate }}</div>
+              </header>
+              <pre class="dv-notes font-normal text-sm" dir="ltr">{{ log.errorSummary }}</pre>
+            </section>
+          }
+        </div>
+      }
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="dv-footer">
+        <div class="dv-footer__hint">
+          @if (viewing?.batchId; as batchId) {
+            <i class="pi pi-hashtag"></i>
+            <span dir="ltr">{{ batchId }}</span>
+          }
+        </div>
+        <div class="dv-footer__actions">
+          <p-button [label]="'COMMON.CLOSE' | translate" icon="pi pi-times"
+            severity="secondary" [text]="true" (onClick)="viewVisible = false"></p-button>
+        </div>
+      </div>
+    </ng-template>
+  </p-dialog>
+</div>

@@ -1,0 +1,62 @@
+.report-viewer-container {
+    width: 100%;
+    min-height: 400px;
+    position: relative;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fafafa;
+}
+
+.report-viewer-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    gap: 1rem;
+}
+
+.viewer-loading-text {
+    color: #6b2737;
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.report-viewer-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    gap: 1rem;
+    color: #b0b0b0;
+}
+
+.report-viewer-icon {
+    font-size: 3.5rem;
+    color: #d0a0a8;
+}
+
+.report-viewer-hint {
+    font-size: 0.95rem;
+    margin: 0;
+    text-align: center;
+}
+
+.report-pdf-embedpdf {
+    display: block;
+    width: 100%;
+    min-height: 400px;
+    background: #f5f5f5;
+
+    /* EmbedPDF positions the page with raw scrollLeft and has no RTL support, so
+       it must never inherit the Arabic page direction. The PDF's own text is
+       unaffected by this. Kept here as well as on the element so the direction
+       holds for the container before the viewer mounts into it. */
+    direction: ltr;
+}
+
+.report-pdf-embedpdf--hidden {
+    display: none;
+}

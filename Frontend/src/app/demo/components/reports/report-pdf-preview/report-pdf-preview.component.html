@@ -1,0 +1,18 @@
+<div class="pdf-preview-page">
+  @if (loading) {
+    <div class="pdf-preview-loading">
+      <p-progressSpinner strokeWidth="4"></p-progressSpinner>
+      <p>{{ translationService.translate('REPORTS.VIEWER.GENERATING') }}</p>
+    </div>
+  }
+  @if (error && !loading) {
+    <div class="pdf-preview-error">
+      <p>{{ translationService.translate('REPORTS.VIEWER.LOAD_FAILED') }}</p>
+    </div>
+  }
+  <div
+    #pdfContainer
+    class="pdf-preview-embedpdf"
+    [class.pdf-preview-embedpdf--hidden]="!showPdfContainer">
+  </div>
+</div>

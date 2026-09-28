@@ -1,0 +1,291 @@
+# Continuous integration.
+#
+# NOTE: this file does nothing until the repository has a remote. As of V056 it
+# has none (`git remote -v` is empty), so nothing has ever run these checks
+# automatically. `verify.ps1` in the repository root runs the same things — and
+# more, because it can reach a database — from a developer machine today.
+#
+# What this cannot do
+# -------------------
+# Every @SpringBootTest class (97 of the 162 backend test classes) is tagged
+# "integration" and runs against a populated MOHE database: 941 students, 5,051
+# year results, the lookup rows the assertions name. That database is not in the
+# repository and cannot be built from Backend/docs/scripts, because those
+# migrations alter an existing schema rather than creating one from nothing.
+# Spinning up a SQL Server service container here would produce an empty
+# database and 97 failing classes.
+#
+# So this job runs what is genuinely portable — compilation, the unit tests that
+# need no context (surefire excludes the integration group by default), and the
+# frontend — and is honest that the integration tests are covered by verify.ps1
+# rather than pretending they run here. Making them run here needs a seed
+# script, which is a separate piece of work.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      zap_target:
+        description: "O-37: base URL of a running instance to scan with the ZAP baseline (e.g. https://staging.example/mohe). Empty: no scan."
+        required: false
+        default: ""
+
+jobs:
+  backend:
+    name: Backend (compile + context-free tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      # Compiling both source sets is the real value here: it catches a test that
+      # no longer matches the code it tests, which is how the tenant-scope tests
+      # broke twice during the V029/V032 work. `test` then runs only the classes
+      # not tagged "integration" — the surefire default in pom.xml.
+      - name: Compile and run tests that need no database
+        working-directory: Backend
+        run: ./mvnw -B -ntp test
+
+  frontend:
+    name: Frontend (validate + test + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Install
+        working-directory: Frontend
+        run: npm ci
+
+      # Static checks ng build does not make: a translation key used in code but
+      # present in neither language file, and a menu link with no matching route.
+      - name: Translation keys
+        working-directory: Frontend
+        run: npm run validate-i18n
+
+      - name: Menu routes
+        working-directory: Frontend
+        run: npm run validate-menu
+
+      # Defect-finding rules are errors and the tree has none; stylistic and
+      # template-accessibility rules are warnings and --quiet hides them.
+      - name: Lint
+        working-directory: Frontend
+        run: npx ng lint --quiet
+
+      - name: Unit tests
+        working-directory: Frontend
+        run: npx ng test --watch=false --browsers=ChromeHeadlessWide
+
+      - name: Production build
+        working-directory: Frontend
+        run: npx ng build --configuration production
+
+      # S-14: no source maps, no dev values, robots.txt and security.txt present.
+      - name: Production build hygiene
+        working-directory: Frontend
+        run: npm run check-dist
+
+      # Enforced at high, reported below it. `npm audit` with no threshold exits
+      # non-zero on any advisory at all, which is why this step used to be
+      # continue-on-error and therefore meant nothing: a critical advisory looked
+      # exactly like the two moderate ones already on the tree. --audit-level=high
+      # separates them, so the two known ones stay visible without failing the
+      # build and a new critical one stops it. Both known advisories are assessed
+      # in Backend/docs/DEPENDENCY_ADVISORIES.md; neither has an upstream fix.
+      - name: Dependency advisories (report all)
+        working-directory: Frontend
+        run: npm audit --omit=dev
+        continue-on-error: true
+
+      - name: Dependency advisories (fail on high or critical)
+        working-directory: Frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  reports:
+    name: Report template wiring
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      # Static analysis of JRXML field -> bean property -> SQL column. Needs no
+      # database, and catches a template printing a field no bean supplies —
+      # which Jasper renders as a permanently blank column rather than an error.
+      # Also the O-12 gate: fails on a template that runs SQL of its own or
+      # pastes a parameter into it ($P!{}, $X{}, <queryString>); the templates
+      # are bean-fed (ReportTemplateHygieneTest is the same check in the suite).
+      - name: Audit report data provenance
+        working-directory: Backend
+        run: python scripts/audit_report_data.py
+
+  # ── Security tooling (security plan phase 0, 6 Sep 2026) ────────────────────
+  # Actions are pinned to commit SHAs (O-24); Dependabot keeps the pins current.
+
+  # O-11: SpotBugs with the FindSecBugs rules. High-confidence findings fail.
+  spotbugs:
+    name: Backend static analysis (SpotBugs + FindSecBugs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+      - name: SpotBugs
+        working-directory: Backend
+        run: ./mvnw -B -ntp compile spotbugs:check
+      - name: Upload SpotBugs report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: spotbugs
+          path: Backend/target/spotbugsXml.xml
+          if-no-files-found: ignore
+
+  # O-22: CVE scan of every backend jar; CVSS >= 7 fails. NVD_API_KEY (a
+  # repository secret) turns an hour-long feed download into minutes.
+  dependency-check:
+    name: Backend dependency advisories (OWASP Dependency-Check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+      - name: Dependency-Check
+        working-directory: Backend
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: ./mvnw -B -ntp dependency-check:check
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dependency-check
+          path: Backend/target/dependency-check-report.*
+          if-no-files-found: ignore
+
+  # O-23: software bill of materials for both halves, kept as build artefacts.
+  sbom:
+    name: SBOM (CycloneDX)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+      - name: Backend SBOM
+        working-directory: Backend
+        run: ./mvnw -B -ntp cyclonedx:makeAggregateBom
+      - name: Frontend SBOM
+        working-directory: Frontend
+        run: |
+          npm ci
+          npx --yes @cyclonedx/cyclonedx-npm --omit dev --output-file sbom-frontend.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom
+          path: |
+            Backend/target/bom.json
+            Backend/target/bom.xml
+            Frontend/sbom-frontend.json
+
+  # O-11: CodeQL over Java and the Angular sources.
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    strategy:
+      matrix:
+        language: [java-kotlin, javascript-typescript]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        if: matrix.language == 'java-kotlin'
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+      - uses: github/codeql-action/init@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+      - name: Build backend for CodeQL
+        if: matrix.language == 'java-kotlin'
+        working-directory: Backend
+        run: ./mvnw -B -ntp -DskipTests compile
+      - uses: github/codeql-action/analyze@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+
+  # O-37: OWASP ZAP baseline against a running instance. Manual, because this
+  # workflow has no database and so nothing to scan (see the note at the top):
+  # start it with the URL of a dev or staging host. Unauthenticated first; then,
+  # when the ZAP_BEARER_TOKEN secret holds a staff JWT for that host, once more
+  # with the token on every request. Any High alert fails (.zap/check_high.py);
+  # .zap/rules.tsv holds the ignored rules with their reasons. The reports are
+  # kept as artefacts. Procedure and triage: Backend/docs/DEPLOYMENT_SECURITY.md.
+  zap-baseline:
+    name: OWASP ZAP baseline (manual, against a URL)
+    if: github.event_name == 'workflow_dispatch' && inputs.zap_target != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Prepare
+        run: |
+          mkdir -p zap-out
+          cp .zap/rules.tsv zap-out/rules.tsv
+      - name: Baseline (anonymous)
+        run: |
+          docker run --rm -v "$PWD/zap-out:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t "${{ inputs.zap_target }}" -c rules.tsv -I \
+            -r report-anonymous.html -J report-anonymous.json || true
+      - name: Baseline (authenticated)
+        if: ${{ secrets.ZAP_BEARER_TOKEN != '' }}
+        env:
+          ZAP_BEARER_TOKEN: ${{ secrets.ZAP_BEARER_TOKEN }}
+        run: |
+          docker run --rm -v "$PWD/zap-out:/zap/wrk:rw" ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t "${{ inputs.zap_target }}" -c rules.tsv -I \
+            -r report-authenticated.html -J report-authenticated.json \
+            -z "-config replacer.full_list(0).description=auth -config replacer.full_list(0).enabled=true -config replacer.full_list(0).matchtype=REQ_HEADER -config replacer.full_list(0).matchstr=Authorization -config replacer.full_list(0).regex=false -config replacer.full_list(0).replacement=Bearer%20$ZAP_BEARER_TOKEN" || true
+      - name: Gate on High alerts
+        run: python .zap/check_high.py zap-out/report-*.json
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: zap-baseline
+          path: zap-out/report-*
+          if-no-files-found: ignore

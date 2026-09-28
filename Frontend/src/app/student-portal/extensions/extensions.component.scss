@@ -1,0 +1,23 @@
+/* The page is a table and a detail dialog. The table comes from the portal kit;
+   the dialog's summary, period and fact grid from the portal dialog kit
+   (assets/layout/styles/_student-portal-dialog.scss). `.page-alert` carried a
+   margin-bottom, which now doubles with the flex gap .portal-page sets. */
+.page-alert { border-radius: 8px; }
+
+/* The reason, named under its section heading; the details follow as prose. */
+.ext-reason {
+  margin: 0 0 10px;
+  text-align: start;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--p-ink, #10243b);
+  overflow-wrap: anywhere;
+}
+
+.ext-caption {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--p-muted, #566175);
+}

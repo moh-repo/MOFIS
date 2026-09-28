@@ -1,0 +1,95 @@
+/* ── LTR Layout Overrides ──────────────────────────────────────────────
+
+   Note on the guards below. Each rule is written twice, `html:not(.rtl)` and
+   `.layout-wrapper:not(.rtl)`, because the class is put on both — on <html> by
+   TranslationService.updateDocumentDirection and on the wrapper by
+   AppLayoutComponent.containerClass.
+
+   There used to be a third, `html:not([dir="rtl"])`, and it was the reason the
+   Arabic shell never laid out correctly: index.html ships
+   `<html lang="en" dir="ltr">` and updateDocumentDirection deliberately never
+   touches it — setting `dir` on <html> moves the browser's own scrollbar to the
+   left — so that selector was true in every language. Being the most specific
+   of the three it won `margin-left: var(--layout-sidebar-width)` and
+   `margin-right: 0` over `.rtl .layout-main-container` in layout-rtl.css, and
+   the page ran underneath the right-hand sidebar. Measured in
+   src/app/layout/shell-direction.spec.ts.
+   ──────────────────────────────────────────────────────────────────── */
+
+/* What this file is for ───────────────────────────────────────────────
+   Ensures the shell layout is correctly left-to-right when the page is
+   not in RTL mode. Only targets the structural layout containers — it
+   must NOT touch generic PrimeFlex utility classes (.flex, .grid, .card,
+   .col-*) because those are used for content-level layout and already
+   have the correct direction from the framework.
+
+   The previous version of this file applied blanket rules like
+     .flex { flex-direction: row !important }
+   which broke every flex-column layout in the app (dashboard cards,
+   notification lists, form layouts, etc.). That is now fixed.
+   ──────────────────────────────────────────────────────────────────── */
+
+/* ── Layout direction ─────────────────────────────────────────────── */
+html:not(.rtl) .layout-wrapper,
+.layout-wrapper:not(.rtl) {
+  direction: ltr;
+}
+
+/* ── Main content container — static sidebar visible ──────────────────
+   Desktop only. Below 992px the sidebar is an off-canvas sheet, and this rule —
+   one class more specific than the tablet rule further down — kept its margin
+   there too: a 270px empty gutter beside the page at 768px (live QA #11). */
+@media (min-width: 992px) {
+  html:not(.rtl) .layout-wrapper.layout-static .layout-main-container,
+  .layout-wrapper:not(.rtl).layout-static .layout-main-container {
+    margin-left: var(--layout-sidebar-width);
+    margin-right: 0;
+    padding: 7rem 1.5rem 2rem 3.5rem;
+    width: calc(100% - var(--layout-sidebar-width));
+    box-sizing: border-box;
+  }
+}
+
+/* ── Overlay / collapsed sidebar ──────────────────────────────────── */
+html:not(.rtl) .layout-wrapper.layout-overlay .layout-main-container,
+.layout-wrapper:not(.rtl).layout-overlay .layout-main-container,
+html:not(.rtl) .layout-wrapper.layout-static.layout-static-inactive .layout-main-container,
+.layout-wrapper:not(.rtl).layout-static.layout-static-inactive .layout-main-container {
+  margin-left: 0;
+  margin-right: 0;
+  padding: 7rem 1.5rem 2rem 1.5rem;
+  width: 100%;
+}
+
+/* ── Widescreen — keep content full-width (no MOFIS 1504px cap) ──── */
+@media screen and (min-width: 1960px) {
+  html:not(.rtl) .layout-wrapper .layout-main-container,
+  .layout-wrapper:not(.rtl) .layout-main-container {
+    max-width: none;
+  }
+}
+
+/* ── Responsive (tablet and below) ────────────────────────────────── */
+@media (max-width: 991px) {
+  html:not(.rtl) .layout-wrapper .layout-main-container,
+  .layout-wrapper:not(.rtl) .layout-main-container {
+    margin-left: 0;
+    margin-right: 0;
+    padding: 7rem 1.5rem 2rem 1.5rem;
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  html:not(.rtl) .layout-wrapper .layout-main-container,
+  .layout-wrapper:not(.rtl) .layout-main-container {
+    padding: 7rem 1rem 2rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  html:not(.rtl) .layout-wrapper .layout-main-container,
+  .layout-wrapper:not(.rtl) .layout-main-container {
+    padding: 7rem 0.5rem 2rem 0.5rem;
+  }
+}

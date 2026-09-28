@@ -1,0 +1,226 @@
+/* Lookup Tables Component Styles */
+
+/* ── Tab strip ─────────────────────────────────────────────────────────
+   These rules used to target .p-tabview / .p-tabview-nav / .p-tabview-nav-link,
+   which is PrimeNG 17 markup. Tabs were rewritten for v21 as p-tabs / p-tablist
+   / p-tab, so every one of those selectors matched nothing and the strip fell
+   back to bare theme defaults — no spacing, and an active tab told apart only by
+   the ink bar. Colours come from theme variables so the strip follows the light
+   /dark switch in the settings drawer, and spacing is logical so it mirrors in
+   Arabic (the icons carried a physical `mr-2`, which is now the flex `gap`). */
+:host ::ng-deep .p-tablist {
+    border-bottom: 1px solid var(--surface-border);
+    margin-bottom: 1.25rem;
+}
+
+:host ::ng-deep .p-tablist-content {
+    overflow-x: auto;
+}
+
+:host ::ng-deep .p-tablist-tab-list {
+    background: transparent;
+    border: 0 none;
+    gap: 0.25rem;
+}
+
+:host ::ng-deep .p-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.25rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--text-color-secondary);
+    background: transparent;
+    border: 0 none;
+    border-radius: 10px 10px 0 0;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+:host ::ng-deep .p-tab .pi {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+:host ::ng-deep .p-tab:not(.p-tab-active):hover {
+    background: var(--surface-hover);
+    color: var(--text-color);
+}
+
+/* The selected tab: primary text, a tinted panel that reads as continuous with
+   the content below it, and the ink bar in the same colour. */
+:host ::ng-deep .p-tab.p-tab-active {
+    color: var(--primary-color);
+    background: color-mix(in srgb, var(--primary-color) 9%, transparent);
+}
+
+:host ::ng-deep .p-tab.p-tab-active .pi {
+    opacity: 1;
+}
+
+:host ::ng-deep .p-tab:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+:host ::ng-deep .p-tablist-active-bar {
+    background: var(--primary-color);
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+}
+
+/* The panels only host the select buttons and the table; PrimeNG's own padding
+   would inset both from the card edges. */
+:host ::ng-deep .p-tabpanels {
+    background: transparent;
+    padding: 0;
+}
+
+:host ::ng-deep .p-tabpanel {
+    padding: 0;
+}
+
+/* ── Lookup chooser (select buttons inside each tab) ───────────────────
+   SelectButton renders ToggleButtons in v21, so the old .p-selectbutton
+   .p-button rules were dead too. Selected state has to be painted on the inner
+   .p-togglebutton-content as well, since that is where the preset puts the
+   checked background. */
+:host ::ng-deep .p-selectbutton {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+:host ::ng-deep .p-selectbutton .p-togglebutton {
+    flex: 0 0 auto;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 999px;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+/* The preset treats a SelectButton as one segmented control and rounds only the
+   outer edges of the first and last buttons. These are separated by a gap, so
+   each one is its own pill — measured as `0 999px 999px 0` until this override,
+   and its own inverse at the other end of the row. */
+:host ::ng-deep .p-selectbutton .p-togglebutton:first-child,
+:host ::ng-deep .p-selectbutton .p-togglebutton:last-child,
+:host ::ng-deep .p-selectbutton .p-togglebutton:only-child {
+    border-radius: 999px;
+}
+
+:host ::ng-deep .p-selectbutton .p-togglebutton:not(.p-togglebutton-checked):hover {
+    background: var(--surface-hover);
+    color: var(--text-color);
+    border-color: color-mix(in srgb, var(--primary-color) 35%, var(--surface-border));
+}
+
+:host ::ng-deep .p-selectbutton .p-togglebutton.p-togglebutton-checked {
+    background: var(--primary-color);
+    color: var(--primary-color-text);
+    border-color: var(--primary-color);
+}
+
+:host ::ng-deep .p-selectbutton .p-togglebutton .p-togglebutton-content {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+}
+
+:host ::ng-deep .p-selectbutton .p-togglebutton.p-togglebutton-checked .p-togglebutton-label {
+    color: inherit;
+}
+
+/* ── Table sizing (shared by all six tabs) ─────────────────────────────
+   Every tab renders the same tableTemplate, which carried
+   [tableStyle]="{'min-width': '75rem'}" — 945px at this app's 12.6px root
+   size. That floor stopped the table shrinking with the page, so any window
+   under roughly 1280px pushed the Actions column behind the card's own
+   horizontal scrollbar.
+
+   PrimeNG stretches the table to 100% of the card, so with the floor gone it
+   is exactly as wide as the page. The fixed-width columns (id, code, foreign
+   keys, active, created date) keep their line; the free-text ones — the two
+   name columns and the description — wrap, since they are the columns whose
+   content actually varies. Below that .p-datatable-table-container
+   (overflow-x: auto) scrolls rather than clipping. */
+td {
+    white-space: nowrap;
+}
+
+/* A heading may take two lines; a cell may not. Every fixed-width column here is
+   labelled with one or two words — Sort Order, Group Code, Agency Type — and with
+   `nowrap` on the heading too, the label rather than the declared width decided
+   how wide the column was: the System column asked for 110px and took the width
+   of its heading, and on tab 4 the eight columns together were wider than the
+   main container at anything under about 1400px. */
+th {
+    white-space: normal;
+}
+
+th.lk-col-flex,
+td.lk-col-flex {
+    white-space: normal;
+    min-width: 9rem;
+    word-break: break-word;
+}
+
+/* A column holding one long unbroken token. `nowrap` made such a column as wide
+   as its longest value whatever width it declared: on the System tab the report
+   labels' 41-character codes took 361px of a 981px table, and the two name
+   columns — the ones anyone actually reads — were squeezed to 113px each. */
+th.lk-col-wrap,
+td.lk-col-wrap {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+/* The three row buttons need their line whatever else is short of room; the
+   table had squeezed this column to 89px for buttons that want about 101. */
+th.lk-col-actions,
+td.lk-col-actions {
+    width: 8rem;
+    min-width: 8rem;
+    white-space: nowrap;
+}
+
+/* The code, with the lock that says the application depends on it. */
+.lk-code {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.lk-code__lock {
+    font-size: 0.8rem;
+    color: var(--yellow-600, #b45309);
+}
+
+/* ── Dialogs ───────────────────────────────────────────────────────────
+   The three blocks that used to live here went with the markup they were
+   written for. `.surface-card:hover { transform: translateY(-2px) }` and
+   `.p-button:hover { transform: translateY(-1px) }` were meant for the view
+   dialog's cards, but neither was scoped to it: the second lifted every button
+   on the page, the row actions in the table included. The view dialog is now
+   `dv-hero` + `dv-section` + `dv-dl` like the rest of Administration, which
+   brings its own surface, spacing and hover with it. `@keyframes shake` styled a
+   `.p-error` the template stopped using when validation moved to `dv-error`.
+
+   What is left is the two things this page still needs of its own: the shake-free
+   focus ring on its inputs, and the table's own column sizing above. */
+
+/* Input Focus Effects (p-dropdown became p-select in PrimeNG 18) */
+:host ::ng-deep .p-inputtext:focus,
+:host ::ng-deep .p-select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    border-color: #667eea;
+}
+
+/* Checkbox Custom Style (PrimeNG 18 marks the checked state on the root, not the box) */
+:host ::ng-deep .p-checkbox.p-checkbox-checked .p-checkbox-box {
+    background: #667eea;
+    border-color: #667eea;
+}

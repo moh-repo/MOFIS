@@ -1,0 +1,664 @@
+<div class="grid" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="col-12">
+    <div class="card p-0 overflow-hidden">
+
+      <!-- ── Page header bar ── -->
+      <div class="st-header">
+        <div class="st-header__left">
+          <div class="st-header__icon"><i class="pi pi-users"></i></div>
+          <div>
+            <h4 class="st-header__title">{{ 'STUDENTS.TITLE' | translate }}</h4>
+            @if (totalRecords !== undefined) {
+              <span class="st-header__count">
+                {{ totalRecords | number }} {{ 'STUDENTS.RECORDS' | translate }}
+              </span>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!--
+        Filters, out of the header band and onto their own surface.
+
+        Sharing the header meant "narrow the list" sat in the same row as the
+        page identity, and each input carried its own pixel width (120/160/160)
+        so the three could never divide a row evenly. Shared layout: see
+        assets/layout/styles/_filter-bar.scss.
+      -->
+      <div class="filter-bar filter-bar--inset">
+        <div class="filter-bar__grid filter-bar__grid--cols-3">
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterStudentId">
+            <label for="stFilterId">{{ 'STUDENTS.FILTERS.SEARCH_BY_ID' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-hashtag"></i>
+              <input id="stFilterId" pInputText type="text" [(ngModel)]="filterStudentId"
+                (input)="onFilterChange()"
+                [placeholder]="'STUDENTS.FILTERS.SEARCH_BY_ID' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterStudentName">
+            <label for="stFilterName">{{ 'STUDENTS.FILTERS.SEARCH_BY_NAME' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-user"></i>
+              <input id="stFilterName" pInputText type="text" [(ngModel)]="filterStudentName"
+                (input)="onFilterChange()"
+                [placeholder]="'STUDENTS.FILTERS.SEARCH_BY_NAME' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterPassport">
+            <label for="stFilterPassport">{{ 'STUDENTS.FILTERS.SEARCH_BY_PASSPORT' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-id-card"></i>
+              <input id="stFilterPassport" pInputText type="text" [(ngModel)]="filterPassport"
+                (input)="onFilterChange()"
+                [placeholder]="'STUDENTS.FILTERS.SEARCH_BY_PASSPORT' | translate" />
+            </span>
+          </div>
+        </div>
+
+        <div class="filter-bar__actions">
+          <button
+            pButton pRipple type="button" icon="pi pi-filter-slash"
+            class="p-button-action-outlined p-button-sm"
+            [label]="'COMMON.CLEAR' | translate"
+            [disabled]="!filterStudentId && !filterStudentName && !filterPassport"
+            (click)="clearFilters()">
+          </button>
+        </div>
+      </div>
+
+      <p-table #dt [value]="students" [rows]="rows" [(first)]="first" [loading]="loading" [rowHover]="true" dataKey="studentId"
+        [paginator]="true"
+        [globalFilterFields]="['studentName', 'studentId', 'studentPassportNumber', 'studentMajorName']"
+        [rowsPerPageOptions]="[5, 10, 25, 50]"
+        [(selection)]="selectedStudents" [totalRecords]="totalRecords" [lazy]="true"
+        (onLazyLoad)="onPageChange($event)" [showCurrentPageReport]="true"
+        [currentPageReportTemplate]="'STUDENTS.SHOWING_ENTRIES' | translate"
+        [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+        <ng-template pTemplate="caption">
+          <div class="flex flex-wrap gap-2 align-items-center justify-content-between">
+            <button pButton pRipple [label]="'STUDENTS.NEW_STUDENT' | translate" icon="pi pi-plus"
+            class="p-button-success" (click)="openAddStudent()" *hasPermission="'STUDENTS.ADD'"></button>
+            <button pButton pRipple [label]="'STUDENTS.DELETE_SELECTED' | translate" icon="pi pi-trash"
+              class="p-button-danger" (click)="deleteSelectedStudents()"
+            [disabled]="!selectedStudents || !selectedStudents.length" *hasPermission="'STUDENTS.DELETE'"></button>
+          </div>
+        </ng-template>
+        <ng-template pTemplate="header">
+          <tr>
+            <th style="width: 4rem">
+              <p-tableHeaderCheckbox></p-tableHeaderCheckbox>
+            </th>
+            <th pSortableColumn="studentId">{{ 'STUDENTS.ID' | translate }} <p-sortIcon
+            field="studentId"></p-sortIcon></th>
+            <th pSortableColumn="studentName">{{ 'STUDENTS.NAME' | translate }} <p-sortIcon
+            field="studentName"></p-sortIcon></th>
+            <th pSortableColumn="studentPassportNumber">{{ 'STUDENTS.PASSPORT' | translate }} <p-sortIcon
+            field="studentPassportNumber"></p-sortIcon></th>
+            <th pSortableColumn="studentMajorName">{{ 'STUDENTS.MAJOR' | translate }} <p-sortIcon
+            field="studentMajorName"></p-sortIcon></th>
+            <th pSortableColumn="studentDegreeId">{{ 'STUDENTS.DEGREE' | translate }} <p-sortIcon
+            field="studentDegreeId"></p-sortIcon></th>
+            <th pSortableColumn="studentStudyStatusId" (contextmenu)="onStatusHeaderRightClick($event)"
+              style="cursor: context-menu; position: relative;">
+              <div class="flex align-items-center gap-2">
+                <span>{{ 'STUDENTS.STATUS' | translate }}</span>
+                <p-sortIcon field="studentStudyStatusId"></p-sortIcon>
+                @if (selectedStatus !== null) {
+                  <i class="pi pi-filter text-primary"
+                  [pTooltip]="'COMMON.FILTER' | translate" tooltipPosition="top"></i>
+                }
+              </div>
+            </th>
+            <th class="actions-col-header">{{ 'STUDENTS.ACTIONS' | translate }}</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-student>
+          <tr (dblclick)="viewStudent(student)" style="cursor: pointer;">
+            <td>
+              <p-tableCheckbox [value]="student"></p-tableCheckbox>
+            </td>
+            <td>{{student.studentId}}</td>
+            <td>
+              {{student.studentName}}
+              @if (pendingStudentIds.has(student.studentId + '')) {
+                <p-tag
+                  severity="warn"
+                  [value]="'APPROVAL.PENDING' | translate"
+                  class="ml-2">
+                </p-tag>
+              }
+            </td>
+            <td>{{student.studentPassportNumber || '—'}}</td>
+            <!--
+              The lookup first, the free-text column second (QA C5 / DSH-002).
+              The wizard writes studentMajorId and leaves STUDENT_MAJOR_NAME null,
+              so a student added through it showed no major at all. Same order as
+              the view dialog below, which already read it this way.
+            -->
+            <td>{{ majorMap.get(student.studentMajorId) || student.studentMajorName || '—' }}</td>
+            <!-- The API returns studentDegreeId only, so the name is resolved
+                 through degreeMap, the same lookup the detail panels use. -->
+            <td>{{degreeMap.get(student.studentDegreeId) || '—'}}</td>
+            <td>
+              <p-tag [severity]="getStudyStatusSeverity(student.studentStudyStatusId)"
+                [value]="studyStatusMap.get(student.studentStudyStatusId) || ('STUDENTS.UNKNOWN_STATUS' | translate)"
+                styleClass="p-tag-rounded">
+              </p-tag>
+            </td>
+            <td class="actions-cell-ltr">
+              <div class="flex gap-1">
+                <button pButton pRipple icon="pi pi-user"
+                  class="p-button-rounded p-button-text p-button-info"
+                  [pTooltip]="'STUDENTS.OPEN_FULL_PROFILE' | translate" tooltipPosition="top"
+                (click)="openStudentProfile(student)" *hasPermission="'STUDENTS.VIEW'"></button>
+                <button pButton pRipple icon="pi pi-eye"
+                  class="p-button-rounded p-button-text p-button-info"
+                  [pTooltip]="'COMMON.VIEW' | translate" tooltipPosition="top"
+                (click)="viewStudent(student)" *hasPermission="'STUDENTS.VIEW'"></button>
+                <button pButton pRipple icon="pi pi-pencil"
+                  class="p-button-rounded p-button-text p-button-warning"
+                  [pTooltip]="'COMMON.EDIT' | translate" tooltipPosition="top"
+                (click)="editStudent(student)" *hasPermission="'STUDENTS.EDIT'"></button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="8" class="text-center">
+              {{loading ? ('STUDENTS.LOADING' | translate) : ('STUDENTS.NO_STUDENTS' | translate)}}
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+
+
+    <!-- Delete Student Dialog -->
+    <p-dialog [(visible)]="deleteStudentDialog" [header]="('COMMON.CONFIRM' | translate)" [modal]="true"
+      [style]="{width:'450px'}"
+      [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+      <div class="flex align-items-center justify-content-center">
+        <i class="pi pi-exclamation-triangle mr-3" style="font-size: 2rem"></i>
+        @if (student) {
+          <span>{{ 'STUDENTS.CONFIRM_DELETE' | translate }} <b>{{student.studentName}}</b>?</span>
+        }
+      </div>
+      <ng-template pTemplate="footer">
+        <button pButton pRipple icon="pi pi-times" class="p-button-text" [label]="'COMMON.NO' | translate"
+        (click)="deleteStudentDialog = false"></button>
+        <button pButton pRipple icon="pi pi-check" class="p-button-text" [label]="'COMMON.YES' | translate"
+        (click)="confirmDelete()"></button>
+      </ng-template>
+    </p-dialog>
+
+    <!-- Delete Selected Students Dialog -->
+    <p-dialog [(visible)]="deleteStudentsDialog" [header]="('COMMON.CONFIRM' | translate)" [modal]="true"
+      [style]="{width:'450px'}"
+      [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+      <div class="flex align-items-center justify-content-center">
+        <i class="pi pi-exclamation-triangle mr-3" style="font-size: 2rem"></i>
+        <span>{{ 'STUDENTS.CONFIRM_DELETE_SELECTED' | translate }}</span>
+      </div>
+      <ng-template pTemplate="footer">
+        <button pButton pRipple icon="pi pi-times" class="p-button-text" [label]="'COMMON.NO' | translate"
+        (click)="deleteStudentsDialog = false"></button>
+        <button pButton pRipple icon="pi pi-check" class="p-button-text" [label]="'COMMON.YES' | translate"
+        (click)="confirmDeleteSelected()"></button>
+      </ng-template>
+    </p-dialog>
+
+    <!-- View Dialog -->
+    <p-dialog [(visible)]="viewDialog" [style]="{width: '1040px', maxWidth: '96vw'}"
+      [header]="('STUDENTS.STUDENT_DETAILS' | translate)" [modal]="true"
+      [maximizable]="true" [draggable]="false" [resizable]="false"
+      [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+      <ng-template pTemplate="content">
+        <!--
+          tabindex="0" is what makes this dialog open at the top.
+
+          p-dialog focuses the first focusable element inside its content when it
+          opens (focusOnShow defaults to true, and content is searched before the
+          header and footer). Everything down to the documents card is read-only
+          text — divs, spans, an img — so the first focusable thing used to be a
+          button inside the documents table, several hundred pixels down. The
+          browser scrolls a focused element into view, so the dialog opened at the
+          documents section and the hero was never seen.
+
+          Giving the container itself a tab stop puts it first in document order,
+          so focus lands here and the content stays at the top. tabindex="-1"
+          would not do: PrimeNG's focusable selector excludes it explicitly.
+          Removing focusOnShow instead would leave focus stranded on the trigger
+          behind the modal, which is worse for anyone using a keyboard.
+        -->
+        <div class="sv" tabindex="0" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+          <!-- Pending approval notice: what is shown may not be the latest submitted state -->
+          @if (isStudentPending(newStudent.studentId)) {
+            <div class="sv__pending">
+              <i class="pi pi-clock"></i>
+              <div class="flex-1">
+                <strong>{{ 'APPROVAL.PENDING_NOTICE_TITLE' | translate }}</strong>
+                <div class="text-sm">{{ 'APPROVAL.PENDING_NOTICE_BODY' | translate }}</div>
+              </div>
+              <button pButton pRipple type="button" class="p-button-sm p-button-outlined"
+                [label]="'APPROVAL.REVIEW_NOW' | translate"
+              (click)="openStudentProfile(newStudent); viewDialog = false"></button>
+            </div>
+          }
+
+          <!-- ── Hero ── -->
+          <div class="sv__hero">
+            <div class="sv__hero-avatar" aria-hidden="true">
+              @if (newStudent.studentId && !viewStudentPhotoPlaceholder) {
+                <img
+                  [src]="viewStudentPhotoSrc"
+                  [alt]="newStudent.studentName || ''"
+                  class="sv__hero-avatar-img"
+                  (error)="onViewStudentPhotoLoadError($event)" />
+              }
+              @if (!newStudent.studentId || viewStudentPhotoPlaceholder) {
+                <i class="pi pi-user"></i>
+              }
+            </div>
+            <div class="sv__hero-info">
+              <h2 class="sv__hero-name">{{ newStudent.studentName || '—' }}</h2>
+              <div class="sv__hero-meta">
+                <span class="sv__hero-id">#{{ newStudent.studentId }}</span>
+                @if (newStudent.studentStudyStatusId) {
+                  <p-tag
+                    [value]="studyStatusMap.get(newStudent.studentStudyStatusId) || ''"
+                    [severity]="newStudent.studentStudyStatusId === 1 ? 'success' : 'info'"
+                  [rounded]="true"></p-tag>
+                }
+                @if (newStudent.studentGender) {
+                  <p-tag
+                    [value]="genderMap.get(newStudent.studentGender) || ''"
+                    severity="secondary"
+                  [rounded]="true"></p-tag>
+                }
+                @if (newStudent.studentDelegationDecisionYear) {
+                  <span class="sv__hero-year">
+                    {{ 'REPORTS.COMMON_FIELDS.YEAR' | translate }}:
+                    <strong>{{ newStudent.studentDelegationDecisionYear }}</strong>
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Stats strip ── -->
+          <div class="sv__stats">
+            <div class="sv__stat sv__stat--success">
+              <span class="sv__stat-icon"><i class="pi pi-wallet"></i></span>
+              <div>
+                <span class="sv__stat-label">{{ 'FINANCE.AMOUNT' | translate }}</span>
+                <span class="sv__stat-value">
+                  {{ (newStudent.studentAmount || 0) | number:'1.0-0' }}
+                  {{ currencyMap.get(newStudent.amountCurrency) || '' }}
+                </span>
+              </div>
+            </div>
+            <div class="sv__stat sv__stat--info">
+              <span class="sv__stat-icon"><i class="pi pi-graduation-cap"></i></span>
+              <div>
+                <span class="sv__stat-label">{{ 'STUDENTS.STUDENT_FORM.DEGREE' | translate }}</span>
+                <span class="sv__stat-value">{{ degreeMap.get(newStudent.studentDegreeId) || '—' }}</span>
+              </div>
+            </div>
+            <div class="sv__stat sv__stat--neutral">
+              <span class="sv__stat-icon"><i class="pi pi-book"></i></span>
+              <div>
+                <span class="sv__stat-label">{{ 'STUDENTS.STUDENT_FORM.STUDY_YEARS' | translate }}</span>
+                <span class="sv__stat-value">{{ newStudent.studentStudyNoOfYears ?? '—' }}</span>
+              </div>
+            </div>
+            <div class="sv__stat sv__stat--primary">
+              <span class="sv__stat-icon"><i class="pi pi-calendar"></i></span>
+              <div>
+                <span class="sv__stat-label">{{ 'REPORTS.COMMON_FIELDS.YEAR' | translate }}</span>
+                <span class="sv__stat-value">{{ newStudent.studentDelegationDecisionYear ?? '—' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 2-column info grid ── -->
+          <div class="sv__grid">
+
+            <!-- Personal Info -->
+            <div class="sv__card">
+              <div class="sv__card-head">
+                <span class="sv__card-icon"><i class="pi pi-id-card"></i></span>
+                <span class="sv__card-title">{{ 'STUDENTS.PERSONAL_INFO' | translate }}</span>
+              </div>
+              <dl class="sv__dl">
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_FORM.GENDER' | translate }}</dt>
+                  <dd>{{ genderMap.get(newStudent.studentGender) || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_FORM.BIRTH_DATE' | translate }}</dt>
+                  <dd>{{ (newStudent.studentBirthdate | date:'mediumDate') || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_FORM.BIRTH_PLACE' | translate }}</dt>
+                  <dd>{{ newStudent.studentBirthdatePlace || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.PASSPORT' | translate }}</dt>
+                  <dd>{{ newStudent.studentPassportNumber || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENT_ADD.PASSPORT_ISSUE_DATE' | translate }}</dt>
+                  <dd>{{ (newStudent.studentPassportIssueDate | date:'mediumDate') || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_FORM.PASSPORT_EXPIRE_DATE' | translate }}</dt>
+                  <dd>{{ (newStudent.studentPassportExpireDate | date:'mediumDate') || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENT_ADD.PASSPORT_ISSUE_COUNTRY' | translate }}</dt>
+                  <dd>{{ countryMap.get(newStudent.studentPassportIssueCountryId) || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENT_ADD.GOVERNMENT' | translate }}</dt>
+                  <dd>{{ governmentMap.get(newStudent.studentGovId) || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENT_ADD.MUNICIPALITY' | translate }}</dt>
+                  <dd>{{ municipalityMap.get(newStudent.studentMudId) || '—' }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <!-- Academic Info -->
+            <div class="sv__card">
+              <div class="sv__card-head">
+                <span class="sv__card-icon"><i class="pi pi-graduation-cap"></i></span>
+                <span class="sv__card-title">{{ 'STUDENTS.ACADEMIC_INFO' | translate }}</span>
+              </div>
+              <dl class="sv__dl">
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_FORM.DEGREE' | translate }}</dt>
+                  <dd>{{ degreeMap.get(newStudent.studentDegreeId) || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_FORM.MAJOR' | translate }}</dt>
+                  <dd>{{ majorMap.get(newStudent.studentMajorId) || newStudent.studentMajorName || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENT_ADD.DELEGATE_DECISION_NO' | translate }}</dt>
+                  <dd>{{ newStudent.studentDelegateDecisionNo || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_FORM.STUDY_YEARS' | translate }}</dt>
+                  <dd>{{ newStudent.studentStudyNoOfYears ?? '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_FORM.CURRENT_LEVEL' | translate }}</dt>
+                  <dd>{{ newStudent.studentCurrentLevelId ?? '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENT_ADD.STUDY_TYPE' | translate }}</dt>
+                  <dd>{{ studyTypeMap.get(newStudent.studentStudyTypeId) || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STATUS' | translate }}</dt>
+                  <dd>
+                    <p-tag [severity]="newStudent.studentStudyStatusId === 1 ? 'success' : 'info'"
+                      [value]="studyStatusMap.get(newStudent.studentStudyStatusId) || '—'"
+                    styleClass="p-tag-rounded"></p-tag>
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <!-- Contact Info -->
+            <div class="sv__card">
+              <div class="sv__card-head">
+                <span class="sv__card-icon sv__card-icon--contact"><i class="pi pi-phone"></i></span>
+                <span class="sv__card-title">{{ 'STUDENTS.CONTACT_INFO' | translate }}</span>
+              </div>
+              <dl class="sv__dl">
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_EMAIL' | translate }}</dt>
+                  <dd>{{ newStudent.studentEmail || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_CELLPHONE' | translate }}</dt>
+                  <dd>{{ newStudent.studentCellphone || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_HOME_NUMBER' | translate }}</dt>
+                  <dd>{{ newStudent.studentHomeNumber || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'STUDENTS.STUDENT_EMERGENCY_CONTACT' | translate }}</dt>
+                  <dd>{{ newStudent.studentEmergencyContact || '—' }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <!-- Management Info -->
+            <div class="sv__card">
+              <div class="sv__card-head">
+                <span class="sv__card-icon sv__card-icon--mgmt"><i class="pi pi-building"></i></span>
+                <span class="sv__card-title">{{ 'LOOKUP_TABLES.MANAGEMENT' | translate }}</span>
+              </div>
+              <dl class="sv__dl">
+                <div class="sv__dl-row">
+                  <dt>{{ 'LOOKUP_TABLES.TABLE_NAMES.STUDENT_AGENCY_TYPE' | translate }}</dt>
+                  <dd>{{ agencyTypeMap.get(newStudent.studentAgencyTypeId) || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'LOOKUP_TABLES.TABLE_NAMES.STUDENT_MINISTRY_TYPE' | translate }}</dt>
+                  <dd>{{ ministryTypeMap.get(newStudent.studentMinistryTypeId) || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'LOOKUP_TABLES.TABLE_NAMES.STUDENT_UNIVERSITY_TYPE' | translate }}</dt>
+                  <dd>{{ universityTypeMap.get(newStudent.studentUniversityTypeId) || '—' }}</dd>
+                </div>
+                <div class="sv__dl-row">
+                  <dt>{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</dt>
+                  <dd>{{ countryMap.get(newStudent.studentCountryId) || '—' }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <!-- Finance (full-width) -->
+            <div class="sv__card sv__card--full">
+              <div class="sv__card-head">
+                <span class="sv__card-icon sv__card-icon--finance"><i class="pi pi-briefcase"></i></span>
+                <span class="sv__card-title">{{ 'FINANCE.TITLE' | translate }}</span>
+              </div>
+              <div class="sv__dl-2col">
+                <dl class="sv__dl">
+                  <div class="sv__dl-row">
+                    <dt>{{ 'FINANCE.AMOUNT' | translate }}</dt>
+                    <dd class="sv__dl-positive">
+                      {{ (newStudent.studentAmount || 0) | number:'1.0-0' }}
+                      {{ currencyMap.get(newStudent.amountCurrency) || '' }}
+                    </dd>
+                  </div>
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENTS.STUDENT_FORM.FIRST_RECEIPT_OF_DUE' | translate }}</dt>
+                    <dd>{{ newStudent.studentFirstReceiptOfDue ?? '—' }}</dd>
+                  </div>
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENT_ADD.ADDED_QUARTER' | translate }}</dt>
+                    <dd>{{ newStudent.studentAddedQuarter || '—' }}</dd>
+                  </div>
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENT_ADD.LAST_QUARTER' | translate }}</dt>
+                    <dd>{{ newStudent.studentLastQuarter || '—' }}</dd>
+                  </div>
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENT_ADD.CURRENT_QUARTER' | translate }}</dt>
+                    <dd>{{ newStudent.currentQuarter || '—' }}</dd>
+                  </div>
+                </dl>
+                <dl class="sv__dl">
+                  <div class="sv__dl-row">
+                    <dt>{{ 'REPORTS.COMMON_FIELDS.YEAR' | translate }}</dt>
+                    <dd>{{ newStudent.studentDelegationDecisionYear ?? '—' }}</dd>
+                  </div>
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENT_ADD.UNIVERSITY_FEE' | translate }}</dt>
+                    <dd>
+                      @if (newStudent.studyUniversityFeeId) {
+                        <p-tag value="Yes" severity="success" [rounded]="true"></p-tag>
+                      }
+                      @if (!newStudent.studyUniversityFeeId) {
+                        <span>—</span>
+                      }
+                    </dd>
+                  </div>
+                  @if (newStudent.studyUniversityFeeId) {
+                    <div class="sv__dl-row">
+                      <dt>{{ 'STUDENT_ADD.UNIVERSITY_FEE_STATUS' | translate }}</dt>
+                      <dd>{{ newStudent.studyUniversityFeeStatusId || '—' }}</dd>
+                    </div>
+                  }
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENTS.MODIFICATION_DATE' | translate }}</dt>
+                    <dd>{{ (newStudent.studentMidate | date:'medium') || '—' }}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            <!-- Study Location (full-width) -->
+            <div class="sv__card sv__card--full">
+              <div class="sv__card-head">
+                <span class="sv__card-icon sv__card-icon--location"><i class="pi pi-map-marker"></i></span>
+                <span class="sv__card-title">{{ 'STUDENT_ADD.STUDY_LOCATION_INFO' | translate }}</span>
+              </div>
+              <div class="sv__dl-2col">
+                <dl class="sv__dl">
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENT_ADD.STUDY_COUNTRY_IN' | translate }}</dt>
+                    <dd>{{ studyCountryInMap.get(newStudent.studyCountryIn) || '—' }}</dd>
+                  </div>
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENT_ADD.STUDY_GOV_IN' | translate }}</dt>
+                    <dd>{{ studyGovInMap.get(newStudent.syudyGovIn) || '—' }}</dd>
+                  </div>
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENT_ADD.STUDY_UNIVERSITY_IN' | translate }}</dt>
+                    <dd>{{ studyUniversityInMap.get(newStudent.studyUniversityIn) || '—' }}</dd>
+                  </div>
+                </dl>
+                <dl class="sv__dl">
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENT_ADD.STUDY_COLLEGE_IN' | translate }}</dt>
+                    <dd>{{ studyCollegeInMap.get(newStudent.studyCollegeIn) || '—' }}</dd>
+                  </div>
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENT_ADD.STUDY_EDUCATION_IN' | translate }}</dt>
+                    <dd>{{ studyEducationInMap.get(newStudent.studyEducationIn) || '—' }}</dd>
+                  </div>
+                  <div class="sv__dl-row">
+                    <dt>{{ 'STUDENT_ADD.STUDY_MAJOR_IN' | translate }}</dt>
+                    <dd>{{ studyMajorInMap.get(newStudent.studyMajorIn) || '—' }}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            <!-- Documents (full-width). Read-only here: documents are added, edited,
+                 replaced and removed from the quick-edit page, not from this view. -->
+            <div class="sv__card sv__card--full">
+              <div class="sv__card-head">
+                <span class="sv__card-icon sv__card-icon--docs"><i class="pi pi-file"></i></span>
+                <span class="sv__card-title">{{ 'STUDENTS.DOCUMENTS' | translate }}</span>
+              </div>
+              <app-student-documents [studentId]="viewedStudentId" [readonly]="true"></app-student-documents>
+            </div>
+
+          <!-- Document & photo history (replaced files, removed documents, old photos) -->
+          <div class="sv__card sv__card--full">
+            <div class="sv__card-head">
+              <span class="sv__card-icon sv__card-icon--docs"><i class="pi pi-history"></i></span>
+              <span class="sv__card-title">{{ 'STUDENTS.DOCUMENT_HISTORY' | translate }}</span>
+            </div>
+            <app-student-document-history [studentId]="viewedStudentId"></app-student-document-history>
+          </div>
+
+        </div>
+
+        <!-- ── Notes ── -->
+        @if (newStudent.studentNote1 || newStudent.studentNote2) {
+          <div class="sv__notes">
+            <div class="sv__card-head">
+              <span class="sv__card-icon"><i class="pi pi-comment"></i></span>
+              <span class="sv__card-title">{{ 'STUDENT_HISTORY.NOTES' | translate }}</span>
+            </div>
+            <div class="sv__notes-grid">
+              @if (newStudent.studentNote1) {
+                <div class="sv__note">
+                  <span class="sv__note-label">{{ 'STUDENT_HISTORY.NOTE_1' | translate }}</span>
+                  <p class="sv__note-text">{{ newStudent.studentNote1 }}</p>
+                </div>
+              }
+              @if (newStudent.studentNote2) {
+                <div class="sv__note">
+                  <span class="sv__note-label">{{ 'STUDENT_HISTORY.NOTE_2' | translate }}</span>
+                  <p class="sv__note-text">{{ newStudent.studentNote2 }}</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+      </div>
+    </ng-template>
+    <ng-template pTemplate="footer">
+      <div class="flex justify-content-end gap-2">
+        <button pButton pRipple [label]="'STUDENTS.EDIT_STUDENT' | translate" icon="pi pi-pencil"
+        class="p-button-outlined" (click)="editStudent(newStudent); viewDialog = false" *hasPermission="'STUDENTS.EDIT'"></button>
+        <button pButton pRipple [label]="'COMMON.CLOSE' | translate" icon="pi pi-times"
+        class="p-button-text" (click)="viewDialog = false"></button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Status Filter Popup Menu -->
+  <p-menu #statusFilterMenu [model]="statusFilterMenuItems" [popup]="true"></p-menu>
+
+  <!-- Renders this page's keyless confirm requests, so the embedded student wizard's
+  keyed save prompt is left to its own dialog. -->
+  <p-confirmdialog [style]="{width: '440px'}" [baseZIndex]="10000" appendTo="body"
+    [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"
+    [acceptLabel]="'COMMON.YES' | translate"
+    [rejectLabel]="'COMMON.NO' | translate"
+    acceptButtonStyleClass="p-button-danger"
+  rejectButtonStyleClass="p-button-text"></p-confirmdialog>
+
+  <p-dialog [(visible)]="studentFormModalVisible"
+    position="center"
+    [modal]="true"
+    [closable]="true"
+    [dismissableMask]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [blockScroll]="true"
+    appendTo="body"
+    styleClass="student-add-modal"
+    contentStyleClass="student-add-modal__content overflow-y-auto"
+    [style]="{ width: 'min(1360px, 96vw)', maxHeight: '95vh' }"
+    [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"
+    (onShow)="openStudentFormModalShown()">
+    <ng-template pTemplate="header">
+      <span class="text-xl font-semibold">{{ studentFormModalTitle() }}</span>
+    </ng-template>
+    <app-student-add #studentFormEmbed
+      [dialogMode]="true"
+      (dialogSaved)="onStudentFormSaved($event)"
+    (dialogCancelled)="studentFormModalVisible = false"></app-student-add>
+    <ng-template pTemplate="footer">
+      <span class="text-600 text-sm mr-auto">{{ 'STUDENTS.FORM_MODAL_HINT' | translate }}</span>
+    </ng-template>
+  </p-dialog>
+</div>
+</div>

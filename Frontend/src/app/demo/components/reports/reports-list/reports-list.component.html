@@ -1,0 +1,128 @@
+<div class="reports-list-page" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="grid">
+    <div class="col-12">
+      <div class="card">
+        <!-- Header Section. Nothing shares this row, so there is nothing to
+             separate: `justify-content-between` only brought the heading under the
+             global `[dir="rtl"] .flex.justify-content-between` rule, which reversed
+             the row and put it on the left in Arabic. See page-headings.spec.ts. -->
+        <div class="flex align-items-center mb-4">
+          <div class="flex align-items-center gap-3">
+            <i class="pi pi-file text-primary" style="font-size: 2rem"></i>
+            <div>
+              <h3 class="m-0 text-primary">{{ 'REPORTS_LIST.TITLE' | translate }}</h3>
+              <p class="text-600 mt-1 mb-0">{{ 'REPORTS_LIST.SUBTITLE' | translate }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="surface-ground border-round p-5">
+          @if (visibleCategories.length) {
+            <div class="grid mt-2">
+              @for (cat of visibleCategories; track $index) {
+                <div class="col-12 md:col-6 lg:col-4">
+                  <div class="surface-card border-round p-4 shadow-2 h-full cursor-pointer hover:shadow-4 transition-duration-300 report-hub-card"
+                    [routerLink]="cat.route" [queryParams]="cat.queryParams || null">
+                    <div class="flex align-items-center gap-3 mb-3">
+                      <i class="pi {{ cat.icon }} text-{{ cat.color }}" style="font-size: 2rem"></i>
+                      <span class="text-900 font-bold report-hub-card__name">{{ name(cat) }}</span>
+                    </div>
+                    @if (description(cat)) {
+                      <p class="text-600 line-height-3 m-0 mb-3 report-hub-card__desc">
+                        {{ description(cat) }}
+                      </p>
+                    }
+                    <div class="mt-3 pt-3 border-top-1 surface-border">
+                      <span class="text-primary font-semibold">
+                        <i class="pi pi-arrow-right mr-2"></i>{{ 'REPORTS_LIST.VIEW_REPORTS' | translate }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else if (loadFailed) {
+            <!-- A failed catalogue load used to be indistinguishable from having no
+                 permissions ("no access"), and the empty answer was cached for the
+                 rest of the session. Review item P1/P3c. -->
+            <div class="text-center">
+              <p class="text-600 mb-3">{{ 'REPORTS_LIST.LOAD_FAILED' | translate }}</p>
+              <button pButton type="button" icon="pi pi-refresh" class="p-button-outlined"
+                      [label]="'COMMON.REFRESH' | translate" (click)="retry()"></button>
+            </div>
+          } @else if (!loading) {
+            <p class="text-center text-600">{{ 'REPORTS_LIST.NO_ACCESS' | translate }}</p>
+          }
+
+          @if (visibleCategories.length) {
+            <div class="mt-5">
+              <p class="text-500 mb-3">
+                <i class="pi pi-info-circle mr-2"></i>
+                {{ 'REPORTS_LIST.FEATURES_INFO' | translate }}
+              </p>
+            </div>
+          }
+        </div>
+
+        <!-- Every report, searchable (review item P1). Same catalogue, same
+             permission filter as the hub cards above. -->
+        @if (groups.length) {
+          <div class="mt-5 all-reports">
+            <div class="flex align-items-center flex-wrap gap-3 mb-3">
+              <h5 class="m-0 text-900">{{ 'REPORTS_LIST.ALL_REPORTS' | translate }}</h5>
+              <span class="text-500 all-reports__count">
+                {{ search ? matchCount : totalReports }} / {{ totalReports }}
+              </span>
+              <span class="p-input-icon-left flex-auto" style="max-width: 28rem">
+                <i class="pi pi-search"></i>
+                <input pInputText type="text" class="w-full" [(ngModel)]="search"
+                       (ngModelChange)="applySearch()"
+                       [attr.aria-label]="'REPORTS_LIST.SEARCH_PLACEHOLDER' | translate"
+                       [placeholder]="'REPORTS_LIST.SEARCH_PLACEHOLDER' | translate" />
+              </span>
+              @if (search) {
+                <button pButton type="button" icon="pi pi-times" class="p-button-text"
+                        [label]="'COMMON.CLEAR' | translate" (click)="clearSearch()"></button>
+              }
+            </div>
+
+            @for (group of filteredGroups; track group.hub.reportCode) {
+              <div class="mb-4">
+                <div class="flex align-items-center gap-2 mb-2">
+                  <i class="pi {{ group.hub.icon }} text-{{ group.hub.color }}"></i>
+                  <span class="font-semibold text-700 all-reports__hub">{{ group.hubTitle }}</span>
+                </div>
+                <ul class="list-none p-0 m-0 all-reports__list">
+                  @for (report of group.reports; track report.reportCode) {
+                    <li class="py-2 border-bottom-1 surface-border">
+                      @if (isAvailable(report)) {
+                        <a class="text-900 no-underline hover:text-primary all-reports__item"
+                           [routerLink]="report.route" [queryParams]="report.queryParams || null">
+                          {{ report.title }}
+                          @if (report.titleAr && report.titleAr !== report.title) {
+                            <span class="text-500 text-sm mx-2">{{ report.titleAr }}</span>
+                          }
+                        </a>
+                      } @else {
+                        <span class="text-500 all-reports__item">
+                          {{ report.title }}
+                          <span class="text-sm mx-2">({{ 'REPORTS.REPORT_SUBPAGES.COMING_SOON' | translate }})</span>
+                        </span>
+                      }
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+
+            @if (search && !matchCount) {
+              <p class="text-center text-600 all-reports__empty">
+                {{ 'REPORTS_LIST.NO_MATCHES' | translate }}
+              </p>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,413 @@
+<div class="send-notification-container" [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+  <p-toast></p-toast>
+
+  <!-- ── Page header ─────────────────────────────────────────────── -->
+  <div class="card mb-3">
+    <div class="flex align-items-center gap-3">
+      <i class="pi pi-send text-primary" style="font-size:2rem"></i>
+      <div>
+        <h3 class="m-0 text-primary">{{ 'NOTIFICATIONS.SEND.TITLE' | translate }}</h3>
+        <p class="text-500 mt-1 mb-0">{{ 'NOTIFICATIONS.SEND.DESCRIPTION' | translate }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ════════════════════════════════════════════════════════════
+    LEFT — Recipient configuration (single card)
+    ════════════════════════════════════════════════════════════ -->
+    <div class="col-12 lg:col-4">
+      <div class="card">
+
+        <!-- ── Channel ──────────────────────────────────────── -->
+        <div class="mb-4">
+          <label class="block text-700 font-semibold mb-2">
+            <i class="pi pi-wifi mr-2 text-primary"></i>{{ 'NOTIFICATIONS.SEND.CHANNEL' | translate }}
+          </label>
+          <!-- Any combination; a channel switched off in the settings that apply is greyed out. -->
+          <div class="flex gap-2">
+            @for (opt of channelOptions; track opt.value) {
+              <button type="button"
+                class="flex-1 flex flex-column align-items-center justify-content-center gap-1
+                       p-3 border-round border-1 transition-colors transition-duration-150"
+                style="background:inherit"
+                [ngClass]="!isChannelAvailable(opt.value)
+                    ? 'border-200 surface-100 text-400 cursor-auto opacity-60'
+                    : isChannelSelected(opt.value)
+                      ? 'border-primary bg-primary-50 text-primary cursor-pointer'
+                      : 'border-300 surface-50 text-600 cursor-pointer'"
+                [disabled]="!isChannelAvailable(opt.value)"
+                [attr.aria-pressed]="isChannelSelected(opt.value)"
+                [attr.title]="isChannelAvailable(opt.value) ? null : ('NOTIFICATIONS.SEND.CHANNEL_OFF' | translate)"
+                (click)="toggleChannel(opt.value)">
+                <i class="pi {{ opt.value | codeIcon:'notification-channel' }} text-lg"></i>
+                <span class="text-xs font-medium text-center">{{ opt.label }}</span>
+                @if (isChannelSelected(opt.value)) {
+                  <i class="pi pi-check-circle text-xs"></i>
+                }
+              </button>
+            }
+          </div>
+          @if (settingsSourceLabel) {
+            <small class="text-500 block mt-2">
+              <i class="pi pi-cog mr-1"></i>{{ 'NOTIFICATIONS.SEND.SETTINGS_USED' | translate }}: {{ settingsSourceLabel }}
+            </small>
+          }
+          @if (availability && availability.enabledChannels.length === 0) {
+            <small class="text-orange-500 block mt-1">{{ 'NOTIFICATIONS.SEND.NO_CHANNEL_ENABLED' | translate }}</small>
+          }
+        </div>
+
+        <p-divider styleClass="my-3"></p-divider>
+
+        <!-- ── Send To ───────────────────────────────────────── -->
+        <div class="mb-4">
+          <label class="block text-700 font-semibold mb-2">
+            <i class="pi pi-users mr-2 text-primary"></i>{{ 'NOTIFICATIONS.SEND.RECIPIENT_TYPE' | translate }}
+          </label>
+          <div class="flex gap-2">
+            @for (opt of recipientOptions; track opt) {
+              <button
+                type="button"
+                class="flex-1 p-2 border-round border-1 cursor-pointer font-medium text-sm transition-colors transition-duration-150"
+                                [ngClass]="recipientType === opt.value
+                                    ? 'border-primary bg-primary-50 text-primary'
+                                    : 'border-300 surface-50 text-600'"
+                style="background:inherit"
+                (click)="setRecipientType(opt.value)">
+                {{ opt.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <p-divider styleClass="my-3"></p-divider>
+
+        <!-- ── Scope ─────────────────────────────────────────── -->
+        <div class="mb-4">
+          <label class="block text-700 font-semibold mb-2">
+            <i class="pi pi-filter mr-2 text-primary"></i>{{ 'NOTIFICATIONS.SEND.SCOPE' | translate }}
+          </label>
+          <div class="flex gap-2 mb-2">
+            @for (opt of scopeOptions; track opt) {
+              <button
+                type="button"
+                                class="flex-1 py-2 px-1 border-round border-1 cursor-pointer font-medium text-sm
+                                       transition-colors transition-duration-150 text-center"
+                                [ngClass]="scope === opt.value
+                                    ? 'border-primary bg-primary-50 text-primary'
+                                    : 'border-300 surface-50 text-600'"
+                style="background:inherit"
+                (click)="scope = opt.value; previewCount = null">
+                {{ opt.label }}
+              </button>
+            }
+          </div>
+          <small class="text-500 pl-1">
+            @for (opt of scopeOptions; track opt) {
+              @if (scope === opt.value) {
+                <span>{{ opt.desc }}</span>
+              }
+            }
+          </small>
+        </div>
+
+        <!-- ── Recipient ID (scope = ONE) ─────────────────────── -->
+        @if (scope === 'ONE') {
+          <div class="mb-4">
+            <!-- Review R4: searched by name, id or email instead of a bare id box. A
+                 typed email with no pick is sent as recipientEmail and looked up. -->
+            <label class="block text-700 font-semibold mb-2" for="snRecipient">
+              <i class="pi pi-user mr-2 text-primary"></i>{{ 'NOTIFICATIONS.SEND.RECIPIENT' | translate }}
+            </label>
+            <p-autoComplete inputId="snRecipient" [(ngModel)]="recipient"
+              [suggestions]="recipientSuggestions" (completeMethod)="searchRecipients($event)"
+              optionLabel="name" [minLength]="2" [delay]="300" [forceSelection]="false"
+              [showClear]="true" appendTo="body" styleClass="w-full" inputStyleClass="w-full"
+              [placeholder]="'NOTIFICATIONS.SEND.RECIPIENT_PLACEHOLDER' | translate"
+              (onSelect)="previewCount = null" (onClear)="previewCount = null">
+              <ng-template let-r pTemplate="item">
+                <div class="flex flex-column">
+                  <span class="font-medium">{{ r.name }} <span class="text-500">({{ r.id }})</span></span>
+                  @if (r.email) {
+                    <small class="text-500" dir="ltr">{{ r.email }}</small>
+                  }
+                </div>
+              </ng-template>
+            </p-autoComplete>
+            <small class="text-500 block mt-1">{{ 'NOTIFICATIONS.SEND.RECIPIENT_HINT' | translate }}</small>
+            @if (recipientChannelGap === 'EMAIL') {
+              <small class="text-orange-500 block mt-1">{{ 'NOTIFICATIONS.SEND.RECIPIENT_NO_EMAIL' | translate }}</small>
+            }
+            @if (recipientChannelGap === 'PHONE') {
+              <small class="text-orange-500 block mt-1">{{ 'NOTIFICATIONS.SEND.RECIPIENT_NO_PHONE' | translate }}</small>
+            }
+          </div>
+        }
+
+        <!-- ── Country scope (students: GROUP or ALL) ───────── -->
+        @if (showStudentCountryFilter) {
+          <div class="mb-4">
+            <label class="block text-700 font-semibold mb-3">
+              <i class="pi pi-globe mr-2 text-primary"></i>{{ 'NOTIFICATIONS.SEND.COUNTRY_FILTER' | translate }}
+            </label>
+            <p-multiselect
+              [options]="countries"
+              [(ngModel)]="selectedCountryIds"
+              optionLabel="name" optionValue="id"
+              [placeholder]="(isMinistryUser ? 'NOTIFICATIONS.HISTORY.ALL_COUNTRIES' : 'NOTIFICATIONS.SEND.COUNTRY_FILTER') | translate"
+              [filter]="true" filterBy="name"
+              styleClass="w-full"
+              [showClear]="true"
+              (onChange)="onCountriesChange()" (onClear)="onCountriesChange()">
+            </p-multiselect>
+            <small class="text-500 block mt-1">{{ 'NOTIFICATIONS.SEND.COUNTRY_SCOPE_HINT' | translate }}</small>
+          </div>
+        }
+
+        <!-- ── Filters (scope = GROUP, students) ─────────────── -->
+        @if (scope === 'GROUP' && recipientType === 'STUDENT') {
+          <div class="mb-4">
+            <label class="block text-700 font-semibold mb-3">
+              <i class="pi pi-sliders-h mr-2 text-primary"></i>{{ 'NOTIFICATIONS.SEND.FILTER_BY' | translate }}
+            </label>
+            <div class="grid" style="row-gap:0.75rem">
+              <div class="col-12">
+                <label class="block text-500 text-sm mb-1">{{ 'NOTIFICATIONS.SEND.MAJOR_FILTER' | translate }}</label>
+                <p-multiselect
+                  [options]="majors"
+                  [(ngModel)]="selectedMajorIds"
+                  optionLabel="name" optionValue="id"
+                  [placeholder]="'NOTIFICATIONS.SEND.MAJOR_FILTER' | translate"
+                  styleClass="w-full"
+                  [showClear]="true"
+                  (onChange)="previewCount = null">
+                </p-multiselect>
+              </div>
+              <div class="col-12">
+                <label class="block text-500 text-sm mb-1">{{ 'NOTIFICATIONS.SEND.STATUS_FILTER' | translate }}</label>
+                <p-multiselect
+                  [options]="studyStatuses"
+                  [(ngModel)]="selectedStudyStatusIds"
+                  optionLabel="name" optionValue="id"
+                  [placeholder]="'NOTIFICATIONS.SEND.STATUS_FILTER' | translate"
+                  styleClass="w-full"
+                  [showClear]="true"
+                  (onChange)="previewCount = null">
+                </p-multiselect>
+              </div>
+            </div>
+          </div>
+        }
+
+        <!-- ── Filters (scope = GROUP, employees) ────────────── -->
+        @if (scope === 'GROUP' && recipientType === 'EMPLOYEE') {
+          <div class="mb-4">
+            <label class="block text-700 font-semibold mb-3">
+              <i class="pi pi-sliders-h mr-2 text-primary"></i>{{ 'NOTIFICATIONS.SEND.FILTER_BY' | translate }}
+            </label>
+            <div class="grid">
+              <div class="col-12">
+                <label class="block text-500 text-sm mb-1">{{ 'NOTIFICATIONS.SEND.GROUP_FILTER' | translate }}</label>
+                <p-multiselect
+                  [options]="umsGroups"
+                  [(ngModel)]="selectedGroupIds"
+                  optionLabel="name" optionValue="id"
+                  [placeholder]="'NOTIFICATIONS.SEND.GROUP_FILTER' | translate"
+                  styleClass="w-full"
+                  [showClear]="true"
+                  (onChange)="previewCount = null">
+                </p-multiselect>
+              </div>
+            </div>
+          </div>
+        }
+
+        <p-divider styleClass="my-3"></p-divider>
+
+        <!-- ── Preview count ─────────────────────────────────── -->
+        <p-button icon="pi pi-eye"
+          [label]="'NOTIFICATIONS.SEND.PREVIEW_COUNT' | translate"
+          severity="info"
+          styleClass="w-full"
+          [loading]="previewLoading"
+          (onClick)="loadPreviewCount()">
+        </p-button>
+        @if (previewCount !== null) {
+          <div class="mt-3 text-center">
+            <span class="text-3xl font-bold text-primary">{{ previewCount }}</span>
+            <span class="text-600 ml-2">{{ 'NOTIFICATIONS.SEND.RECIPIENTS_WILL_RECEIVE' | translate }}</span>
+          </div>
+        }
+
+      </div><!-- /card -->
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════
+    RIGHT — Compose message
+    ════════════════════════════════════════════════════════════ -->
+    <div class="col-12 lg:col-8">
+      <div class="card">
+        <div class="flex align-items-center gap-2 mb-4">
+          <i class="pi pi-pencil text-primary text-xl"></i>
+          <h5 class="m-0 text-primary">{{ 'NOTIFICATIONS.SEND.MESSAGE' | translate }}</h5>
+        </div>
+
+        <!-- Subject -->
+        @if (showSubject) {
+          <div class="field mb-4">
+            <label class="block text-700 font-semibold mb-2">
+              {{ 'NOTIFICATIONS.SEND.SUBJECT' | translate }}
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <input pInputText [(ngModel)]="subject"
+              [placeholder]="'NOTIFICATIONS.SEND.SUBJECT_PLACEHOLDER' | translate"
+              class="w-full">
+          </div>
+        }
+
+        <!-- Body — HTML editor (email) -->
+        @if (showSubject) {
+          <div class="field mb-4">
+            <label class="block text-700 font-semibold mb-2">
+              {{ 'NOTIFICATIONS.SEND.BODY' | translate }}
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <p-editor [(ngModel)]="body"
+              [style]="{'height':'320px'}"
+              styleClass="w-full">
+              <ng-template pTemplate="header">
+                <span class="ql-formats">
+                  <select class="ql-header">
+                    <option value="1">{{ 'NOTIFICATIONS.SEND.EDITOR_HEADING_1' | translate }}</option>
+                    <option value="2">{{ 'NOTIFICATIONS.SEND.EDITOR_HEADING_2' | translate }}</option>
+                    <option selected>{{ 'NOTIFICATIONS.SEND.EDITOR_NORMAL' | translate }}</option>
+                  </select>
+                </span>
+                <span class="ql-formats">
+                  <button class="ql-bold" type="button"></button>
+                  <button class="ql-italic" type="button"></button>
+                  <button class="ql-underline" type="button"></button>
+                  <button class="ql-strike" type="button"></button>
+                </span>
+                <span class="ql-formats">
+                  <select class="ql-color"></select>
+                  <select class="ql-background"></select>
+                </span>
+                <span class="ql-formats">
+                  <button class="ql-list" value="ordered" type="button"></button>
+                  <button class="ql-list" value="bullet" type="button"></button>
+                </span>
+                <span class="ql-formats">
+                  <select class="ql-align"></select>
+                </span>
+                <span class="ql-formats">
+                  <button class="ql-link" type="button"></button>
+                  <button class="ql-image" type="button"></button>
+                </span>
+                <span class="ql-formats">
+                  <button class="ql-clean" type="button"></button>
+                </span>
+              </ng-template>
+            </p-editor>
+            @if (hasPhoneChannel) {
+              <small class="text-500 block mt-1">{{ 'NOTIFICATIONS.SEND.PLAIN_TEXT_HINT' | translate }}</small>
+            }
+          </div>
+        }
+
+        <!-- Body — plain textarea (SMS) -->
+        @if (!showSubject) {
+          <div class="field mb-4">
+            <label class="block text-700 font-semibold mb-2">
+              {{ 'NOTIFICATIONS.SEND.BODY' | translate }}
+              <span class="text-red-500 ml-1">*</span>
+            </label>
+            <textarea pTextarea [(ngModel)]="body" [rows]="12"
+              [placeholder]="'NOTIFICATIONS.SEND.SMS_BODY_PLACEHOLDER' | translate"
+              class="w-full" [autoResize]="false">
+            </textarea>
+            <div class="flex justify-content-between mt-1">
+              <small class="text-500">{{ 'NOTIFICATIONS.SEND.SMS_LENGTH' | translate }}</small>
+              <small [ngClass]="isChannelSelected('SMS') && body.length > 160 ? 'text-orange-500' : 'text-500'">
+                {{ body.length }} {{ 'NOTIFICATIONS.SEND.CHARS' | translate }}
+                @if (isChannelSelected('SMS') && body.length > 0) {
+                  <span class="ml-1">
+                    ({{ Math.ceil(body.length / 160) }} SMS)
+                  </span>
+                }
+              </small>
+            </div>
+          </div>
+        }
+
+        <!-- Action buttons -->
+        <div class="flex justify-content-end align-items-center gap-3 pt-3 border-top-1 surface-border">
+          <p-button icon="pi pi-times"
+            [label]="'COMMON.CLEAR' | translate"
+            severity="secondary"
+            [outlined]="true"
+            [disabled]="sending"
+            (onClick)="resetForm()">
+          </p-button>
+          <p-button icon="pi pi-send"
+            [label]="'NOTIFICATIONS.SEND.SEND_BUTTON' | translate"
+            severity="primary"
+            [loading]="sending"
+            (onClick)="confirmSend()">
+          </p-button>
+        </div>
+
+      </div><!-- /card -->
+    </div>
+
+  </div><!-- /grid -->
+
+  <!-- ── Confirm dialog ──────────────────────────────────────────── -->
+  <p-dialog [(visible)]="showConfirm"
+    [modal]="true"
+    [style]="{width:'420px'}"
+    [header]="'NOTIFICATIONS.SEND.CONFIRM_TITLE' | translate"
+    [resizable]="false">
+
+    <div class="flex flex-column gap-3 pt-2">
+      <p class="m-0 text-700">{{ 'NOTIFICATIONS.SEND.CONFIRM_MESSAGE' | translate }}</p>
+
+      @if (previewCount !== null) {
+        <div
+          class="flex align-items-center gap-3 p-3 surface-100 border-round">
+          <i class="pi pi-users text-primary text-2xl"></i>
+          <div>
+            <div class="text-2xl font-bold text-primary">{{ previewCount }}</div>
+            <div class="text-500 text-sm">{{ 'NOTIFICATIONS.SEND.RECIPIENTS_WILL_RECEIVE' | translate }}</div>
+          </div>
+        </div>
+      }
+
+      <div class="flex align-items-center gap-2 p-3 surface-100 border-round">
+        <i class="pi pi-info-circle text-blue-500"></i>
+        <span class="text-600 text-sm">
+          {{ channelsLabel }}
+          &bull; {{ recipientType | codeLabel:'notification-recipient-type':currentLanguage }}
+          &bull; {{ scope | codeLabel:'notification-scope':currentLanguage }}
+        </span>
+      </div>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <div class="flex justify-content-end gap-2">
+        <p-button [label]="'COMMON.CANCEL' | translate"
+          severity="secondary" [outlined]="true"
+          (onClick)="showConfirm = false">
+        </p-button>
+        <p-button icon="pi pi-send"
+          [label]="'NOTIFICATIONS.SEND.SEND_BUTTON' | translate"
+          severity="primary"
+          (onClick)="doSend()">
+        </p-button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+</div>

@@ -1,0 +1,18 @@
+/* Reports List Component Styles */
+
+.surface-card {
+    transition: all 0.3s ease;
+}
+
+.surface-card:hover {
+    transform: translateY(-5px);
+}
+
+.hover\:shadow-4:hover {
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+}
+
+.surface-ground {
+    min-height: 400px;
+}
+

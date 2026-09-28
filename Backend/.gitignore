@@ -1,0 +1,51 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Runtime upload store — never commit ###
+# These directories hold documents users upload through the application:
+# passport scans, ID photos, profile pictures and finance receipts.
+#
+# They were tracked until V032. The files are AES-256-GCM encrypted at rest, but
+# the dev-profile key that opens them lives in application-dev.properties, so
+# committing them put readable student PII in the repository. Some paths also
+# carry a student's name in the directory itself, which no encryption covers.
+#
+# The store is runtime state. It is restored from a filesystem backup, not from
+# git — including uploads/logos/, which the admin UI re-uploads (the logo
+# endpoint returns 404 rather than failing when it is absent).
+uploads/
+
+### JVM crash dumps (a surefire JVM died of native OOM on 27 Aug 2026) ###
+hs_err_pid*.log
+replay_pid*.log

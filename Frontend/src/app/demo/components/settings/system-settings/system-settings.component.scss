@@ -1,0 +1,27 @@
+.system-settings-container {
+    padding: 1rem;
+}
+
+.logo-preview-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 1.5rem;
+    min-height: 140px;
+    background: #f8f9fa;
+
+    &.no-logo {
+        color: #adb5bd;
+        text-align: center;
+    }
+}
+
+.logo-preview-img {
+    max-height: 120px;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+}

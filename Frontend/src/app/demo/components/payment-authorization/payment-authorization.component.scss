@@ -1,0 +1,303 @@
+/* ============================================================
+   Payment Authorization — Dialog & Screen styles
+   ============================================================ */
+
+// ─── Shared dialog header ────────────────────────────────────────────────────
+.pa-dialog-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+
+  .dialog-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.625rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--indigo-100, #e0e7ff);
+    flex-shrink: 0;
+
+    i { font-size: 1.1rem; color: var(--indigo-600, #4f46e5); }
+
+    &.edit-mode {
+      background: var(--orange-100);
+      i { color: var(--orange-600); }
+    }
+    &.view-mode {
+      background: var(--cyan-100);
+      i { color: var(--cyan-600); }
+    }
+  }
+
+  .dialog-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--surface-900);
+    line-height: 1.3;
+  }
+
+  .dialog-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-color-secondary);
+    margin-top: 0.15rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    i { font-size: 0.7rem; }
+  }
+}
+
+.pa-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.625rem;
+}
+
+// ─── Section cards ───────────────────────────────────────────────────────────
+.pa-section-card {
+  border: 1px solid var(--surface-border);
+  border-radius: 0.875rem;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+  &:last-child { margin-bottom: 0; }
+
+  .pa-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1.25rem;
+    background: var(--surface-50);
+    border-bottom: 1px solid var(--surface-border);
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: var(--surface-700);
+
+    i { font-size: 1rem; color: var(--indigo-600, #4f46e5); }
+
+    &.auth    { border-left: 3px solid #4f46e5; }
+    &.payment { border-left: 3px solid var(--blue-400);   i { color: var(--blue-500); } }
+    &.amounts { border-left: 3px solid var(--green-500);  i { color: var(--green-600); } }
+    &.check   { border-left: 3px solid var(--cyan-400);   i { color: var(--cyan-600); } }
+    &.notes   { border-left: 3px solid var(--surface-400); i { color: var(--surface-500); } }
+  }
+
+  .pa-section-body { padding: 1.25rem; }
+}
+
+.field-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+  margin-bottom: 0.5rem;
+}
+
+// ─── Form: summary strip ──────────────────────────────────────────────────────
+.pa-form-content { padding: 0.25rem 0; }
+
+.pa-summary-strip {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #eef2ff 0%, var(--surface-50) 100%);
+  border: 1px solid #c7d2fe;
+  border-radius: 0.875rem;
+
+  .summary-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    background: white;
+    border: 1px solid var(--surface-200);
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    min-width: 0;
+
+    > i { font-size: 1rem; flex-shrink: 0; color: #4f46e5; }
+    &.amount > i { color: var(--green-600); }
+    &.status > i { color: var(--orange-500); }
+
+    .chip-body { display: flex; flex-direction: column; min-width: 0; }
+    .chip-label {
+      font-size: 0.68rem; font-weight: 700; color: var(--text-color-secondary);
+      text-transform: uppercase; letter-spacing: 0.05em; line-height: 1; margin-bottom: 0.2rem;
+    }
+    .chip-value {
+      font-size: 0.875rem; font-weight: 700; color: var(--surface-900);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;
+    }
+  }
+}
+
+// ─── Net amount display box ───────────────────────────────────────────────────
+.pa-net-amount-display {
+  padding: 0.6rem 1rem;
+  background: var(--green-50);
+  border: 1px solid var(--green-300);
+  border-left: 4px solid var(--green-500);
+  border-radius: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--green-700);
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+}
+
+// ─── View: header card ────────────────────────────────────────────────────────
+.pa-view-content { padding: 0.25rem 0; }
+
+.pa-view-header-card {
+  background: linear-gradient(135deg, #4338ca 0%, #818cf8 100%);
+  border-radius: 1rem;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.25rem;
+  color: white;
+
+  .view-header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.8;
+    margin-bottom: 0.5rem;
+    i { font-size: 0.85rem; }
+  }
+
+  .view-student-name {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0 0 0.75rem;
+    line-height: 1.25;
+  }
+
+  .view-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .record-id-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    background: rgba(255,255,255,.2);
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: 1px solid rgba(255,255,255,.35);
+  }
+}
+
+// ─── View: chips ─────────────────────────────────────────────────────────────
+.pa-view-chips {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+
+  .view-chip {
+    flex: 1;
+    min-width: 140px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid;
+
+    &.net      { background: var(--green-50);   border-color: var(--green-200);   .chip-icon i { color: var(--green-600); } }
+    &.original { background: var(--blue-50);    border-color: var(--blue-200);    .chip-icon i { color: var(--blue-500); } }
+    &.date     { background: var(--purple-50);  border-color: var(--purple-200);  .chip-icon i { color: var(--purple-500); } }
+    &.student  { background: var(--surface-50); border-color: var(--surface-200); .chip-icon i { color: var(--surface-500); } }
+
+    .chip-icon {
+      width: 2.25rem; height: 2.25rem; border-radius: 50%;
+      background: rgba(255,255,255,.85);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      i { font-size: 1rem; }
+    }
+    .chip-body { display: flex; flex-direction: column; min-width: 0; }
+    .chip-label {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--text-color-secondary); margin-bottom: 0.2rem;
+    }
+    .chip-value {
+      font-size: 0.9rem; font-weight: 700; color: var(--surface-900);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      &.net-value { color: var(--green-700); }
+    }
+  }
+}
+
+// ─── Detail grid ─────────────────────────────────────────────────────────────
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.5rem;
+
+  .detail-item {
+    display: flex; flex-direction: column; gap: 0.3rem;
+    padding: 0.75rem; border-radius: 0.5rem;
+    background: var(--surface-50); border: 1px solid var(--surface-100);
+    transition: background 0.15s;
+    &:hover { background: var(--surface-100); }
+  }
+  .detail-label {
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--text-color-secondary);
+  }
+  .detail-value {
+    font-size: 0.925rem; font-weight: 500; color: var(--surface-900);
+    word-break: break-word;
+    &.detail-amount { font-size: 1.05rem; font-weight: 700; color: var(--green-700); }
+  }
+}
+
+.notes-text {
+  margin: 0; font-size: 0.9rem; color: var(--surface-800);
+  line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+}
+
+// ─── RTL ─────────────────────────────────────────────────────────────────────
+[dir="rtl"] {
+  .pa-section-header {
+    &.auth    { border-left: none; border-right: 3px solid #4f46e5; }
+    &.payment { border-left: none; border-right: 3px solid var(--blue-400); }
+    &.amounts { border-left: none; border-right: 3px solid var(--green-500); }
+    &.check   { border-left: none; border-right: 3px solid var(--cyan-400); }
+    &.notes   { border-left: none; border-right: 3px solid var(--surface-400); }
+  }
+  .pa-net-amount-display { border-left: none; border-right: 4px solid var(--green-500); }
+  .pa-view-header-card .view-header-badge,
+  .pa-dialog-header-inner .dialog-subtitle { flex-direction: row-reverse; }
+}
+
+
+/* ============================================================
+   No print rules.
+
+   Printing used to mean rendering an HTML replica of Form 11 into the
+   page and hiding the whole application around it — `body > * { display:
+   none }`, then naming each layout wrapper back into existence. That
+   block is gone with the replica: Print now opens the server's PDF in
+   the shared viewer and prints the document itself, so there is nothing
+   on this page left to hide.
+   ============================================================ */
+
+// The status is shown, not picked: it changes through the authorize and mark-paid actions.
+.pa-status-readonly {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+}

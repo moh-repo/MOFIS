@@ -1,0 +1,120 @@
+<div class="portal-page">
+  <div class="sp-intro">
+    <p class="sp-intro__text">{{ 'STUDENT_PORTAL.SECURITY.SUBTITLE' | translate }}</p>
+  </div>
+
+  @if (mustChangePassword) {
+    <!-- SEC-001 (D9-a): nothing else opens until the student chooses a password. -->
+    <nz-alert nzType="warning" nzShowIcon data-testid="must-change-password"
+      [nzMessage]="'STUDENT_PORTAL.SECURITY.MUST_CHANGE' | translate"></nz-alert>
+  }
+
+  <nz-spin [nzSpinning]="loading">
+    @if (status) {
+      <nz-card class="security-card" [nzTitle]="'STUDENT_PORTAL.SECURITY.EMAIL_TITLE' | translate">
+        @if (status.emailVerifiedAt) {
+          <p><span nz-icon nzType="check-circle" nzTheme="outline" class="ok"></span>
+            {{ 'STUDENT_PORTAL.SECURITY.EMAIL_VERIFIED' | translate }} {{ status.emailVerifiedAt | localeDate:'mediumDate' }}</p>
+        } @else {
+          <p><span nz-icon nzType="clock-circle" nzTheme="outline"></span>
+            {{ 'STUDENT_PORTAL.SECURITY.EMAIL_PENDING' | translate }}</p>
+        }
+      </nz-card>
+
+      <nz-card class="security-card" [nzTitle]="'STUDENT_PORTAL.SECURITY.TOTP_TITLE' | translate">
+        <p class="hint">{{ 'STUDENT_PORTAL.SECURITY.TOTP_HINT' | translate }}</p>
+
+        @if (step === 'idle') {
+          @if (status.totpEnabled) {
+            <p><span nz-icon nzType="safety-certificate" nzTheme="outline" class="ok"></span>
+              {{ 'STUDENT_PORTAL.SECURITY.TOTP_ENABLED_SINCE' | translate }} {{ status.totpEnrolledAt | localeDate:'mediumDate' }}</p>
+            <button nz-button nzDanger (click)="askDisable()">{{ 'STUDENT_PORTAL.SECURITY.TURN_OFF' | translate }}</button>
+          } @else {
+            <p>{{ 'STUDENT_PORTAL.SECURITY.TOTP_DISABLED' | translate }}</p>
+            <button nz-button nzType="primary" [nzLoading]="busy" (click)="startEnrolment()">
+              {{ 'STUDENT_PORTAL.SECURITY.TURN_ON' | translate }}
+            </button>
+          }
+        }
+
+        @if (step === 'scan' && enrolment) {
+          <ol class="steps">
+            <li>{{ 'STUDENT_PORTAL.SECURITY.STEP_SCAN' | translate }}</li>
+            <li>{{ 'STUDENT_PORTAL.SECURITY.STEP_CODE' | translate }}</li>
+          </ol>
+          <div class="qr-row">
+            <img [src]="enrolment.qrPng" alt="QR" class="qr" />
+            <div class="manual">
+              <span class="label">{{ 'STUDENT_PORTAL.SECURITY.MANUAL_KEY' | translate }}</span>
+              <code>{{ enrolment.secret }}</code>
+            </div>
+          </div>
+          <nz-form-item>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="code" name="code" maxlength="6" inputmode="numeric"
+                [placeholder]="'STUDENT_PORTAL.SECURITY.CODE_PLACEHOLDER' | translate" (keyup.enter)="confirmEnrolment()" />
+            </nz-form-control>
+          </nz-form-item>
+          <div class="actions">
+            <button nz-button nzType="primary" [nzLoading]="busy" (click)="confirmEnrolment()">{{ 'STUDENT_PORTAL.SECURITY.CONFIRM' | translate }}</button>
+            <button nz-button (click)="cancel()">{{ 'STUDENT_PORTAL.SECURITY.CANCEL' | translate }}</button>
+          </div>
+        }
+
+        @if (step === 'disable') {
+          <p>{{ 'STUDENT_PORTAL.SECURITY.DISABLE_HINT' | translate }}</p>
+          <nz-form-item>
+            <nz-form-control>
+              <input nz-input [(ngModel)]="code" name="code" maxlength="6" inputmode="numeric"
+                [placeholder]="'STUDENT_PORTAL.SECURITY.CODE_PLACEHOLDER' | translate" (keyup.enter)="disable()" />
+            </nz-form-control>
+          </nz-form-item>
+          <div class="actions">
+            <button nz-button nzDanger [nzLoading]="busy" (click)="disable()">{{ 'STUDENT_PORTAL.SECURITY.TURN_OFF' | translate }}</button>
+            <button nz-button (click)="cancel()">{{ 'STUDENT_PORTAL.SECURITY.CANCEL' | translate }}</button>
+          </div>
+        }
+
+        @if (error) {
+          <nz-alert nzType="error" [nzMessage]="error" nzShowIcon class="error"></nz-alert>
+        }
+      </nz-card>
+
+      <!-- The password (live QA L12, 24 Sep 2026): the API existed, the form did not. -->
+      <nz-card class="security-card" [nzTitle]="'STUDENT_PORTAL.SECURITY.PASSWORD_TITLE' | translate">
+        <p class="hint">{{ 'STUDENT_PORTAL.SECURITY.PASSWORD_HINT' | translate }}</p>
+        <form class="password-form" (ngSubmit)="changePassword()" autocomplete="off" data-testid="change-password-form">
+          <nz-form-item>
+            <nz-form-label nzFor="currentPassword">{{ 'STUDENT_PORTAL.SECURITY.CURRENT_PASSWORD' | translate }}</nz-form-label>
+            <nz-form-control>
+              <input nz-input type="password" id="currentPassword" name="currentPassword"
+                [(ngModel)]="currentPassword" autocomplete="current-password" />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label nzFor="newPassword">{{ 'STUDENT_PORTAL.SECURITY.NEW_PASSWORD' | translate }}</nz-form-label>
+            <nz-form-control>
+              <input nz-input type="password" id="newPassword" name="newPassword"
+                [(ngModel)]="newPassword" autocomplete="new-password" />
+            </nz-form-control>
+          </nz-form-item>
+          <nz-form-item>
+            <nz-form-label nzFor="confirmPassword">{{ 'STUDENT_PORTAL.SECURITY.CONFIRM_PASSWORD' | translate }}</nz-form-label>
+            <nz-form-control>
+              <input nz-input type="password" id="confirmPassword" name="confirmPassword"
+                [(ngModel)]="confirmPassword" autocomplete="new-password" />
+            </nz-form-control>
+          </nz-form-item>
+          @if (passwordError) {
+            <nz-alert nzType="error" [nzMessage]="passwordError" nzShowIcon class="error"></nz-alert>
+          }
+          <div class="actions">
+            <button nz-button nzType="primary" type="submit" [nzLoading]="passwordBusy">
+              {{ 'STUDENT_PORTAL.SECURITY.CHANGE_PASSWORD' | translate }}
+            </button>
+          </div>
+        </form>
+      </nz-card>
+    }
+  </nz-spin>
+</div>

@@ -1,0 +1,445 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.5.16</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.dilaw</groupId>
+	<artifactId>mohe</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>mohe</name>
+	<description>MOHE scholarship management system — backend API</description>
+	<properties>
+		<java.version>21</java.version>
+		<start-class>com.dilaw.mohe.MoheApplication</start-class>
+		<!-- JUnit tag surefire excludes by default. Every @SpringBootTest class carries
+		     @Tag("integration") and needs the MOHE database; override with
+		     -DexcludedGroups=none to run the whole suite. -->
+		<excludedGroups>integration</excludedGroups>
+		<!-- Override the Boot BOM's managed Lombok so the dependency and the
+		     annotation processor path below stay on one version. -->
+		<lombok.version>1.18.46</lombok.version>
+		<!-- O-22, first Dependency-Check run (7 Sep 2026): patch releases ahead of the
+		     Boot 3.5.16 BOM. Tomcat 10.1.55 -> 10.1.59 (CVE-2026-65637/-65905/-68525
+		     and the rest of the 10.1.58 set); log4j 2.24.3 -> 2.25.5 (the 2.25.4 layout
+		     fixes; only the API and the SLF4J bridge are on the classpath). Drop these
+		     when a Boot release manages a version at least this high.
+		     W5-07 (23 Sep 2026): carried to the current line of each, 10.1.60 and
+		     2.26.1. Staying current is what these two pins are for, so they move with
+		     upstream rather than waiting for a CVE to name them. Tomcat stays on 10.1
+		     and log4j on 2.x: 11.0 and 3.0 are the Jakarta EE 11 / Boot 4 lines. -->
+		<tomcat.version>10.1.60</tomcat.version>
+		<log4j2.version>2.26.1</log4j2.version>
+	</properties>
+	<dependencyManagement>
+		<dependencies>
+			<!-- O-22: JasperReports 6.21.3 pulls commons-beanutils 1.9.4 (CVE-2025-48734,
+			     enum classloader access through BeanIntrospector); 1.11.0 is the fixed
+			     drop-in. -->
+			<dependency>
+				<groupId>commons-beanutils</groupId>
+				<artifactId>commons-beanutils</artifactId>
+				<version>1.11.0</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+	<dependencies>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-cache</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.microsoft.sqlserver</groupId>
+			<artifactId>mssql-jdbc</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+		<!-- Schema migrations (security plan O-29, decision D-4 option A). The numbered
+		     scripts in docs/scripts are packaged as db/migration (see <resources>) and
+		     applied on startup; an existing database is baselined at V096. -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-sqlserver</artifactId>
+		</dependency>
+
+		<!-- O-16: QR code for the authenticator app enrolment (ZXing core only; the
+		     PNG is drawn with ImageIO so javase and its transitive deps are not needed). -->
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>core</artifactId>
+			<version>3.5.3</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- hibernate-core is supplied transitively by spring-boot-starter-data-jpa
+		     and its version is managed by the Spring Boot BOM. Do not pin it here:
+		     an explicit version decouples Hibernate from the rest of the BOM. -->
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+
+		<!-- Spring Security: authentication and authorization -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
+		<!-- JWT (jjwt; version managed below, not by the Boot BOM) -->
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-api</artifactId>
+			<version>0.13.0</version>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>0.13.0</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>0.13.0</version>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- O-13 (security plan, 6 Sep 2026): the notification editor's HTML is
+		     sanitised before it goes on the wire (EmailService), closing the quill
+		     advisory in DEPENDENCY_ADVISORIES.md independently of quill. -->
+		<!-- W5-07 (23 Sep 2026): 1.18.3 -> 1.23.2. This is the sanitiser standing
+		     between a composed notification body and an outgoing message, and a
+		     sanitiser bypass is exactly what these releases fix, so it is kept on the
+		     current line rather than on the version that happened to be chosen. -->
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.23.2</version>
+		</dependency>
+
+		<!-- OpenPDF (server-side PDF reports) -->
+		<dependency>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>2.0.3</version>
+		</dependency>
+
+		<!-- Apache POI for Excel file support -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>5.5.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.5.1</version>
+		</dependency>
+
+		<!-- SpringDoc OpenAPI 3 / Swagger UI (optional: disable in production if desired) -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.8.17</version>
+		</dependency>
+
+		<!-- Spring Boot Actuator: health, info, optional metrics -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
+		<!-- Email sending (JavaMailSender) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
+		<!-- JasperReports (PDF generation with RTL/Arabic support) -->
+		<dependency>
+			<groupId>net.sf.jasperreports</groupId>
+			<artifactId>jasperreports</artifactId>
+			<version>6.21.3</version>
+			<exclusions>
+				<!-- Exclude bundled iText; OpenPDF (same com.lowagie.text namespace) serves as drop-in -->
+				<exclusion>
+					<groupId>com.lowagie</groupId>
+					<artifactId>itext</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>net.sf.jasperreports</groupId>
+			<artifactId>jasperreports-fonts</artifactId>
+			<version>6.21.3</version>
+		</dependency>
+
+	</dependencies>
+
+	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+			</resource>
+			<!-- O-29: the migration scripts stay in docs/scripts, where the runbook and
+			     the reviewers expect them, and are copied into the jar for Flyway from
+			     there. Only the top-level V*.sql files are migrations: docs/scripts/baseline
+			     holds the generated reference schema and docs/scripts/adhoc the one-off
+			     operator scripts, and neither may ever run on startup. -->
+			<resource>
+				<directory>docs/scripts</directory>
+				<targetPath>db/migration</targetPath>
+				<includes>
+					<include>V*.sql</include>
+				</includes>
+			</resource>
+		</resources>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!--
+					  Every @SpringBootTest class is @Tag("integration"): it boots the full context
+					  against a populated MOHE SQL Server. Plain `mvnw test` runs only the
+					  context-free unit tests; the whole suite is `mvnw test -DexcludedGroups=none`
+					  (or verify.ps1 without -SkipDatabase). The value comes from the
+					  <excludedGroups> property above so the command line can override it — a
+					  literal here cannot be overridden from the command line.
+					-->
+					<excludedGroups>${excludedGroups}</excludedGroups>
+					<!-- @{argLine} keeps the JaCoCo agent that prepare-agent puts there; a bare
+					     value silently replaced it and every coverage report came out empty. -->
+					<!-- Explicit heap and metaspace caps: on 27 Aug 2026 a forked test JVM died of a
+					     *native* out-of-memory (hs_err: Chunk::new in the C2 compiler thread, 32 s into
+					     the run) because the unbounded default heap left nothing for AspectJ weaving
+					     and JIT arenas. The suite needs well under 2 GB. Run tests on a JDK 21
+					     toolchain — the crashed JVM was 23; the build targets 21. -->
+					<argLine>@{argLine} -Xmx2g -XX:MaxMetaspaceSize=512m -Dnet.bytebuddy.experimental=true</argLine>
+					<systemPropertyVariables>
+						<!-- application.properties sets no default profile on purpose; the tests
+						     run against the local dev database. -->
+						<spring.profiles.default>dev</spring.profiles.default>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.15.0</version>
+				<configuration>
+					<release>${java.version}</release>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.15</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+					<!--
+					  A floor, not a target. Coverage was measured and never enforced: the
+					  report was written after every run and nothing read it, so a change that
+					  deleted tests looked exactly like one that added them.
+
+					  The thresholds are set just under what a *clean* `mvnw test` produces:
+					  14.4% line, 13.2% branch, measured 2 Sep 2026 by `mvnw clean test`.
+
+					  Clean matters. Measured without `clean`, the same command reports 42%
+					  line — but that number is a fiction: target/jacoco.exec accumulates, so
+					  a working tree where someone has run the integration suite carries its
+					  coverage into the next unit-only report. Maven says so ("Classes in
+					  bundle 'mohe' do not match with execution data") and the number is
+					  believed anyway. A threshold set from it would fail every clean build.
+
+					  So this floor is what CI can actually reach: every @SpringBootTest is
+					  @Tag("integration") and excluded by default, which is most of this
+					  codebase's testing. 14% is not a statement that the system is 14%
+					  tested — it is what is left when the 97 test classes that need a
+					  database are taken away. A run with -DexcludedGroups=none scores far
+					  higher and passes comfortably.
+
+					  Raise these when the number rises; that is the point of a ratchet. The
+					  way to make them meaningfully higher is the integration-test seed
+					  script, which would let CI run the other 51 classes at all.
+					-->
+					<execution>
+						<id>check</id>
+						<phase>test</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.13</minimum>
+										</limit>
+										<limit>
+											<counter>BRANCH</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.12</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<mainClass>com.dilaw.mohe.MoheApplication</mainClass>
+					<systemPropertyVariables>
+						<!-- `mvn spring-boot:run` is a local-development command, so it gets the same
+						     treatment as the surefire tests: application.properties sets no default
+						     profile on purpose, and this makes the forked run default to dev.
+						     A *default* profile (not an active one) so SPRING_PROFILES_ACTIVE or
+						     -Dspring-boot.run.profiles=... still override it. The packaged jar is
+						     unaffected and still refuses to start without an explicit profile. -->
+						<spring.profiles.default>dev</spring.profiles.default>
+					</systemPropertyVariables>
+					<image>
+						<builder>paketobuildpacks/builder-jammy-base:latest</builder>
+					</image>
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+
+			<!-- ==================================================================
+			     Security tooling (security plan, phase 0, 6 Sep 2026).
+
+			     None of these run on a plain `mvnw test`, so the developer loop is
+			     unchanged. CI and verify.ps1 invoke them by goal:
+
+			       mvnw compile spotbugs:check           O-11  static analysis, FindSecBugs rules
+			       mvnw dependency-check:check           O-22  CVE scan of every jar (needs network for the NVD feed)
+			       mvnw cyclonedx:makeAggregateBom       O-23  SBOM, target/bom.json + bom.xml
+			     ================================================================== -->
+			<plugin>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+				<version>4.8.6.6</version>
+				<configuration>
+					<effort>Max</effort>
+					<!-- High-confidence findings fail the build; Medium and Low are in the report. -->
+					<threshold>High</threshold>
+					<failOnError>true</failOnError>
+					<xmlOutput>true</xmlOutput>
+					<excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+					<plugins>
+						<plugin>
+							<groupId>com.h3xstream.findsecbugs</groupId>
+							<artifactId>findsecbugs-plugin</artifactId>
+							<version>1.13.0</version>
+						</plugin>
+					</plugins>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.owasp</groupId>
+				<artifactId>dependency-check-maven</artifactId>
+				<version>12.1.0</version>
+				<configuration>
+					<!-- CVSS 7 and above (High, Critical) fail; below is reported. -->
+					<failBuildOnCVSS>7</failBuildOnCVSS>
+					<suppressionFiles>
+						<suppressionFile>dependency-check-suppressions.xml</suppressionFile>
+					</suppressionFiles>
+					<formats>
+						<format>HTML</format>
+						<format>JSON</format>
+					</formats>
+					<!-- The NVD API key (NVD_API_KEY) makes the feed download minutes instead of an hour. -->
+					<nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
+					<!-- Sonatype OSS Index rejects anonymous lookups (401) once its quota is
+					     used, and the plugin treats that as an analysis failure rather than a
+					     missing finding. The NVD is the source of record here; switch the
+					     analyzer back on with an ossindexServerId credential (7 Sep 2026). -->
+					<ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.cyclonedx</groupId>
+				<artifactId>cyclonedx-maven-plugin</artifactId>
+				<version>2.9.1</version>
+				<configuration>
+					<projectType>application</projectType>
+					<outputFormat>all</outputFormat>
+					<outputName>bom</outputName>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>

@@ -1,0 +1,33 @@
+:host ::ng-deep {
+  .p-datatable {
+    .p-datatable-thead > tr > th {
+      background-color: var(--surface-50);
+    }
+  }
+}
+
+/* Icon preceding a heading. `mr-2` is a physical margin, so under RTL it opened
+   the gap on the outside of the icon rather than between the icon and its text. */
+.section-icon {
+  margin-inline-end: 0.5rem;
+}
+
+/* ─── RTL ────────────────────────────────────────────────────────────────────
+   styles.scss flips the table with `direction: rtl`, which right-aligns the body
+   cells. The theme, though, pins `text-align: left` on header cells, so a header
+   and the values beneath it hugged opposite edges of the column. */
+:host ::ng-deep [dir="rtl"] {
+  .p-datatable {
+    .p-datatable-thead > tr > th,
+    .p-datatable-tfoot > tr > td {
+      text-align: right;
+    }
+  }
+}
+
+@media print {
+  button, .no-print {
+    display: none !important;
+  }
+}
+

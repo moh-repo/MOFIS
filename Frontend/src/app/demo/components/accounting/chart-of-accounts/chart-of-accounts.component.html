@@ -1,0 +1,344 @@
+<p-toast></p-toast>
+<p-confirmdialog [style]="{ width: '28rem' }"></p-confirmdialog>
+
+<div class="card">
+    <!-- Header. `flex-1` on the icon-and-title block, not
+         `justify-content-between`: under `direction: rtl` a flex row already runs
+         right to left, and the global rule in styles.scss reverses every
+         `.flex.justify-content-between` again, which put the heading on the left
+         and the buttons on the right in Arabic — on all six accounting screens,
+         which were written from one copied header. See
+         src/app/demo/components/page-headings.spec.ts. -->
+    <div class="flex align-items-center mb-4 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3 flex-1">
+            <i class="pi pi-sitemap text-primary" style="font-size: 2.5rem"></i>
+            <div>
+                <h2 class="m-0 text-primary">{{ 'ACCOUNTING.CHART_TITLE' | translate }}</h2>
+                <p class="text-600 mt-1 mb-0">{{ 'ACCOUNTING.CHART_SUBTITLE' | translate }}</p>
+            </div>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+            <!-- The chart is a controlled document: writes are COA_EDIT on the server. -->
+            <button pButton pRipple type="button" icon="pi pi-plus" *hasPermission="'COA.EDIT'"
+                    [label]="'ACCOUNTING.ADD_ROOT' | translate"
+                    (click)="openNewRoot()"></button>
+        </div>
+    </div>
+
+    <!--
+      Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+      The year and the segment were two unlabelled boxes floating at the end of
+      the heading row. Every row on this page is scoped to both, so which is
+      selected is the most important thing on the screen and needs saying rather
+      than inferring from the heading it sat beside — the same move the other
+      five accounting screens already made.
+    -->
+    <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-4">
+            <div class="filter-bar__field" [class.filter-bar__field--active]="selectedFiscalYearId">
+                <label for="coaFiscalYear">{{ 'ACCOUNTING.FISCAL_YEAR' | translate }}</label>
+                <p-select inputId="coaFiscalYear" [options]="fiscalYears" [(ngModel)]="selectedFiscalYearId"
+                          optionLabel="yearNo" optionValue="id"
+                          [placeholder]="'ACCOUNTING.FISCAL_YEAR' | translate"
+                          (onChange)="reload()"></p-select>
+            </div>
+            <div class="filter-bar__field" [class.filter-bar__field--active]="selectedSegmentId">
+                <label for="coaSegment">{{ 'ACCOUNTING.SEGMENT' | translate }}</label>
+                <p-select inputId="coaSegment" [options]="segments" [(ngModel)]="selectedSegmentId"
+                          optionValue="id" [placeholder]="'ACCOUNTING.SEGMENT' | translate"
+                          (onChange)="reload()">
+                    <ng-template pTemplate="selectedItem" let-s>{{ segmentName(s) }}</ng-template>
+                    <ng-template pTemplate="item" let-s>{{ segmentName(s) }}</ng-template>
+                </p-select>
+            </div>
+        </div>
+        <div class="filter-bar__actions">
+            <span class="filter-bar__hint filter-bar__actions-spacer" *ngIf="summary">
+                {{ 'ACCOUNTING.ACCOUNT_COUNT' | translate }}: <b>{{ summary.accountCount }}</b>
+                &nbsp;·&nbsp;
+                {{ 'ACCOUNTING.POSTABLE_COUNT' | translate }}: <b>{{ summary.postableCount }}</b>
+            </span>
+        </div>
+    </div>
+
+    <!--
+      An empty chart is the correct state on a fresh install, so it is explained
+      rather than shown as a bare "no records". The codes are a controlled
+      document; they come from the الدليل المحاسبي الموحد, not from this system.
+    -->
+    <p-message *ngIf="!loading && tree.length === 0" severity="info" styleClass="w-full mb-3">
+        <div class="flex flex-column gap-1">
+            <span class="font-medium">{{ 'ACCOUNTING.EMPTY_CHART_TITLE' | translate }}</span>
+            <span class="text-sm">{{ 'ACCOUNTING.EMPTY_CHART_BODY' | translate }}</span>
+        </div>
+    </p-message>
+
+    <p-progressSpinner *ngIf="loading" styleClass="w-2rem h-2rem"></p-progressSpinner>
+
+    <p-treeTable *ngIf="!loading && tree.length > 0" [value]="tree" [scrollable]="true"
+                 [customSort]="true" (sortFunction)="sortTree($event)">
+        <ng-template pTemplate="header">
+            <tr>
+                <th style="width: 22rem" ttSortableColumn="fullCode">{{ 'ACCOUNTING.CODE' | translate }} <p-treeTableSortIcon field="fullCode"></p-treeTableSortIcon></th>
+                <th ttSortableColumn="name">{{ 'ACCOUNTING.ACCOUNT_NAME' | translate }} <p-treeTableSortIcon field="name"></p-treeTableSortIcon></th>
+                <th style="width: 9rem" ttSortableColumn="level">{{ 'ACCOUNTING.LEVEL' | translate }} <p-treeTableSortIcon field="level"></p-treeTableSortIcon></th>
+                <th style="width: 9rem" ttSortableColumn="nature">{{ 'ACCOUNTING.NATURE' | translate }} <p-treeTableSortIcon field="nature"></p-treeTableSortIcon></th>
+                <th style="width: 7rem" ttSortableColumn="postable">{{ 'ACCOUNTING.POSTABLE' | translate }} <p-treeTableSortIcon field="postable"></p-treeTableSortIcon></th>
+                <th style="width: 10rem" ttSortableColumn="belongsTo">{{ 'ACCOUNTING.BELONGS_TO' | translate }} <p-treeTableSortIcon field="belongsTo"></p-treeTableSortIcon></th>
+                <th style="width: 12rem">{{ 'COMMON.ACTIONS' | translate }}</th>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-rowNode let-rowData="rowData">
+            <tr [ttRow]="rowNode" [class.text-color-secondary]="!rowData.active">
+                <td>
+                    <p-treeTableToggler [rowNode]="rowNode"></p-treeTableToggler>
+                    <span class="font-mono font-medium">{{ rowData.fullCode }}</span>
+                </td>
+                <td>
+                    {{ accountName(rowData) }}
+                    <p-tag *ngIf="!rowData.active" severity="secondary" styleClass="mx-2"
+                           [value]="'ACCOUNTING.INACTIVE' | translate"></p-tag>
+                </td>
+                <td>{{ levelName(rowData) }}</td>
+                <td>
+                    {{ ('ACCOUNTING.NATURE_' + rowData.accountNature) | translate }}
+                    <!-- Debit or credit normal. Derived from the nature by the server,
+                         because getting it wrong inverts the account in every report. -->
+                    <span class="text-color-secondary mx-1">({{ rowData.normalBalance }})</span>
+                </td>
+                <td>
+                    <i class="pi" [ngClass]="rowData.postable ? 'pi-check text-green-500' : 'pi-minus text-color-secondary'"></i>
+                </td>
+                <td>
+                    <!-- No country means the unified chart, shared by every attaché —
+                         the opposite of what a blank means on the Wafar screen. -->
+                    <span [class.text-color-secondary]="rowData.studyCountryInId == null">
+                        {{ countryName(rowData.studyCountryInId) }}
+                    </span>
+                </td>
+                <td>
+                    <button pButton pRipple type="button" icon="pi pi-eye" class="p-button-text p-button-sm"
+                            [pTooltip]="'COMMON.VIEW' | translate"
+                            (click)="openView(rowData)"></button>
+                    <ng-container *hasPermission="'COA.EDIT'">
+                        <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-text p-button-sm"
+                                [pTooltip]="'ACCOUNTING.ADD_CHILD' | translate"
+                                [disabled]="rowData.postable"
+                                (click)="openNewChild(rowData)"></button>
+                        <button pButton pRipple type="button" icon="pi pi-pencil" class="p-button-text p-button-sm"
+                                [pTooltip]="'ACCOUNTING.EDIT' | translate"
+                                (click)="openEdit(rowData)"></button>
+                        <button pButton pRipple type="button" icon="pi pi-ban" class="p-button-text p-button-sm p-button-danger"
+                                [pTooltip]="'ACCOUNTING.DEACTIVATE' | translate"
+                                [disabled]="!rowData.active"
+                                (click)="confirmDeactivate(rowData)"></button>
+                    </ng-container>
+                </td>
+            </tr>
+        </ng-template>
+    </p-treeTable>
+</div>
+
+<!-- Add / edit. Shared vocabulary: assets/layout/styles/_detail-dialog.scss. The
+     dialog used to be a bare column of labels and inputs, and a missing code or
+     name was reported by a toast that named neither field. -->
+<p-dialog [(visible)]="dialogVisible" [modal]="true" [draggable]="false"
+          [style]="{ width: '640px', maxWidth: '96vw' }" styleClass="dv-dialog"
+          (onHide)="submitted = false"
+          [header]="(editing.id ? 'ACCOUNTING.EDIT_ACCOUNT' : 'ACCOUNTING.NEW_ACCOUNT') | translate">
+    <ng-template pTemplate="content">
+        <div class="dv-hero" [class.dv-hero--new]="!editing.id">
+            <div class="dv-hero__badge">
+                <ng-container *ngIf="editing.id; else newBadge">{{ editing.id }}</ng-container>
+                <ng-template #newBadge><i class="pi pi-plus"></i></ng-template>
+            </div>
+            <div class="dv-hero__body">
+                <div class="dv-hero__eyebrow">
+                    {{ (editing.id ? 'ACCOUNTING.EDIT_ACCOUNT' : 'ACCOUNTING.NEW_ACCOUNT') | translate }}
+                </div>
+                <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!editing.nameAr">
+                    {{ editing.nameAr || ('ACCOUNTING.ACCOUNT_NAME' | translate) }}
+                </div>
+                <div class="dv-hero__meta">
+                    <span class="dv-chip" *ngIf="parentForNew">
+                        {{ 'ACCOUNTING.PARENT' | translate }}: {{ parentForNew.fullCode }}
+                    </span>
+                    <span class="dv-chip" *ngIf="editing.fullCode">{{ editing.fullCode }}</span>
+                </div>
+            </div>
+        </div>
+
+        <section class="dv-section">
+            <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+                <div><div class="dv-section__title">{{ 'ACCOUNTING.SECTION_IDENTITY' | translate }}</div></div>
+            </header>
+            <div class="dv-fields">
+                <div class="dv-field">
+                    <label for="coaCode" class="dv-label">
+                        {{ 'ACCOUNTING.CODE' | translate }} <span class="dv-required">*</span>
+                    </label>
+                    <input id="coaCode" pInputText [(ngModel)]="editing.code" class="w-full" dir="ltr" />
+                    <!-- The full code is the parent's path plus this code; the server
+                         computes it, so it is not editable here. -->
+                    <small class="dv-hint">{{ 'ACCOUNTING.CODE_HINT' | translate }}</small>
+                    <small class="dv-error" *ngIf="submitted && !editing.code">
+                        <i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                </div>
+                <div class="dv-field">
+                    <label for="coaNameAr" class="dv-label">
+                        {{ 'ACCOUNTING.NAME_AR' | translate }} <span class="dv-required">*</span>
+                    </label>
+                    <input id="coaNameAr" pInputText [(ngModel)]="editing.nameAr" class="w-full" dir="rtl" />
+                    <small class="dv-error" *ngIf="submitted && !editing.nameAr">
+                        <i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                </div>
+                <div class="dv-field dv-field--full">
+                    <label for="coaNameEn" class="dv-label">{{ 'ACCOUNTING.NAME_EN' | translate }}</label>
+                    <input id="coaNameEn" pInputText [(ngModel)]="editing.nameEn" class="w-full" dir="ltr" />
+                </div>
+            </div>
+        </section>
+
+        <section class="dv-section">
+            <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-sitemap"></i></span>
+                <div><div class="dv-section__title">{{ 'ACCOUNTING.SECTION_CLASSIFICATION' | translate }}</div></div>
+            </header>
+            <div class="dv-fields">
+                <div class="dv-field">
+                    <label for="coaNature" class="dv-label">{{ 'ACCOUNTING.NATURE' | translate }}</label>
+                    <p-select inputId="coaNature" [options]="natures" [(ngModel)]="editing.accountNature"
+                              optionLabel="label" optionValue="value" appendTo="body"
+                              styleClass="w-full"></p-select>
+                </div>
+                <div class="dv-field" *ngIf="needsAttacheChoice">
+                    <label for="coaCountry" class="dv-label">{{ 'ACCOUNTING.BELONGS_TO' | translate }}</label>
+                    <p-select inputId="coaCountry" [options]="countryOptions" [(ngModel)]="editing.studyCountryInId"
+                              optionLabel="name" optionValue="id" appendTo="body"
+                              [showClear]="true" [filter]="true" filterBy="name" styleClass="w-full"
+                              [placeholder]="'ACCOUNTING.UNIFIED_CHART' | translate"></p-select>
+                    <small class="dv-hint">{{ 'ACCOUNTING.BELONGS_TO_HINT' | translate }}</small>
+                </div>
+                <div class="dv-field dv-field--full">
+                    <label class="dv-label" for="coaPostable">{{ 'ACCOUNTING.POSTABLE' | translate }}</label>
+                    <div class="flex align-items-center gap-2">
+                        <p-checkbox [(ngModel)]="editing.postable" [binary]="true" inputId="coaPostable"></p-checkbox>
+                        <label for="coaPostable" class="text-sm">{{ 'ACCOUNTING.POSTABLE_HINT' | translate }}</label>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+        <div class="dv-footer">
+            <small class="dv-footer__hint">
+                <span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+            </small>
+            <div class="dv-footer__actions">
+                <button pButton type="button" class="p-button-text p-button-secondary" icon="pi pi-times"
+                        [label]="'COMMON.CANCEL' | translate" [disabled]="saving"
+                        (click)="dialogVisible = false"></button>
+                <button pButton type="button" icon="pi pi-check" [label]="'COMMON.SAVE' | translate"
+                        [loading]="saving" (click)="save()"></button>
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>
+
+<!-- View. The tree shows six of an account's fields; this names the rest —
+     the parent it hangs from, its segment and year, and the normal balance the
+     server derived, which is what inverts the account in every report if it is
+     wrong. -->
+<p-dialog [(visible)]="viewVisible" [modal]="true" [draggable]="false"
+          [style]="{ width: '640px', maxWidth: '96vw' }" styleClass="dv-dialog"
+          [header]="'ACCOUNTING.VIEW_ACCOUNT' | translate">
+    <ng-template pTemplate="content">
+        <div class="dv-view" *ngIf="viewing as v">
+            <div class="dv-hero" [class.dv-hero--muted]="!v.active">
+                <div class="dv-hero__badge"><i class="pi pi-book"></i></div>
+                <div class="dv-hero__body">
+                    <div class="dv-hero__eyebrow">{{ v.fullCode }}</div>
+                    <div class="dv-hero__title">{{ accountName(v) }}</div>
+                    <div class="dv-hero__meta">
+                        <span class="dv-chip">{{ ('ACCOUNTING.NATURE_' + v.accountNature) | translate }}</span>
+                        <p-tag [severity]="v.active ? 'success' : 'secondary'"
+                               [value]="(v.active ? 'COMMON.ACTIVE' : 'ACCOUNTING.INACTIVE') | translate"></p-tag>
+                    </div>
+                </div>
+            </div>
+
+            <section class="dv-section">
+                <header class="dv-section__head">
+                    <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+                    <div><div class="dv-section__title">{{ 'ACCOUNTING.SECTION_IDENTITY' | translate }}</div></div>
+                </header>
+                <dl class="dv-dl">
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.CODE' | translate }}</dt>
+                        <dd class="font-mono">{{ v.code }}</dd>
+                    </div>
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.NAME_AR' | translate }}</dt>
+                        <dd dir="rtl">{{ v.nameAr || ('COMMON.NOT_AVAILABLE' | translate) }}</dd>
+                    </div>
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.NAME_EN' | translate }}</dt>
+                        <dd dir="ltr">{{ v.nameEn || ('COMMON.NOT_AVAILABLE' | translate) }}</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="dv-section">
+                <header class="dv-section__head">
+                    <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-sitemap"></i></span>
+                    <div><div class="dv-section__title">{{ 'ACCOUNTING.SECTION_CLASSIFICATION' | translate }}</div></div>
+                </header>
+                <dl class="dv-dl">
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.LEVEL' | translate }}</dt>
+                        <dd>{{ levelName(v) }}</dd>
+                    </div>
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.NATURE' | translate }}</dt>
+                        <dd>
+                            {{ ('ACCOUNTING.NATURE_' + v.accountNature) | translate }}
+                            <span class="text-color-secondary">({{ v.normalBalance }})</span>
+                        </dd>
+                    </div>
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.POSTABLE' | translate }}</dt>
+                        <dd>
+                            <i class="pi" [ngClass]="v.postable ? 'pi-check text-green-500' : 'pi-minus text-color-secondary'"></i>
+                        </dd>
+                    </div>
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.BELONGS_TO' | translate }}</dt>
+                        <dd>{{ countryName(v.studyCountryInId) }}</dd>
+                    </div>
+                    <div class="dv-dl__row" *ngIf="viewParent">
+                        <dt>{{ 'ACCOUNTING.PARENT' | translate }}</dt>
+                        <dd><span class="font-mono">{{ viewParent.fullCode }}</span> — {{ accountName(viewParent) }}</dd>
+                    </div>
+                </dl>
+            </section>
+        </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+        <div class="dv-footer">
+            <div class="dv-footer__actions">
+                <button pButton type="button" class="p-button-text p-button-secondary" icon="pi pi-times"
+                        [label]="'COMMON.CLOSE' | translate" (click)="viewVisible = false"></button>
+                <button pButton type="button" icon="pi pi-pencil" *hasPermission="'COA.EDIT'"
+                        [label]="'ACCOUNTING.EDIT' | translate"
+                        (click)="viewVisible = false; openEdit(viewing!)"></button>
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>

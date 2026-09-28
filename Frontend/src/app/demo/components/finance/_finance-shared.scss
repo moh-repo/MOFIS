@@ -1,0 +1,165 @@
+// Shared visual language for the three finance pages (list / form / view).
+// Component styles are scoped, so each component SCSS pulls this in with
+// `@use '../finance-shared' as *;` (the list uses './finance-shared').
+
+// ─── Page header bar ─────────────────────────────────────────────────────────
+
+@mixin fin-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1.1rem 1.5rem;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.07) 0%, rgba(59, 130, 246, 0.035) 100%);
+    border-bottom: 1px solid var(--surface-border);
+
+    @media (max-width: 640px) {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem;
+    }
+}
+
+@mixin fin-header-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(16, 185, 129, 0.14);
+    color: var(--green-600, #059669);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+@mixin fin-header-title {
+    margin: 0 0 0.1rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1.2;
+}
+
+@mixin fin-header-count {
+    font-size: 0.8rem;
+    color: var(--text-color-secondary);
+    font-weight: 500;
+}
+
+// ─── Section card (form sections and view detail groups) ─────────────────────
+
+@mixin fin-section-card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    padding: 1.25rem 1.35rem 0.6rem;
+    margin-bottom: 1.15rem;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+
+    @media (max-width: 640px) {
+        padding: 1rem 1rem 0.35rem;
+    }
+}
+
+@mixin fin-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 1.1rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+/* Tint is passed as r,g,b channels so the same hue drives both the fill and the glyph. */
+@mixin fin-section-icon($r, $g, $b) {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+    background: rgba($r, $g, $b, 0.13);
+    color: rgb($r, $g, $b);
+}
+
+@mixin fin-section-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+@mixin fin-section-subtitle {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-color-secondary);
+    margin-top: 0.1rem;
+}
+
+// ─── Form fields ─────────────────────────────────────────────────────────────
+
+@mixin fin-field-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+    margin-bottom: 0.45rem;
+
+    .required {
+        color: var(--red-500, #ef4444);
+        margin-inline-start: 0.15rem;
+    }
+}
+
+// ─── Empty state ─────────────────────────────────────────────────────────────
+
+@mixin fin-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 3rem 1rem;
+    text-align: center;
+
+    > i {
+        font-size: 3rem;
+        color: var(--surface-400, #9ca3af);
+        margin-bottom: 0.5rem;
+    }
+}
+
+// ─── Sticky footer action bar ────────────────────────────────────────────────
+
+@mixin fin-action-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0.9rem 1.35rem;
+    margin-top: 1.25rem;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+
+    @media (max-width: 640px) {
+        padding: 0.75rem 0.9rem;
+
+        button {
+            flex: 1 1 auto;
+        }
+    }
+}

@@ -1,0 +1,8 @@
+# security.txt (RFC 9116) for the MOHE scholarship system - security plan O-21.
+# Operators: replace the contact and canonical host before go-live, and renew
+# the Expires date yearly (a stale file is a finding in itself).
+Contact: mailto:security@ministry.example
+Expires: 2027-09-06T00:00:00.000Z
+Preferred-Languages: en, ar
+Canonical: https://mohe.ministry.example/.well-known/security.txt
+Policy: https://mohe.ministry.example/security-policy

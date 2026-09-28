@@ -1,0 +1,201 @@
+:host {
+  --md-navy:  var(--p-navy, #0b2545);
+  --md-ink:   var(--p-ink, #10243b);
+  --md-muted: var(--p-muted, #64748b);
+  --md-line:  var(--p-line, #e3e9f0);
+  --md-accent: var(--p-accent, #2f7fd8);
+  --md-ok:    #1f8a53;
+  --md-fail:  #c0392b;
+}
+
+.page-alert { border-radius: 8px; }
+
+/* ── Identity header ───────────────────────────────────────── */
+.md-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px solid var(--md-line);
+  border-inline-start: 4px solid var(--md-navy);
+  border-radius: 10px;
+
+  &__avatar {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--md-navy);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  &__name {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--md-ink);
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    color: var(--md-muted);
+
+    strong { color: var(--md-ink); font-weight: 600; }
+  }
+}
+
+/* ── Jump bar ──────────────────────────────────────────────── */
+.md-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid var(--md-line);
+  border-radius: 10px;
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f4f6fa;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--md-ink);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+    [nz-icon] { font-size: 13px; color: var(--md-muted); }
+
+    &:hover {
+      background: #eef4fb;
+      border-color: var(--md-accent);
+      color: var(--md-accent);
+      [nz-icon] { color: var(--md-accent); }
+    }
+  }
+}
+
+/* ── Sections ──────────────────────────────────────────────── */
+.md-section {
+  padding: 18px 20px 20px;
+  background: #fff;
+  border: 1px solid var(--md-line);
+  border-radius: 10px;
+  /* The jump bar scrolls a section to the top of the viewport; the sticky
+     shell header would otherwise sit over its title. */
+  scroll-margin-top: calc(var(--p-header-h, 64px) + 16px);
+}
+
+/* ── Progress ──────────────────────────────────────────────── */
+.md-progress {
+  margin-bottom: 18px;
+
+  &__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+
+  &__year {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--md-ink);
+  }
+
+  &__of {
+    font-size: 12.5px;
+    color: var(--md-muted);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* The transcript: one row per year, outcome on the reading edge. */
+.md-years {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px dashed var(--md-line);
+    border-inline-start: 3px solid var(--md-ok);
+    padding-inline-start: 12px;
+
+    &--fail { border-inline-start-color: var(--md-fail); }
+    /* A placeholder year (D24-a) is grey, not green like a passed one. The tag
+       needs saying: ng-zorro has no colour for a `default` tag, so it was ink. */
+    &--none {
+      border-inline-start-color: var(--md-muted);
+      .ant-tag { color: var(--md-muted); }
+    }
+    &:last-child { border-bottom: none; }
+  }
+
+  &__label {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--md-ink);
+  }
+
+  &__value {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__grade {
+    font-size: 12.5px;
+    color: var(--md-muted);
+  }
+}
+
+/* ── Notes ─────────────────────────────────────────────────── */
+.note-block {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--md-line);
+
+  &:first-of-type { padding-top: 0; }
+  &:last-child { border-bottom: none; padding-bottom: 0; }
+}
+
+.note-label {
+  margin-bottom: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--md-muted);
+}
+
+.note-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--md-ink);
+  white-space: pre-wrap;
+}
+
+/* No RTL block. The shell sets dir="rtl", so the identity row already runs
+   right to left with the avatar against the accent bar. A `row-reverse` under
+   .portal-rtl turned it back and put the avatar at the far left in Arabic.
+   See portal-direction.spec.ts. */

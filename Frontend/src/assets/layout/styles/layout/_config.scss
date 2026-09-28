@@ -1,0 +1,10 @@
+/* The floating .layout-config-button that used to sit against the right edge of
+   every page is gone — the topbar's settings cog opens this drawer instead. */
+.layout-config-sidebar {
+    &.p-drawer {
+        .p-drawer-content {
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+    }
+}

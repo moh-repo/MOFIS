@@ -1,0 +1,196 @@
+<p-toast></p-toast>
+
+<!-- Page Header -->
+<div class="flex align-items-center gap-3 mb-4">
+  <button pButton pRipple type="button"
+    [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+    class="p-button-text p-button-rounded p-button-lg"
+  (click)="goBack()"></button>
+  <div>
+    <div class="text-500 text-sm mb-1">
+      <span class="cursor-pointer hover:text-primary transition-colors transition-duration-150"
+      (click)="goBack()">{{ 'STUDENT_BOOKS_ALLOWANCE.TITLE' | translate }}</span>
+      <span class="mx-2 text-300">/</span>
+      <span>{{ isEditMode ? ('STUDENT_BOOKS_ALLOWANCE.EDIT' | translate) : ('STUDENT_BOOKS_ALLOWANCE.ADD' | translate) }}</span>
+    </div>
+    <h2 class="m-0 text-900 font-semibold">
+      {{ isEditMode ? ('STUDENT_BOOKS_ALLOWANCE.FORM.TITLE_EDIT' | translate) : ('STUDENT_BOOKS_ALLOWANCE.FORM.TITLE_CREATE' | translate) }}
+    </h2>
+  </div>
+</div>
+
+<!-- Loading State -->
+@if (loading) {
+  <div class="card flex justify-content-center align-items-center" style="min-height: 300px">
+    <p-progressSpinner strokeWidth="4"></p-progressSpinner>
+  </div>
+}
+
+<!-- Form -->
+@if (!loading) {
+  <form [formGroup]="form">
+    <!-- Student Section -->
+    <div class="card mb-3">
+      <div class="flex align-items-center gap-2 mb-4 pb-3 border-bottom-1 surface-border">
+        <div class="flex align-items-center justify-content-center border-round"
+          style="width:2.25rem;height:2.25rem;background:var(--primary-50,#f0f4ff)">
+          <i class="pi pi-id-card" style="color:var(--primary-color);font-size:1rem"></i>
+        </div>
+        <span class="font-semibold text-900 text-lg">{{ 'STUDENT_BOOKS_ALLOWANCE.SECTIONS.STUDENT' | translate }}</span>
+      </div>
+      <div class="formgrid grid">
+        <div class="field col-12 md:col-8 lg:col-6">
+          <label class="block text-600 font-medium mb-2">
+            {{ 'STUDENT_BOOKS_ALLOWANCE.FORM.STUDENT' | translate }}
+            <span class="text-red-500 ml-1">*</span>
+          </label>
+          @if (!isEditMode) {
+            <p-autoComplete
+              [(ngModel)]="selectedStudent"
+              [ngModelOptions]="{standalone: true}"
+              [suggestions]="filteredStudents"
+              optionLabel="studentName"
+              [completeOnFocus]="false"
+              (completeMethod)="onStudentSearch($event)"
+              (onSelect)="onStudentSelect($event.value)"
+              (onClear)="onStudentClear()"
+              [placeholder]="'STUDENT_BOOKS_ALLOWANCE.FORM.SELECT_STUDENT' | translate"
+              class="w-full"
+              appendTo="body">
+              <ng-template let-student pTemplate="item">
+                <div class="flex align-items-center gap-2">
+                  <i class="pi pi-user text-400"></i>
+                  <span>{{ student.studentName }}</span>
+                  <small class="text-500">(#{{ student.studentId }})</small>
+                </div>
+              </ng-template>
+            </p-autoComplete>
+          }
+          @if (isEditMode) {
+            <div class="p-inputgroup">
+              <span class="p-inputgroup-addon"><i class="pi pi-user"></i></span>
+              <input pInputText
+                [value]="getStudentName(form.get('studentId')?.value)"
+                class="w-full"
+                [readonly]="true" />
+            </div>
+          }
+          @if (form.get('studentId')?.invalid && form.get('studentId')?.touched) {
+            <small class="p-error block mt-1"
+              >
+              {{ 'COMMON.REQUIRED_FIELD' | translate }}
+            </small>
+          }
+        </div>
+      </div>
+    </div>
+    <!-- Allowance Details Section -->
+    <div class="card mb-3">
+      <div class="flex align-items-center gap-2 mb-4 pb-3 border-bottom-1 surface-border">
+        <div class="flex align-items-center justify-content-center border-round"
+          style="width:2.25rem;height:2.25rem;background:var(--green-50,#f0fdf4)">
+          <i class="pi pi-book" style="color:var(--green-600);font-size:1rem"></i>
+        </div>
+        <span class="font-semibold text-900 text-lg">{{ 'STUDENT_BOOKS_ALLOWANCE.SECTIONS.ALLOWANCE_DETAILS' | translate }}</span>
+      </div>
+      <div class="formgrid grid">
+        <div class="field col-12 md:col-6">
+          <label class="block text-600 font-medium mb-2">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.STUDY_YEAR' | translate }}</label>
+          <!-- LU_ACADEMIC_YEAR, as the spans this column stores. Editable so a
+               value written before the lookup is shown as it was typed. -->
+          <p-select id="studyYear" formControlName="studyYear"
+            [options]="studyYearOptions" optionLabel="label" optionValue="value"
+            [editable]="true" [filter]="true" [showClear]="true" appendTo="body"
+            [placeholder]="'STUDENT_BOOKS_ALLOWANCE.FORM.SELECT_STUDY_YEAR' | translate"
+            class="w-full">
+          </p-select>
+        </div>
+        <div class="field col-12 md:col-6">
+          <label class="block text-600 font-medium mb-2">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.QUARTER' | translate }}</label>
+          <p-select id="moheQuarterId"
+            formControlName="moheQuarterId"
+            [options]="quarters"
+            optionLabel="quarterName"
+            optionValue="id"
+            [filter]="true"
+            [showClear]="true"
+            appendTo="body"
+            [placeholder]="'STUDENT_BOOKS_ALLOWANCE.FORM.SELECT_QUARTER' | translate"
+          class="w-full"></p-select>
+        </div>
+        <div class="field col-12 md:col-6">
+          <label class="block text-600 font-medium mb-2">
+            {{ 'STUDENT_BOOKS_ALLOWANCE.FORM.AMOUNT' | translate }}
+            <span class="text-red-500 ml-1">*</span>
+          </label>
+          <p-inputnumber id="allowanceAmount"
+            formControlName="allowanceAmount"
+            [useGrouping]="true"
+            [min]="0"
+            [minFractionDigits]="0"
+          class="w-full"></p-inputnumber>
+          @if (form.get('allowanceAmount')?.invalid && form.get('allowanceAmount')?.touched) {
+            <small class="p-error block mt-1"
+              >
+              {{ 'COMMON.REQUIRED_FIELD' | translate }}
+            </small>
+          }
+        </div>
+        <div class="field col-12 md:col-6">
+          <label class="block text-600 font-medium mb-2">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.STATUS' | translate }}</label>
+          <p-select id="payStatus"
+            formControlName="payStatus"
+            [options]="payStatuses"
+            optionLabel="name"
+            optionValue="id"
+            appendTo="body"
+          class="w-full"></p-select>
+        </div>
+        <div class="field col-12 md:col-6">
+          <label class="block text-600 font-medium mb-2">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.RECEIPT_DATE' | translate }}</label>
+          <p-datepicker id="receiptDate"
+            formControlName="receiptDate"
+            dateFormat="dd/mm/yy"
+            [showIcon]="true"
+            appendTo="body"
+          class="w-full"></p-datepicker>
+        </div>
+      </div>
+    </div>
+    <!-- Notes Section -->
+    <div class="card mb-4">
+      <div class="flex align-items-center gap-2 mb-4 pb-3 border-bottom-1 surface-border">
+        <div class="flex align-items-center justify-content-center border-round"
+          style="width:2.25rem;height:2.25rem;background:var(--surface-200)">
+          <i class="pi pi-align-left text-600" style="font-size:1rem"></i>
+        </div>
+        <span class="font-semibold text-900 text-lg">{{ 'STUDENT_BOOKS_ALLOWANCE.SECTIONS.NOTES' | translate }}</span>
+      </div>
+      <div class="formgrid grid">
+        <div class="field col-12">
+          <label class="block text-600 font-medium mb-2">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.NOTES' | translate }}</label>
+          <textarea id="notes"
+            pTextarea
+            formControlName="notes"
+            rows="4"
+            class="w-full"
+          [autoResize]="true"></textarea>
+        </div>
+      </div>
+    </div>
+  </form>
+  <!-- Action Buttons -->
+  <div class="flex justify-content-end gap-3">
+    <button pButton pRipple type="button"
+      class="p-button-outlined p-button-secondary"
+      icon="pi pi-times"
+      [label]="'COMMON.CANCEL' | translate"
+    (click)="goBack()"></button>
+    <button pButton pRipple type="button"
+      class="p-button-primary"
+      icon="pi pi-check"
+      [label]="'COMMON.SAVE' | translate"
+      [loading]="saving"
+    (click)="saveRecord()"></button>
+  </div>
+}

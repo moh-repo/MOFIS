@@ -1,0 +1,619 @@
+<div class="notification-settings-container" [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+  <p-toast></p-toast>
+
+  <div class="card">
+    <!-- Page header -->
+    <div class="flex align-items-center mb-4 flex-wrap gap-3">
+      <div class="flex align-items-center gap-3 flex-1">
+        <i class="pi pi-bell text-primary" style="font-size: 2rem"></i>
+        <div>
+          <h3 class="m-0 text-primary">{{ 'NOTIFICATIONS.SETTINGS.TITLE' | translate }}</h3>
+          <p class="text-600 mt-1 mb-0">{{ 'NOTIFICATIONS.SETTINGS.DESCRIPTION' | translate }}</p>
+        </div>
+      </div>
+      <p-button icon="pi pi-plus" [label]="'NOTIFICATIONS.SETTINGS.ADD_COUNTRY' | translate" severity="success"
+        [disabled]="loading || !canAdd" (onClick)="openNew()"></p-button>
+    </div>
+
+    <!-- Filter. Shared layout: assets/layout/styles/_filter-bar.scss. -->
+    <div class="filter-bar">
+      <div class="filter-bar__grid filter-bar__grid--cols-2">
+        <div class="filter-bar__field" [class.filter-bar__field--active]="filterCountryId !== null">
+          <label for="nsFilterCountry">{{ 'NOTIFICATIONS.SETTINGS.COUNTRY_SCOPE' | translate }}</label>
+          <p-select inputId="nsFilterCountry" [options]="countryOptions" [(ngModel)]="filterCountryId"
+            optionLabel="name" optionValue="id" [filter]="true" filterBy="name" [showClear]="true"
+            [placeholder]="'COMMON.ALL' | translate" appendTo="body"></p-select>
+        </div>
+      </div>
+      <div class="filter-bar__actions">
+        <span class="filter-bar__hint filter-bar__actions-spacer">{{ 'NOTIFICATIONS.SETTINGS.FALLBACK_HINT' | translate }}</span>
+      </div>
+    </div>
+
+    <p-table [value]="visibleRows" [loading]="loading" [paginator]="visibleRows.length > 10" [rows]="10"
+      styleClass="p-datatable-sm p-datatable-striped">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>{{ 'NOTIFICATIONS.SETTINGS.SCOPE' | translate }}</th>
+          <th style="width: 120px">{{ 'NOTIFICATIONS.SETTINGS.EMAIL_TAB' | translate }}</th>
+          <th style="width: 120px">{{ 'NOTIFICATIONS.SETTINGS.SMS_TAB' | translate }}</th>
+          <th style="width: 120px">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_TAB' | translate }}</th>
+          <th style="width: 160px">{{ 'COMMON.UPDATED' | translate }}</th>
+          <th style="width: 180px">{{ 'COMMON.ACTIONS' | translate }}</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-row>
+        <tr>
+          <td>
+            <div class="flex align-items-center gap-2">
+              <i class="pi" [ngClass]="row.countryId == null ? 'pi-globe text-primary' : 'pi-flag text-600'"></i>
+              <span [class.font-semibold]="row.countryId == null">{{ scopeLabel(row) }}</span>
+            </div>
+          </td>
+          <td><ng-container *ngTemplateOutlet="onOff; context: { $implicit: row.emailEnabled }"></ng-container></td>
+          <td><ng-container *ngTemplateOutlet="onOff; context: { $implicit: row.smsEnabled }"></ng-container></td>
+          <td><ng-container *ngTemplateOutlet="onOff; context: { $implicit: row.whatsappEnabled }"></ng-container></td>
+          <td>{{ row.updatedAt ? (row.updatedAt | date:'yyyy-MM-dd HH:mm') : '—' }}</td>
+          <td>
+            <p-button icon="pi pi-eye" [rounded]="true" [text]="true" severity="secondary"
+              [ariaLabel]="'COMMON.VIEW' | translate" [attr.title]="'COMMON.VIEW' | translate"
+              (onClick)="openView(row)"></p-button>
+            @if (row.canEdit) {
+              <p-button icon="pi pi-pencil" [rounded]="true" [text]="true" severity="warn"
+                [ariaLabel]="'COMMON.EDIT' | translate" [attr.title]="'COMMON.EDIT' | translate"
+                (onClick)="editRow(row)"></p-button>
+            }
+            <p-button icon="pi pi-send" [rounded]="true" [text]="true"
+              [ariaLabel]="'NOTIFICATIONS.SETTINGS.TEST_SEND' | translate"
+              [attr.title]="'NOTIFICATIONS.SETTINGS.TEST_SEND' | translate"
+              (onClick)="openTestDialog(row)"></p-button>
+            @if (row.countryId != null && row.canEdit) {
+              <p-button icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger"
+                [ariaLabel]="'COMMON.DELETE' | translate" [attr.title]="'COMMON.DELETE' | translate"
+                (onClick)="confirmDelete(row)"></p-button>
+            }
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr><td colspan="6" class="text-center">{{ 'COMMON.NO_DATA' | translate }}</td></tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <ng-template #onOff let-on>
+    <p-tag [value]="(on ? 'NOTIFICATIONS.SETTINGS.ON' : 'NOTIFICATIONS.SETTINGS.OFF') | translate"
+      [severity]="on ? 'success' : 'secondary'"></p-tag>
+  </ng-template>
+
+  <!-- Add / edit. Shared vocabulary: assets/layout/styles/_detail-dialog.scss. -->
+  <p-dialog [(visible)]="dialogVisible" [modal]="true" [style]="{ width: '820px', maxWidth: '96vw' }"
+    [header]="(readOnly ? 'COMMON.VIEW' : editMode ? 'COMMON.EDIT' : 'NOTIFICATIONS.SETTINGS.ADD_COUNTRY') | translate"
+    [draggable]="false" [dismissableMask]="false" styleClass="dv-dialog">
+    <ng-template pTemplate="content">
+      <div class="flex flex-column gap-3">
+        @if (editMode) {
+          <div class="flex align-items-center gap-2">
+            <i class="pi" [ngClass]="current.countryId == null ? 'pi-globe text-primary' : 'pi-flag text-600'"></i>
+            <span class="font-semibold text-lg">{{ scopeLabel(current) }}</span>
+          </div>
+          @if (readOnly) {
+            <p-message severity="info" [text]="'NOTIFICATIONS.SETTINGS.READ_ONLY' | translate"></p-message>
+          }
+        } @else {
+          <div class="dv-field">
+            <label for="nsFormCountry" class="dv-label">{{ 'NOTIFICATIONS.SETTINGS.COUNTRY' | translate }} <span class="dv-required">*</span></label>
+            <p-select inputId="nsFormCountry" [options]="addableCountries" [(ngModel)]="current.countryId"
+              optionLabel="name" optionValue="id" [filter]="true" filterBy="name" appendTo="body" styleClass="w-full"
+              [ngClass]="{ 'ng-invalid ng-dirty': submitted && current.countryId == null }"></p-select>
+            <small class="dv-hint">{{ 'NOTIFICATIONS.SETTINGS.ADD_HINT' | translate }}</small>
+          </div>
+        }
+
+        <p-tabs [(value)]="activeTab">
+          <p-tablist>
+            <p-tab [value]="0"><i class="pi pi-envelope mr-2"></i>{{ 'NOTIFICATIONS.SETTINGS.EMAIL_TAB' | translate }}</p-tab>
+            <p-tab [value]="1"><i class="pi pi-mobile mr-2"></i>{{ 'NOTIFICATIONS.SETTINGS.SMS_TAB' | translate }}</p-tab>
+            <p-tab [value]="2"><i class="pi pi-whatsapp mr-2"></i>{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_TAB' | translate }}</p-tab>
+          </p-tablist>
+          <p-tabpanels>
+            <!-- Email -->
+            <p-tabpanel [value]="0">
+              <div class="flex align-items-center gap-2 mb-4">
+                <label class="font-semibold">{{ 'NOTIFICATIONS.SETTINGS.EMAIL_ENABLED' | translate }}</label>
+                <p-toggleswitch [(ngModel)]="current.emailEnabled" [disabled]="readOnly"></p-toggleswitch>
+              </div>
+              <div class="grid p-fluid" [class.opacity-50]="!current.emailEnabled">
+                <div class="col-12 md:col-8">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.SMTP_HOST' | translate }}
+                    @if (current.emailEnabled) { <span class="dv-required">*</span> }</label>
+                  <input pInputText [(ngModel)]="current.smtpHost" placeholder="smtp.gmail.com" dir="ltr"
+                    [disabled]="readOnly || !current.emailEnabled" class="w-full"
+                    [ngClass]="{ 'ng-invalid ng-dirty': submitted && current.emailEnabled && !current.smtpHost }">
+                </div>
+                <div class="col-12 md:col-4">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.SMTP_PORT' | translate }}</label>
+                  <p-inputnumber [(ngModel)]="current.smtpPort" [min]="1" [max]="65535" [useGrouping]="false"
+                    [disabled]="readOnly || !current.emailEnabled" class="w-full"></p-inputnumber>
+                </div>
+                <div class="col-12 md:col-6">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.SMTP_USERNAME' | translate }}</label>
+                  <input pInputText [(ngModel)]="current.smtpUsername" placeholder="notifications@example.com" dir="ltr"
+                    autocomplete="off" name="smtp-username"
+                    [disabled]="readOnly || !current.emailEnabled" class="w-full">
+                </div>
+                <div class="col-12 md:col-6">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.SMTP_PASSWORD' | translate }}</label>
+                  <p-password [(ngModel)]="current.smtpPassword" autocomplete="new-password"
+                    [placeholder]="(current.smtpPasswordSet ? 'NOTIFICATIONS.SETTINGS.SECRET_STORED' : 'NOTIFICATIONS.SETTINGS.SMTP_PASSWORD') | translate"
+                    [feedback]="false" [toggleMask]="true"
+                    [disabled]="readOnly || !current.emailEnabled" styleClass="w-full"></p-password>
+                </div>
+                <div class="col-12 md:col-6">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.SMTP_FROM_ADDRESS' | translate }}</label>
+                  <input pInputText [(ngModel)]="current.smtpFromAddress" placeholder="no-reply@example.com" dir="ltr"
+                    [disabled]="readOnly || !current.emailEnabled" class="w-full">
+                </div>
+                <div class="col-12 md:col-6">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.SMTP_FROM_NAME' | translate }}</label>
+                  <input pInputText [(ngModel)]="current.smtpFromName"
+                    [placeholder]="'NOTIFICATIONS.SETTINGS.SMTP_FROM_NAME_PLACEHOLDER' | translate"
+                    [disabled]="readOnly || !current.emailEnabled" class="w-full">
+                </div>
+                <div class="col-12 md:col-6">
+                  <div class="flex align-items-center gap-2">
+                    <p-toggleswitch [(ngModel)]="current.smtpUseTls" [disabled]="readOnly || !current.emailEnabled"></p-toggleswitch>
+                    <label class="font-semibold">{{ 'NOTIFICATIONS.SETTINGS.USE_TLS' | translate }} (STARTTLS, port 587)</label>
+                  </div>
+                </div>
+                <div class="col-12 md:col-6">
+                  <div class="flex align-items-center gap-2">
+                    <p-toggleswitch [(ngModel)]="current.smtpUseSsl" [disabled]="readOnly || !current.emailEnabled"></p-toggleswitch>
+                    <label class="font-semibold">{{ 'NOTIFICATIONS.SETTINGS.USE_SSL' | translate }} (SSL, port 465)</label>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+
+            <!-- SMS -->
+            <p-tabpanel [value]="1">
+              <div class="flex align-items-center gap-2 mb-4">
+                <label class="font-semibold">{{ 'NOTIFICATIONS.SETTINGS.SMS_ENABLED' | translate }}</label>
+                <p-toggleswitch [(ngModel)]="current.smsEnabled" [disabled]="readOnly"></p-toggleswitch>
+              </div>
+              <div class="grid p-fluid" [class.opacity-50]="!current.smsEnabled">
+                <div class="col-12">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.SMS_WEBHOOK_URL' | translate }}
+                    @if (current.smsEnabled) { <span class="dv-required">*</span> }</label>
+                  <input pInputText [(ngModel)]="current.smsWebhookUrl" placeholder="https://api.provider.com/v1/send" dir="ltr"
+                    [disabled]="readOnly || !current.smsEnabled" class="w-full"
+                    [ngClass]="{ 'ng-invalid ng-dirty': submitted && current.smsEnabled && !current.smsWebhookUrl }">
+                  <small class="text-500">{{ 'NOTIFICATIONS.SETTINGS.SMS_WEBHOOK_HINT' | translate }}</small>
+                </div>
+                <div class="col-12 md:col-4">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.SMS_WEBHOOK_METHOD' | translate }}</label>
+                  <p-select [(ngModel)]="current.smsWebhookMethod" [options]="httpMethodOptions"
+                    optionLabel="label" optionValue="value" appendTo="body"
+                    [disabled]="readOnly || !current.smsEnabled" styleClass="w-full"></p-select>
+                </div>
+                <div class="col-12 md:col-8">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.SMS_FROM_NUMBER' | translate }}</label>
+                  <input pInputText [(ngModel)]="current.smsFromNumber" placeholder="+218..." dir="ltr"
+                    [disabled]="readOnly || !current.smsEnabled" class="w-full">
+                </div>
+                <div class="col-12">
+                  <label class="block mb-2 font-semibold">
+                    {{ 'NOTIFICATIONS.SETTINGS.SMS_WEBHOOK_HEADERS' | translate }}
+                    <small class="text-500 ml-2">{{ 'NOTIFICATIONS.SETTINGS.SMS_WEBHOOK_HEADERS_HINT' | translate }}</small>
+                  </label>
+                  <textarea pTextarea rows="3" [(ngModel)]="current.smsWebhookHeaders" dir="ltr"
+                    [placeholder]="current.smsWebhookHeadersSet ? ('NOTIFICATIONS.SETTINGS.SECRET_STORED' | translate) : '[{&quot;key&quot;:&quot;Authorization&quot;,&quot;value&quot;:&quot;Bearer TOKEN&quot;}]'"
+                    [disabled]="readOnly || !current.smsEnabled" class="w-full font-monospace"></textarea>
+                </div>
+              </div>
+            </p-tabpanel>
+
+            <!-- WhatsApp -->
+            <p-tabpanel [value]="2">
+              <div class="flex align-items-center gap-2 mb-4">
+                <label class="font-semibold">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_ENABLED' | translate }}</label>
+                <p-toggleswitch [(ngModel)]="current.whatsappEnabled" [disabled]="readOnly"></p-toggleswitch>
+              </div>
+              <div class="grid p-fluid" [class.opacity-50]="!current.whatsappEnabled">
+                <div class="col-12">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_URL' | translate }}
+                    @if (current.whatsappEnabled) { <span class="dv-required">*</span> }</label>
+                  <input pInputText [(ngModel)]="current.whatsappWebhookUrl" dir="ltr"
+                    placeholder="https://graph.facebook.com/v21.0/PHONE_NUMBER_ID/messages"
+                    [disabled]="readOnly || !current.whatsappEnabled" class="w-full"
+                    [ngClass]="{ 'ng-invalid ng-dirty': submitted && current.whatsappEnabled && !current.whatsappWebhookUrl }">
+                  <small class="text-500">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_URL_HINT' | translate }}</small>
+                </div>
+                <div class="col-12 md:col-6">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_FROM_NUMBER' | translate }}</label>
+                  <input pInputText [(ngModel)]="current.whatsappFromNumber" placeholder="+967..." dir="ltr"
+                    [disabled]="readOnly || !current.whatsappEnabled" class="w-full">
+                </div>
+                <div class="col-12">
+                  <label class="block mb-2 font-semibold">
+                    {{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_HEADERS' | translate }}
+                    <small class="text-500 ml-2">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_HEADERS_HINT' | translate }}</small>
+                  </label>
+                  <textarea pTextarea rows="3" [(ngModel)]="current.whatsappWebhookHeaders" dir="ltr"
+                    [placeholder]="current.whatsappWebhookHeadersSet ? ('NOTIFICATIONS.SETTINGS.SECRET_STORED' | translate) : '[{&quot;key&quot;:&quot;Authorization&quot;,&quot;value&quot;:&quot;Bearer ACCESS_TOKEN&quot;}]'"
+                    [disabled]="readOnly || !current.whatsappEnabled" class="w-full font-monospace"></textarea>
+                </div>
+                <!-- V118: free text only reaches a recipient inside Meta's 24-hour window;
+                     the approved template reaches anyone. AUTO tries the first and falls back. -->
+                <div class="col-12">
+                  <p-message severity="warn" [text]="'NOTIFICATIONS.SETTINGS.WHATSAPP_WINDOW_NOTE' | translate"></p-message>
+                </div>
+                <div class="col-12">
+                  <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_MODE' | translate }}</label>
+                  <p-selectbutton [options]="whatsappModeOptions" [(ngModel)]="current.whatsappMessageMode"
+                    optionLabel="label" optionValue="value" [allowEmpty]="false"
+                    [disabled]="readOnly || !current.whatsappEnabled"></p-selectbutton>
+                  <small class="text-500 block mt-1">
+                    {{ ('NOTIFICATIONS.SETTINGS.WHATSAPP_MODE_' + current.whatsappMessageMode + '_HINT') | translate }}
+                  </small>
+                </div>
+                @if (current.whatsappMessageMode !== 'TEMPLATE') {
+                  <div class="col-12">
+                    <label class="block mb-2 font-semibold">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_TEMPLATE' | translate }}</label>
+                    <textarea pTextarea rows="4" [(ngModel)]="current.whatsappBodyTemplate" dir="ltr"
+                      [placeholder]="whatsappDefaultTemplate"
+                      [disabled]="readOnly || !current.whatsappEnabled" class="w-full font-monospace"></textarea>
+                    <small class="text-500">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_TEMPLATE_HINT' | translate }}</small>
+                  </div>
+                }
+                @if (usesApprovedTemplate) {
+                  <div class="col-12">
+                    <div class="flex align-items-center justify-content-between gap-2 mb-2">
+                      <label class="font-semibold">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_APPROVED' | translate }}
+                        @if (current.whatsappEnabled) { <span class="dv-required">*</span> }</label>
+                      @if (!readOnly) {
+                        <p-button icon="pi pi-file-edit" size="small" [text]="true"
+                          [label]="'NOTIFICATIONS.SETTINGS.WHATSAPP_APPROVED_EXAMPLE' | translate"
+                          [disabled]="!current.whatsappEnabled" (onClick)="insertExampleApprovedTemplate()"></p-button>
+                      }
+                    </div>
+                    <textarea pTextarea rows="5" [(ngModel)]="current.whatsappApprovedTemplate" dir="ltr"
+                      [placeholder]="whatsappExampleApprovedTemplate"
+                      [disabled]="readOnly || !current.whatsappEnabled" class="w-full font-monospace"
+                      [ngClass]="{ 'ng-invalid ng-dirty': submitted && current.whatsappEnabled && !current.whatsappApprovedTemplate }"></textarea>
+                    <small class="text-500">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_APPROVED_HINT' | translate }}</small>
+                  </div>
+                }
+              </div>
+            </p-tabpanel>
+          </p-tabpanels>
+        </p-tabs>
+      </div>
+    </ng-template>
+    <ng-template pTemplate="footer">
+      <p-button [label]="(readOnly ? 'COMMON.CLOSE' : 'COMMON.CANCEL') | translate" icon="pi pi-times"
+        severity="secondary" [text]="true" (onClick)="dialogVisible = false"></p-button>
+      @if (!readOnly) {
+        <p-button [label]="'COMMON.SAVE' | translate" icon="pi pi-check" severity="success"
+          [loading]="saving" [disabled]="saving" (onClick)="save()"></p-button>
+      }
+    </ng-template>
+  </p-dialog>
+
+  <!-- ═══════════════════════════ VIEW ═══════════════════════════
+
+       One scope's settings, read-only. Layout (styles: .dv-* in
+       assets/layout/styles/_detail-dialog.scss, the vocabulary every record's
+       View dialog shares):
+
+         hero     → scope (global or country), how many channels are on,
+                    a tag per channel, the last update
+         notices  → inherits the global settings; nothing switched on; read-only
+         kpis     → email / SMS / WhatsApp, each on or off with its key setting
+         columns  → email (SMTP) | SMS (webhook)
+         section  → WhatsApp, with the request body that goes out
+         footer   → close; send a test; edit for those who may
+
+       Secrets never come back from the server: only whether one is stored.
+  -->
+  <p-dialog [(visible)]="viewVisible" [modal]="true" [maximizable]="true"
+    [style]="{ width: '900px', maxWidth: '96vw' }"
+    [header]="'NOTIFICATIONS.SETTINGS.VIEW_TITLE' | translate"
+    [draggable]="false" [resizable]="false"
+    styleClass="dv-dialog"
+    [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+
+    <ng-template pTemplate="content">
+      @if (viewing; as v) {
+        <div class="dv-view">
+
+          <!-- Hero -->
+          <div [class]="'dv-hero ' + viewHeroClass(v)">
+            <div class="dv-hero__badge">
+              <i class="pi" [ngClass]="v.countryId == null ? 'pi-globe' : 'pi-flag'"></i>
+            </div>
+            <div class="dv-hero__body">
+              <div class="dv-hero__eyebrow">{{ 'NOTIFICATIONS.SETTINGS.SCOPE' | translate }}</div>
+              <div class="dv-hero__title">{{ scopeLabel(v) }}</div>
+              <div class="dv-hero__subtitle">{{ channelsOnText(v) }}</div>
+              <div class="dv-hero__meta">
+                <p-tag icon="pi pi-envelope" [value]="'NOTIFICATIONS.SETTINGS.EMAIL_TAB' | translate"
+                  [severity]="v.emailEnabled ? 'success' : 'secondary'" [rounded]="true"></p-tag>
+                <p-tag icon="pi pi-mobile" [value]="'NOTIFICATIONS.SETTINGS.SMS_TAB' | translate"
+                  [severity]="v.smsEnabled ? 'success' : 'secondary'" [rounded]="true"></p-tag>
+                <p-tag icon="pi pi-whatsapp" [value]="'NOTIFICATIONS.SETTINGS.WHATSAPP_TAB' | translate"
+                  [severity]="v.whatsappEnabled ? 'success' : 'secondary'" [rounded]="true"></p-tag>
+                @if (v.updatedAt) {
+                  <span class="dv-chip">
+                    <i class="pi pi-clock"></i>
+                    {{ 'COMMON.UPDATED' | translate }}: {{ v.updatedAt | date:'mediumDate' }}
+                  </span>
+                }
+              </div>
+            </div>
+          </div>
+
+          @if (v.inheritedFromGlobal) {
+            <div class="dv-notice dv-notice--info">
+              <i class="pi pi-globe"></i>
+              <span>{{ 'NOTIFICATIONS.SETTINGS.INHERITED_HINT' | translate }}</span>
+            </div>
+          }
+          @if (channelsOn(v) === 0) {
+            <div class="dv-notice dv-notice--warn">
+              <i class="pi pi-exclamation-triangle"></i>
+              <span>{{ 'NOTIFICATIONS.SETTINGS.NO_CHANNELS' | translate }}</span>
+            </div>
+          }
+          @if (!v.canEdit) {
+            <div class="dv-notice dv-notice--muted">
+              <i class="pi pi-lock"></i>
+              <span>{{ 'NOTIFICATIONS.SETTINGS.READ_ONLY' | translate }}</span>
+            </div>
+          }
+
+          <!-- KPIs: a channel each -->
+          <div class="dv-kpis dv-kpis--cols-3">
+            <div [class]="'dv-kpi ' + (v.emailEnabled ? 'dv-kpi--green' : 'dv-kpi--gray')">
+              <span class="dv-kpi__icon"><i class="pi pi-envelope"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'NOTIFICATIONS.SETTINGS.EMAIL_TAB' | translate }}</div>
+                <div class="dv-kpi__value">{{ (v.emailEnabled ? 'NOTIFICATIONS.SETTINGS.ON' : 'NOTIFICATIONS.SETTINGS.OFF') | translate }}</div>
+                <div class="dv-kpi__sub" dir="ltr">{{ v.smtpHost || '—' }}</div>
+              </div>
+            </div>
+            <div [class]="'dv-kpi ' + (v.smsEnabled ? 'dv-kpi--green' : 'dv-kpi--gray')">
+              <span class="dv-kpi__icon"><i class="pi pi-mobile"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'NOTIFICATIONS.SETTINGS.SMS_TAB' | translate }}</div>
+                <div class="dv-kpi__value">{{ (v.smsEnabled ? 'NOTIFICATIONS.SETTINGS.ON' : 'NOTIFICATIONS.SETTINGS.OFF') | translate }}</div>
+                <div class="dv-kpi__sub" dir="ltr">{{ hostOf(v.smsWebhookUrl) }}</div>
+              </div>
+            </div>
+            <div [class]="'dv-kpi ' + (v.whatsappEnabled ? 'dv-kpi--green' : 'dv-kpi--gray')">
+              <span class="dv-kpi__icon"><i class="pi pi-whatsapp"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_TAB' | translate }}</div>
+                <div class="dv-kpi__value">{{ (v.whatsappEnabled ? 'NOTIFICATIONS.SETTINGS.ON' : 'NOTIFICATIONS.SETTINGS.OFF') | translate }}</div>
+                <div class="dv-kpi__sub">{{ whatsappModeLabel(v.whatsappMessageMode) }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dv-columns">
+            <!-- Email -->
+            <section class="dv-section">
+              <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-envelope"></i></span>
+                <div class="dv-section__title">{{ 'NOTIFICATIONS.SETTINGS.EMAIL_TAB' | translate }}</div>
+                <span class="dv-section__aside">
+                  <p-tag [value]="(v.emailEnabled ? 'NOTIFICATIONS.SETTINGS.ON' : 'NOTIFICATIONS.SETTINGS.OFF') | translate"
+                    [severity]="v.emailEnabled ? 'success' : 'secondary'"></p-tag>
+                </span>
+              </header>
+              <dl class="dv-dl">
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.SMTP_HOST' | translate }}</dt>
+                  <dd dir="ltr" [class.dv-dl__muted]="!v.smtpHost">{{ v.smtpHost || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.SMTP_PORT' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="v.smtpPort == null">{{ v.smtpPort ?? '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.SECURITY' | translate }}</dt>
+                  <dd>{{ securityText(v) }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.SMTP_USERNAME' | translate }}</dt>
+                  <dd dir="ltr" [class.dv-dl__muted]="!v.smtpUsername">{{ v.smtpUsername || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.SMTP_PASSWORD' | translate }}</dt>
+                  <dd [class]="v.smtpPasswordSet ? 'dv-dl__green' : 'dv-dl__muted'">
+                    <i class="pi" [ngClass]="v.smtpPasswordSet ? 'pi-lock' : 'pi-lock-open'"></i>
+                    {{ secretText(v.smtpPasswordSet) }}
+                  </dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.SMTP_FROM_ADDRESS' | translate }}</dt>
+                  <dd dir="ltr" [class.dv-dl__muted]="!v.smtpFromAddress">{{ v.smtpFromAddress || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.SMTP_FROM_NAME' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!v.smtpFromName">{{ v.smtpFromName || '—' }}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <!-- SMS -->
+            <section class="dv-section">
+              <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-mobile"></i></span>
+                <div class="dv-section__title">{{ 'NOTIFICATIONS.SETTINGS.SMS_TAB' | translate }}</div>
+                <span class="dv-section__aside">
+                  <p-tag [value]="(v.smsEnabled ? 'NOTIFICATIONS.SETTINGS.ON' : 'NOTIFICATIONS.SETTINGS.OFF') | translate"
+                    [severity]="v.smsEnabled ? 'success' : 'secondary'"></p-tag>
+                </span>
+              </header>
+              <dl class="dv-dl">
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.SMS_WEBHOOK_URL' | translate }}</dt>
+                  <dd dir="ltr" class="font-monospace" [class.dv-dl__muted]="!v.smsWebhookUrl">{{ v.smsWebhookUrl || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.SMS_WEBHOOK_METHOD' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!v.smsWebhookMethod">{{ v.smsWebhookMethod || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.SMS_FROM_NUMBER' | translate }}</dt>
+                  <dd dir="ltr" [class.dv-dl__muted]="!v.smsFromNumber">{{ v.smsFromNumber || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.SMS_WEBHOOK_HEADERS' | translate }}</dt>
+                  <dd [class]="v.smsWebhookHeadersSet ? 'dv-dl__green' : 'dv-dl__muted'">
+                    <i class="pi" [ngClass]="v.smsWebhookHeadersSet ? 'pi-lock' : 'pi-lock-open'"></i>
+                    {{ secretText(v.smsWebhookHeadersSet) }}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+
+          <!-- WhatsApp -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-whatsapp"></i></span>
+              <div class="dv-section__title">{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_TAB' | translate }}</div>
+              <span class="dv-section__aside">
+                <p-tag [value]="(v.whatsappEnabled ? 'NOTIFICATIONS.SETTINGS.ON' : 'NOTIFICATIONS.SETTINGS.OFF') | translate"
+                  [severity]="v.whatsappEnabled ? 'success' : 'secondary'"></p-tag>
+              </span>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row dv-dl__row--stack">
+                <dt>{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_URL' | translate }}</dt>
+                <dd dir="ltr" class="font-monospace" [class.dv-dl__muted]="!v.whatsappWebhookUrl">{{ v.whatsappWebhookUrl || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_FROM_NUMBER' | translate }}</dt>
+                <dd dir="ltr" [class.dv-dl__muted]="!v.whatsappFromNumber">{{ v.whatsappFromNumber || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_HEADERS' | translate }}</dt>
+                <dd [class]="v.whatsappWebhookHeadersSet ? 'dv-dl__green' : 'dv-dl__muted'">
+                  <i class="pi" [ngClass]="v.whatsappWebhookHeadersSet ? 'pi-lock' : 'pi-lock-open'"></i>
+                  {{ secretText(v.whatsappWebhookHeadersSet) }}
+                </dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_MODE' | translate }}</dt>
+                <dd>{{ whatsappModeLabel(v.whatsappMessageMode) }}</dd>
+              </div>
+              @if (v.whatsappMessageMode !== 'TEMPLATE') {
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_TEMPLATE' | translate }}</dt>
+                  <dd>
+                    @if (v.whatsappBodyTemplate) {
+                      <p class="dv-notes font-normal font-monospace" dir="ltr">{{ v.whatsappBodyTemplate }}</p>
+                    } @else {
+                      <p class="dv-notes dv-notes--empty font-normal">{{ 'NOTIFICATIONS.SETTINGS.DEFAULT_TEMPLATE_NOTE' | translate }}</p>
+                    }
+                  </dd>
+                </div>
+              }
+              @if (v.whatsappMessageMode !== 'TEXT') {
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'NOTIFICATIONS.SETTINGS.WHATSAPP_APPROVED' | translate }}</dt>
+                  <dd>
+                    @if (v.whatsappApprovedTemplate) {
+                      <p class="dv-notes font-normal font-monospace" dir="ltr">{{ v.whatsappApprovedTemplate }}</p>
+                    } @else {
+                      <p class="dv-notes dv-notes--empty font-normal">{{ 'COMMON.NOT_AVAILABLE' | translate }}</p>
+                    }
+                  </dd>
+                </div>
+              }
+            </dl>
+          </section>
+        </div>
+      }
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="dv-footer">
+        <div class="dv-footer__hint">
+          @if (viewing?.updatedAt; as updatedAt) {
+            <i class="pi pi-clock"></i>
+            <span>{{ 'COMMON.UPDATED' | translate }}: {{ updatedAt | date:'short' }}</span>
+          }
+        </div>
+        <div class="dv-footer__actions">
+          <p-button [label]="'COMMON.CLOSE' | translate" icon="pi pi-times"
+            severity="secondary" [text]="true" (onClick)="viewVisible = false"></p-button>
+          <p-button [label]="'NOTIFICATIONS.SETTINGS.TEST_SEND' | translate" icon="pi pi-send"
+            severity="secondary" [outlined]="true" (onClick)="testFromView()"></p-button>
+          @if (viewing?.canEdit) {
+            <p-button [label]="'COMMON.EDIT' | translate" icon="pi pi-pencil" (onClick)="editFromView()"></p-button>
+          }
+        </div>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Delete -->
+  <p-dialog [(visible)]="deleteDialogVisible" [modal]="true" [style]="{ width: '420px' }"
+    [header]="'COMMON.CONFIRM' | translate" [draggable]="false">
+    <div class="flex align-items-start gap-3">
+      <i class="pi pi-exclamation-triangle text-3xl text-orange-500"></i>
+      <div>
+        <div class="font-semibold mb-2">{{ rowToDelete ? scopeLabel(rowToDelete) : '' }}</div>
+        <span>{{ 'NOTIFICATIONS.SETTINGS.DELETE_CONFIRM' | translate }}</span>
+      </div>
+    </div>
+    <ng-template pTemplate="footer">
+      <p-button [label]="'COMMON.CANCEL' | translate" icon="pi pi-times" severity="secondary" [text]="true"
+        (onClick)="deleteDialogVisible = false"></p-button>
+      <p-button [label]="'COMMON.DELETE' | translate" icon="pi pi-trash" severity="danger"
+        [loading]="deleting" (onClick)="deleteRow()"></p-button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Test send through a row's saved settings (review R7) -->
+  <p-dialog [(visible)]="showTestDialog" [modal]="true" [style]="{ width: '480px', maxWidth: '96vw' }"
+    [header]="'NOTIFICATIONS.SETTINGS.TEST_SEND' | translate" [draggable]="false">
+    <div class="flex flex-column gap-3">
+      @if (testRow) {
+        <div class="font-semibold">{{ scopeLabel(testRow) }}</div>
+      }
+      <small class="text-600">{{ 'NOTIFICATIONS.SETTINGS.TEST_HINT' | translate }}</small>
+      <p-selectbutton [options]="testChannelOptions" [(ngModel)]="testChannel"
+        optionLabel="label" optionValue="value" [allowEmpty]="false"
+        (onChange)="testResult = null"></p-selectbutton>
+      <div>
+        <label class="block mb-2 font-semibold" for="nsTestTo">
+          {{ (testChannel === 'EMAIL' ? 'NOTIFICATIONS.SETTINGS.TEST_TO_EMAIL' : 'NOTIFICATIONS.SETTINGS.TEST_TO_PHONE') | translate }}
+        </label>
+        <input id="nsTestTo" pInputText [(ngModel)]="testTo" class="w-full" dir="ltr"
+          [placeholder]="testChannel === 'EMAIL' ? 'name@example.com' : '+967 7xx xxx xxx'"
+          (keyup.enter)="sendTest()" />
+      </div>
+      @if (testResult) {
+        @if (testResult.ok) {
+          <p-message severity="success" [text]="'NOTIFICATIONS.SETTINGS.TEST_OK' | translate"></p-message>
+        } @else {
+          <p-message severity="error" [text]="('NOTIFICATIONS.SETTINGS.TEST_FAILED' | translate) + ' ' + (testResult.error || '')"></p-message>
+        }
+        @if (!testResult.enabled) {
+          <p-message severity="warn" [text]="'NOTIFICATIONS.SETTINGS.TEST_CHANNEL_DISABLED' | translate"></p-message>
+        }
+      }
+    </div>
+    <ng-template pTemplate="footer">
+      <p-button [label]="'COMMON.CLOSE' | translate" severity="secondary" [outlined]="true"
+        (onClick)="showTestDialog = false"></p-button>
+      <p-button icon="pi pi-send" [label]="'NOTIFICATIONS.SETTINGS.TEST_SEND_NOW' | translate"
+        [loading]="testSending" (onClick)="sendTest()"></p-button>
+    </ng-template>
+  </p-dialog>
+</div>

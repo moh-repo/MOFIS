@@ -1,0 +1,27 @@
+/* Summary palette. Structure is shared — see
+   assets/layout/styles/_summary-cards.scss; only the colours are local, because
+   they are tied to what these three figures mean.
+
+   The value takes the accent colour, as it did when these were nz-statistics:
+   a non-zero discrepancy count is the one number on this page that means
+   something needs doing, and it should be red before it is read. */
+.summary-card {
+    .summary-value {
+        color: var(--summary-accent);
+    }
+
+    &.discrepancy {
+        --summary-accent: #cf1322;
+        .summary-icon { background: linear-gradient(135deg, #f5222d, #cf1322); }
+    }
+
+    &.matched {
+        --summary-accent: #3f8600;
+        .summary-icon { background: linear-gradient(135deg, #52c41a, #3f8600); }
+    }
+
+    &.resolved {
+        --summary-accent: #1677ff;
+        .summary-icon { background: linear-gradient(135deg, #4096ff, #1677ff); }
+    }
+}

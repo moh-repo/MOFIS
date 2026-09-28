@@ -1,0 +1,39 @@
+<!-- Search belongs to the proposed layout only; classic renders exactly what it
+     always has, starting at the <ul> below. -->
+@if (showSearch) {
+  <div class="layout-menu-search">
+    <i class="pi pi-search"></i>
+    <!-- autocomplete="off" + type="search": Edge/Chrome otherwise treat this as the
+         username box for any password field on the page (e.g. SMTP password on
+         Notification Settings) and autofill the signed-in user name into it, which
+         filters the whole menu down to "No matching pages". -->
+    <input type="search" pInputText [value]="searchTerm"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      name="layout-menu-search" data-lpignore="true" data-form-type="other"
+      (input)="onSearch($any($event.target).value)"
+      (keydown.escape)="clearSearch()"
+      [placeholder]="translationService.translate('NAVIGATION.MENU_SEARCH_PLACEHOLDER')"
+      [attr.aria-label]="translationService.translate('NAVIGATION.MENU_SEARCH_PLACEHOLDER')">
+    @if (searchTerm) {
+      <button type="button" class="p-link layout-menu-search-clear" (click)="clearSearch()"
+        [attr.aria-label]="translationService.translate('COMMON.CLEAR')">
+        <i class="pi pi-times"></i>
+      </button>
+    }
+  </div>
+}
+
+<ul class="layout-menu" [class.layout-menu--sections]="collapsibleRoots">
+  @for (item of model; track item; let i = $index) {
+    @if (!item.separator) {
+      <li app-menuitem [item]="item" [index]="i" [root]="true" [collapsibleRoots]="collapsibleRoots"></li>
+    }
+    @if (item.separator) {
+      <li class="menu-separator"></li>
+    }
+  }
+</ul>
+
+@if (showSearch && searchTerm && model.length === 0) {
+  <p class="layout-menu-empty">{{ translationService.translate('NAVIGATION.MENU_SEARCH_EMPTY') }}</p>
+}

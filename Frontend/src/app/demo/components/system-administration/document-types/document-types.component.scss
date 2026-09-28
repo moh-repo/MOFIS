@@ -1,0 +1,65 @@
+:host ::ng-deep {
+    .p-datatable {
+        /*
+         * Each of the six columns used to carry an inline min-width (8, 15, 20,
+         * 10, 10 and 12rem). Their sum is the table's minimum — 75rem, or 945px
+         * at this app's 12.6px root size — so the table could not shrink with
+         * the page, and any window under roughly 1280px pushed the Actions
+         * column behind the card's horizontal scrollbar.
+         *
+         * PrimeNG stretches the table to 100% of the card, so with the floors
+         * gone it is exactly as wide as the page. Name and Description wrap —
+         * they are the columns whose content actually varies — while the id,
+         * the sort order, the active tag and the three action buttons keep
+         * their line. When there is genuinely no room left,
+         * .p-datatable-table-container (overflow-x: auto) scrolls.
+         */
+        th,
+        td {
+            white-space: nowrap;
+        }
+
+        th:nth-child(2), td:nth-child(2) {
+            white-space: normal;
+            min-width: 9rem;
+            word-break: break-word;
+        }
+
+        // Description is the longest free text on the page.
+        th:nth-child(3), td:nth-child(3) {
+            white-space: normal;
+            min-width: 12rem;
+            word-break: break-word;
+        }
+
+        .p-datatable-thead > tr > th {
+            background-color: var(--surface-50);
+            font-weight: 600;
+            border-bottom: 2px solid var(--surface-border);
+        }
+
+        .p-datatable-tbody > tr {
+            transition: all 0.2s;
+            
+            &:hover {
+                background-color: var(--surface-hover) !important;
+            }
+        }
+    }
+
+    /* The dialogs are dv-dialog now; their header comes from
+       assets/layout/styles/_detail-dialog.scss. */
+
+    .p-button-rounded {
+        width: 2.5rem;
+        height: 2.5rem;
+        
+        &:hover {
+            transform: scale(1.1);
+        }
+    }
+
+    .p-tag {
+        font-weight: 600;
+    }
+}

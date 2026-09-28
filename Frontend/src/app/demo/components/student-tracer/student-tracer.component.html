@@ -1,0 +1,440 @@
+<!-- Toast for Messages -->
+<p-toast position="top-right"></p-toast>
+
+<!-- Main Container -->
+<div class="tracer-container">
+  <!-- Page Header with Gradient -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-title-section">
+        <h1 class="page-title">
+          <i class="pi pi-share-alt"></i>
+          {{ 'STUDENT_TRACER.TITLE' | translate }}
+        </h1>
+        <p class="page-subtitle">{{ 'STUDENT_TRACER.SUBTITLE' | translate }}</p>
+      </div>
+      <div class="header-actions">
+        <p-button
+          icon="pi pi-filter-fill"
+          [label]="'COMMON.FILTER' | translate"
+          severity="secondary"
+          (onClick)="applyFilters()"
+          [loading]="loading"
+          [badge]="getActiveFiltersCount()"
+          badgeSeverity="success"
+          styleClass="p-button-outlined">
+        </p-button>
+        <p-button
+          icon="pi pi-refresh"
+          [label]="'COMMON.REFRESH' | translate"
+          severity="primary"
+          (onClick)="loadNetworkData()"
+          [loading]="loading">
+        </p-button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Card -->
+  <p-card styleClass="filters-card">
+    <ng-template pTemplate="header">
+      <div class="section-header">
+        <i class="pi pi-sliders-h"></i>
+        <span>{{ 'COMMON.FILTER' | translate }}</span>
+      </div>
+    </ng-template>
+
+    <!-- Filter Section -->
+    <form [formGroup]="filterForm" class="filter-section">
+      <div class="p-fluid p-formgrid p-grid">
+        <div class="p-field p-col-12 p-md-3">
+          <label for="university">{{ 'STUDENT_TRACER.FILTERS.UNIVERSITY' | translate }}</label>
+          <p-select
+            inputId="university"
+            [options]="filterOptions.universities"
+            formControlName="university"
+            [placeholder]="'STUDENT_TRACER.FILTERS.ALL_UNIVERSITIES' | translate"
+            [showClear]="true"
+            [filter]="true"
+            [style]="{'width':'100%'}">
+          </p-select>
+        </div>
+
+        <div class="p-field p-col-12 p-md-3">
+          <label for="major">{{ 'STUDENT_TRACER.FILTERS.MAJOR' | translate }}</label>
+          <p-select
+            inputId="major"
+            [options]="filterOptions.majors"
+            formControlName="major"
+            [placeholder]="'STUDENT_TRACER.FILTERS.ALL_MAJORS' | translate"
+            [showClear]="true"
+            [filter]="true"
+            [style]="{'width':'100%'}">
+          </p-select>
+        </div>
+
+        <div class="p-field p-col-12 p-md-3">
+          <label for="country">{{ 'STUDENT_TRACER.FILTERS.COUNTRY' | translate }}</label>
+          <p-select
+            inputId="country"
+            [options]="filterOptions.countries"
+            formControlName="country"
+            [placeholder]="'STUDENT_TRACER.FILTERS.ALL_COUNTRIES' | translate"
+            [showClear]="true"
+            [filter]="true"
+            [style]="{'width':'100%'}">
+          </p-select>
+        </div>
+
+        <div class="p-field p-col-12 p-md-3">
+          <label for="employmentStatus">{{ 'STUDENT_TRACER.FILTERS.EMPLOYMENT_STATUS' | translate }}</label>
+          <p-select
+            inputId="employmentStatus"
+            [options]="filterOptions.employmentStatuses"
+            formControlName="employmentStatus"
+            [placeholder]="'STUDENT_TRACER.FILTERS.ALL_STATUSES' | translate"
+            [showClear]="true"
+            [style]="{'width':'100%'}">
+          </p-select>
+        </div>
+      </div>
+
+      <div class="p-fluid p-formgrid p-grid">
+        <div class="p-field p-col-12 p-md-3">
+          <label for="degreeLevel">{{ 'STUDENT_TRACER.FILTERS.DEGREE_LEVEL' | translate }}</label>
+          <p-select
+            inputId="degreeLevel"
+            [options]="filterOptions.degreeLevels"
+            formControlName="degreeLevel"
+            [placeholder]="'STUDENT_TRACER.FILTERS.ALL_DEGREES' | translate"
+            [showClear]="true"
+            [style]="{'width':'100%'}">
+          </p-select>
+        </div>
+
+        <div class="p-field p-col-12 p-md-3">
+          <label for="connectionType">{{ 'STUDENT_TRACER.FILTERS.CONNECTION_TYPE' | translate }}</label>
+          <p-select
+            inputId="connectionType"
+            [options]="filterOptions.connectionTypes"
+            formControlName="connectionType"
+            [placeholder]="'STUDENT_TRACER.FILTERS.ALL_CONNECTIONS' | translate"
+            [showClear]="true"
+            [style]="{'width':'100%'}">
+          </p-select>
+        </div>
+
+        <div class="p-field p-col-12 p-md-3">
+          <label for="minStrength">{{ 'STUDENT_TRACER.FILTERS.MIN_STRENGTH' | translate }}</label>
+          <p-inputnumber
+            inputId="minStrength"
+            formControlName="minConnectionStrength"
+            [min]="1"
+            [max]="10"
+            [showButtons]="true"
+            [placeholder]="('STUDENT_TRACER.FILTERS.MIN_STRENGTH_PLACEHOLDER' | translate)"
+            [style]="{'width':'100%'}">
+          </p-inputnumber>
+        </div>
+
+        <div class="p-field p-col-12 p-md-3 filter-buttons">
+          <p-button
+            icon="pi pi-search"
+            [label]="'COMMON.SEARCH' | translate"
+            styleClass="p-button-search"
+            (onClick)="applyFilters()"
+            [loading]="loading">
+          </p-button>
+          <p-button
+            icon="pi pi-times"
+            [label]="'COMMON.CLEAR' | translate"
+            severity="secondary"
+            (onClick)="clearFilters()"
+            styleClass="p-button-outlined">
+          </p-button>
+        </div>
+      </div>
+    </form>
+  </p-card>
+
+  <!-- Statistics Cards -->
+  @if (stats) {
+    <div class="stats-container">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+          <i class="pi pi-users"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">{{ 'STUDENT_TRACER.STATS.TOTAL_STUDENTS' | translate }}</span>
+          <span class="stat-value">{{ stats.totalNodes }}</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+          <i class="pi pi-share-alt"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">{{ 'STUDENT_TRACER.STATS.TOTAL_CONNECTIONS' | translate }}</span>
+          <span class="stat-value">{{ stats.totalConnections }}</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+          <i class="pi pi-briefcase"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">{{ 'STUDENT_TRACER.STATS.EMPLOYED' | translate }}</span>
+          <span class="stat-value">{{ stats.employedCount }}</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+          <i class="pi pi-star"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">{{ 'STUDENT_TRACER.STATS.AVG_STRENGTH' | translate }}</span>
+          <span class="stat-value">{{ stats.avgConnectionStrength }}/10</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a, #fee140);">
+          <i class="pi pi-globe"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">{{ 'STUDENT_TRACER.STATS.COUNTRIES' | translate }}</span>
+          <span class="stat-value">{{ stats.totalCountries }}</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #30cfd0, #330867);">
+          <i class="pi pi-building"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">{{ 'STUDENT_TRACER.STATS.UNIVERSITIES' | translate }}</span>
+          <span class="stat-value">{{ stats.totalUniversities }}</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Network Visualization -->
+  <p-card styleClass="network-card">
+    <ng-template pTemplate="header">
+      <div class="network-toolbar">
+        <div class="layout-selector">
+          <label>{{ 'STUDENT_TRACER.LAYOUT' | translate }}:</label>
+          <p-selectButton
+            [options]="layoutOptions"
+            [(ngModel)]="selectedLayout"
+            (onChange)="changeLayout()"
+            optionLabel="label"
+            optionValue="value">
+          </p-selectButton>
+        </div>
+        <div class="network-controls">
+          <p-button
+            icon="pi pi-print"
+            [pTooltip]="'COMMON.PRINT' | translate"
+            severity="secondary"
+            [rounded]="true"
+            [text]="true"
+            [disabled]="!networkGraph?.nodes?.length"
+            (onClick)="printNetwork()">
+          </p-button>
+          <p-button
+            icon="pi pi-arrows-alt"
+            [pTooltip]="'STUDENT_TRACER.ACTIONS.FIT' | translate"
+            severity="secondary"
+            [rounded]="true"
+            [text]="true"
+            (onClick)="fitNetwork()">
+          </p-button>
+          <p-button
+            icon="pi pi-search-minus"
+            [pTooltip]="'STUDENT_TRACER.ACTIONS.RESET_ZOOM' | translate"
+            severity="secondary"
+            [rounded]="true"
+            [text]="true"
+            (onClick)="resetZoom()">
+          </p-button>
+          <p-button
+            icon="pi pi-download"
+            [pTooltip]="'STUDENT_TRACER.ACTIONS.EXPORT' | translate"
+            severity="secondary"
+            [rounded]="true"
+            [text]="true"
+            (onClick)="exportImage()">
+          </p-button>
+        </div>
+      </div>
+    </ng-template>
+
+    <div class="network-wrapper" [id]="printAreaId">
+      @if (truncatedNotice) {
+        <!-- The graph is capped; say so rather than drawing a different answer
+             from the one asked for (review item P6). -->
+        <p-message severity="warn" styleClass="w-full mb-2 tracer-truncated" [text]="truncatedNotice"></p-message>
+      }
+      @if (networkGraph?.nodes?.length && !physicsEnabled) {
+        <p-message severity="info" styleClass="w-full mb-2 tracer-physics-off"
+                   [text]="'STUDENT_TRACER.MESSAGES.PHYSICS_OFF' | translate"></p-message>
+      }
+      <div #networkContainer class="network-container" [class.loading]="loading">
+        @if (loading) {
+          <div class="loading-overlay">
+            <i class="pi pi-spin pi-spinner" style="font-size: 3rem;"></i>
+            <p>{{ 'COMMON.LOADING' | translate }}</p>
+          </div>
+        }
+      </div>
+
+      <div class="network-legend">
+        <h4>{{ 'STUDENT_TRACER.LEGEND.TITLE' | translate }}</h4>
+        <div class="legend-item">
+          <span class="legend-shape circle" style="background: #1890ff;"></span>
+          <span>{{ 'STUDENT_TRACER.LEGEND.BACHELOR' | translate }}</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-shape square" style="background: #52c41a;"></span>
+          <span>{{ 'STUDENT_TRACER.LEGEND.MASTER' | translate }}</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-shape triangle" style="background: #fa8c16;"></span>
+          <span>{{ 'STUDENT_TRACER.LEGEND.PHD' | translate }}</span>
+        </div>
+        <p-divider></p-divider>
+        <small>{{ 'STUDENT_TRACER.LEGEND.HINT' | translate }}</small>
+      </div>
+    </div>
+  </p-card>
+</div>
+
+<!-- Node Details Sidebar -->
+<p-drawer
+  [(visible)]="sidebarVisible"
+  position="right"
+  [style]="{width:'400px'}"
+  (onHide)="closeSidebar()">
+
+  <ng-template pTemplate="header">
+    <span class="sidebar-title">{{ 'STUDENT_TRACER.NODE_DETAILS.TITLE' | translate }}</span>
+  </ng-template>
+
+  @if (selectedNode) {
+    <div class="node-details">
+      <p-card [style]="{'margin-bottom': '1rem'}">
+        <ng-template pTemplate="header">
+          <div class="detail-header">
+            <i class="pi pi-user"></i>
+            <span>{{ 'STUDENT_TRACER.NODE_DETAILS.STUDENT_INFO' | translate }}</span>
+          </div>
+        </ng-template>
+        <div class="detail-row">
+          <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.NAME' | translate }}:</span>
+          <span class="detail-value">{{ selectedNode.label }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.ID' | translate }}:</span>
+          <span class="detail-value">{{ selectedNode.studentId }}</span>
+        </div>
+        @if (selectedNode.email) {
+          <div class="detail-row">
+            <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.EMAIL' | translate }}:</span>
+            <span class="detail-value">{{ selectedNode.email }}</span>
+          </div>
+        }
+        @if (selectedNode.phone) {
+          <div class="detail-row">
+            <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.PHONE' | translate }}:</span>
+            <span class="detail-value">{{ selectedNode.phone }}</span>
+          </div>
+        }
+      </p-card>
+      <p-card [style]="{'margin-bottom': '1rem'}">
+        <ng-template pTemplate="header">
+          <div class="detail-header">
+            <i class="pi pi-book"></i>
+            <span>{{ 'STUDENT_TRACER.NODE_DETAILS.ACADEMIC_INFO' | translate }}</span>
+          </div>
+        </ng-template>
+        @if (selectedNode.university) {
+          <div class="detail-row">
+            <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.UNIVERSITY' | translate }}:</span>
+            <span class="detail-value">{{ selectedNode.university }}</span>
+          </div>
+        }
+        @if (selectedNode.major) {
+          <div class="detail-row">
+            <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.MAJOR' | translate }}:</span>
+            <span class="detail-value">{{ selectedNode.major }}</span>
+          </div>
+        }
+        @if (selectedNode.degreeLevel) {
+          <div class="detail-row">
+            <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.DEGREE' | translate }}:</span>
+            <span class="detail-value">{{ selectedNode.degreeLevel }}</span>
+          </div>
+        }
+        @if (selectedNode.graduationYear) {
+          <div class="detail-row">
+            <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.GRADUATION' | translate }}:</span>
+            <span class="detail-value">{{ selectedNode.graduationYear }}</span>
+          </div>
+        }
+        @if (selectedNode.country) {
+          <div class="detail-row">
+            <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.COUNTRY' | translate }}:</span>
+            <span class="detail-value">{{ selectedNode.country }}</span>
+          </div>
+        }
+      </p-card>
+      @if (selectedNode.employmentStatus) {
+        <p-card [style]="{'margin-bottom': '1rem'}">
+          <ng-template pTemplate="header">
+            <div class="detail-header">
+              <i class="pi pi-briefcase"></i>
+              <span>{{ 'STUDENT_TRACER.NODE_DETAILS.EMPLOYMENT_INFO' | translate }}</span>
+            </div>
+          </ng-template>
+          <div class="detail-row">
+            <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.STATUS' | translate }}:</span>
+            <span class="detail-value">{{ selectedNode.employmentStatus }}</span>
+          </div>
+          @if (selectedNode.currentCompany) {
+            <div class="detail-row">
+              <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.COMPANY' | translate }}:</span>
+              <span class="detail-value">{{ selectedNode.currentCompany }}</span>
+            </div>
+          }
+          @if (selectedNode.currentPosition) {
+            <div class="detail-row">
+              <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.POSITION' | translate }}:</span>
+              <span class="detail-value">{{ selectedNode.currentPosition }}</span>
+            </div>
+          }
+        </p-card>
+      }
+      <p-card>
+        <ng-template pTemplate="header">
+          <div class="detail-header">
+            <i class="pi pi-chart-network"></i>
+            <span>{{ 'STUDENT_TRACER.NODE_DETAILS.NETWORK_INFO' | translate }}</span>
+          </div>
+        </ng-template>
+        <div class="detail-row">
+          <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.CONNECTIONS' | translate }}:</span>
+          <span class="detail-value">{{ selectedNode.connectionCount || 0 }}</span>
+        </div>
+        @if (selectedNode.linkedinUrl) {
+          <div class="detail-row">
+            <span class="detail-label">{{ 'STUDENT_TRACER.NODE_DETAILS.LINKEDIN' | translate }}:</span>
+            <a [href]="selectedNode.linkedinUrl" target="_blank" class="detail-link">
+              <i class="pi pi-external-link"></i> {{ 'STUDENT_TRACER.NODE_DETAILS.VIEW_PROFILE' | translate }}
+            </a>
+          </div>
+        }
+      </p-card>
+    </div>
+  }
+</p-drawer>
+

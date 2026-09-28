@@ -1,0 +1,88 @@
+/* Financial Data Form V2 — quarterly financial assistance statement */
+
+.financial-data-form-v2-container {
+    padding: 1rem;
+}
+
+.filter-section {
+    margin-bottom: 1rem;
+}
+
+.summary-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.summary-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--surface-50, #fafafa);
+    border: 1px solid var(--surface-200, #e0e0e0);
+    border-radius: 8px;
+    padding: 0.75rem 1.25rem;
+    min-width: 180px;
+}
+
+.summary-icon {
+    font-size: 1.5rem;
+}
+
+.summary-label {
+    font-size: 0.78rem;
+    color: var(--text-color-secondary, #777);
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.aggrid-section {
+    margin-bottom: 1.5rem;
+}
+
+/* Preview of the settings-driven masthead and signatory block the PDF prints */
+.masthead-preview {
+    border: 1px solid var(--surface-200, #e0e0e0);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    background: var(--surface-50, #fafafa);
+    text-align: center;
+}
+
+.masthead-title {
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.signatories {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.signatory {
+    flex: 1 1 140px;
+    font-size: 0.8rem;
+}
+
+.signatory-name {
+    font-weight: 700;
+}
+
+.signatory-position {
+    color: var(--text-color-secondary, #777);
+}
+
+.empty-state,
+.loading-state {
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

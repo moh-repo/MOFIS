@@ -1,0 +1,20 @@
+/*
+ * Add CURRENT_QUARTER to STUDENT_DATA and STUDENT_DATA_ARCH.
+ *
+ * Holds the student's current quarter as a YYYYQ code (year + quarter-number in the year),
+ * e.g. '20242' = 2nd quarter of 2024. Stored as text so the exact code is preserved.
+ *
+ * Idempotent — safe to re-run.
+ */
+
+IF COL_LENGTH('MOHECORE.STUDENT_DATA', 'CURRENT_QUARTER') IS NULL
+BEGIN
+    ALTER TABLE MOHECORE.STUDENT_DATA ADD CURRENT_QUARTER NVARCHAR(10) NULL;
+END
+GO
+
+IF COL_LENGTH('MOHECORE.STUDENT_DATA_ARCH', 'CURRENT_QUARTER') IS NULL
+BEGIN
+    ALTER TABLE MOHECORE.STUDENT_DATA_ARCH ADD CURRENT_QUARTER NVARCHAR(10) NULL;
+END
+GO

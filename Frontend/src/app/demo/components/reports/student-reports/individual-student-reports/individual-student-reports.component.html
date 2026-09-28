@@ -1,0 +1,397 @@
+<p-toast></p-toast>
+<div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="mb-3">
+    <button
+      pButton
+      type="button"
+      [label]="'REPORTS.REPORT_SUBPAGES.BACK_TO_STUDENT_REPORTS' | translate"
+      [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+      class="p-button-text p-button-sm"
+      routerLink="/reports/student"
+    ></button>
+  </div>
+
+  <!-- Header Section. `flex-1` on the leading block, not
+       `justify-content-between`: under `direction: rtl` a flex row already
+       runs right to left, and the global rule in styles.scss reverses every
+       `.flex.justify-content-between` again, which put the heading back on
+       the left and the actions on the right in Arabic. See
+       src/app/demo/components/page-headings.spec.ts. -->
+  <div class="flex align-items-start flex-column lg:flex-row gap-3 mb-4">
+    <div class="flex-1">
+      <h2 class="m-0 text-primary flex align-items-center gap-2">
+        <i class="pi pi-id-card"></i>
+        {{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.TITLE' | translate }}
+      </h2>
+      <p class="text-600 mt-2 mb-0" style="max-width: 42rem">
+        {{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.SUBTITLE' | translate }}
+      </p>
+    </div>
+    <!-- Endpoint and file name follow the selected tab; see currentDocApiPath. -->
+    <!-- Excel only for the financial statement: the other tabs are official documents
+         with no spreadsheet form (DEC-06; every tab's Excel answered 404, QA N17). -->
+    <app-report-actions
+      [pdfApiPath]="currentDocApiPath"
+      [query]="reportQuery()"
+      [baseFilename]="currentDocBaseFilename"
+      [showExcel]="activeDocKind === 'financial-statement'"
+      [disabled]="!hasStudent || loading">
+    </app-report-actions>
+  </div>
+
+  <!-- Every action above targets the document belonging to the open tab. -->
+  @if (hasStudent) {
+    <div class="flex align-items-center gap-2 mb-4 flex-wrap">
+      <i [class]="activeDoc.icon" class="text-primary"></i>
+      <span class="text-600 text-sm">{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.TAB_DOC_HINT' | translate }}</span>
+      <p-tag severity="primary" [value]="activeDoc.title"></p-tag>
+    </div>
+  }
+
+  <!-- Student selector -->
+  <div class="surface-ground border-round p-4 mb-4">
+    <label for="indivStudentPick" class="font-bold block mb-2">{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.SELECT_STUDENT' | translate }}</label>
+    <p-autoComplete
+      inputId="indivStudentPick"
+      [(ngModel)]="selectedStudent"
+      name="indivStudentPick"
+      [suggestions]="filteredStudents"
+      (completeMethod)="onStudentSearch($event)"
+      (onSelect)="onStudentSelect($event.value)"
+      (onClear)="onStudentClear()"
+      optionLabel="studentName"
+      [dropdown]="true"
+      [forceSelection]="true"
+      [placeholder]="'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.SEARCH_PLACEHOLDER' | translate"
+      class="w-full"
+      styleClass="w-full md:w-28rem"
+      appendTo="body"
+      >
+      <ng-template let-s pTemplate="item">
+        <div class="flex flex-column gap-1">
+          <span class="font-semibold">{{ s.studentName }}</span>
+          <span class="text-sm text-500">ID {{ s.studentId }} · {{ s.studentPassportNumber }}</span>
+        </div>
+      </ng-template>
+    </p-autoComplete>
+  </div>
+
+  @if (loading) {
+    <div class="flex justify-content-center p-5">
+      <p-progressSpinner styleClass="w-4rem h-4rem"></p-progressSpinner>
+    </div>
+  }
+
+  @if (!loading && !hasStudent) {
+    <div class="text-center text-600 p-6 border-round surface-ground">
+      {{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.EMPTY_STATE' | translate }}
+    </div>
+  }
+
+  @if (!loading && hasStudent) {
+    <p-tabs [(value)]="activeTabIndex" (valueChange)="onTabChange($event)" class="individual-student-tabs">
+      <p-tablist>
+        <p-tab [value]="0">
+          <span class="flex align-items-center gap-2"><i class="pi pi-file-edit"></i> {{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.TAB_FORM' | translate }}</span>
+        </p-tab>
+        <p-tab [value]="1">
+          <span class="flex align-items-center gap-2"><i class="pi pi-credit-card"></i> {{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.TAB_ID' | translate }}</span>
+        </p-tab>
+        <p-tab [value]="2">
+          <span class="flex align-items-center gap-2"><i class="pi pi-globe"></i> {{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.TAB_PROFILE' | translate }}</span>
+        </p-tab>
+        <p-tab [value]="3">
+          <span class="flex align-items-center gap-2"><i class="pi pi-history"></i> {{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.TAB_HISTORY' | translate }}</span>
+        </p-tab>
+      </p-tablist>
+      <p-tabpanels>
+        <p-tabpanel [value]="0">
+          <div class="mb-3 text-sm text-600">{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.TAB_FORM_HINT' | translate }}</div>
+          <p-table
+            [value]="registrationRows"
+            styleClass="p-datatable-sm p-datatable-striped"
+            [paginator]="true"
+            [rows]="15"
+            [rowsPerPageOptions]="[15, 30, 50]"
+            responsiveLayout="scroll"
+            >
+            <ng-template pTemplate="header">
+              <tr>
+                <th pSortableColumn="label">
+                  {{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.COL_FIELD' | translate }} <p-sortIcon field="label"></p-sortIcon>
+                </th>
+                <th pSortableColumn="value">{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.COL_VALUE' | translate }} <p-sortIcon field="value"></p-sortIcon></th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-row>
+              <tr>
+                <!-- Readable name first; the raw key path stays visible but muted,
+                since it is what the underlying column is actually called. -->
+                <td>
+                  <div>{{ row.label }}</div>
+                  <code class="text-xs text-500">{{ row.field }}</code>
+                </td>
+                <td>{{ row.value }}</td>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+              <tr>
+                <td colspan="2">{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.NO_ROWS' | translate }}</td>
+              </tr>
+            </ng-template>
+          </p-table>
+        </p-tabpanel>
+        <p-tabpanel [value]="1">
+          <div class="flex justify-content-center">
+            <div class="id-card-shell surface-card shadow-3 border-round-xl p-4 md:p-5 w-full max-w-30rem">
+              <div class="flex flex-column align-items-center gap-4">
+                <div class="relative">
+                  <p-avatar
+                    [image]="photoUrl || undefined"
+                    [label]="photoUrl ? undefined : ((studentDisplayName || '?').slice(0, 1))"
+                    shape="square"
+                    size="xlarge"
+                    styleClass="border-3 border-primary-200"
+                    [style]="{ width: '7rem', height: '7rem' }"
+                  ></p-avatar>
+                </div>
+                <div class="text-center">
+                  <h3 class="m-0 text-900">{{ studentDisplayName }}</h3>
+                  <p-tag severity="primary" styleClass="mt-2">{{ 'STUDENTS.STUDENT_ID' | translate }} {{ studentDatum?.['studentId'] }}</p-tag>
+                </div>
+                <dl class="w-full m-0">
+                  @for (r of idCardRows(); track r) {
+                    <div class="grid m-0 border-bottom-1 surface-border py-2">
+                      <dt class="col-5 m-0 text-600 font-semibold text-sm">{{ r.label }}</dt>
+                      <dd class="col-7 m-0 text-sm text-right md:text-right">{{ r.value }}</dd>
+                    </div>
+                  }
+                </dl>
+              </div>
+            </div>
+          </div>
+        </p-tabpanel>
+        <p-tabpanel [value]="2">
+          @if (!profile) {
+            <div class="text-600 p-4">{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.NO_PROFILE' | translate }}</div>
+          }
+          @if (profile) {
+            <div>
+              @if (profile['remainingBalanceHint'] !== undefined && profile['remainingBalanceHint'] !== null) {
+                <p-message
+                  severity="info"
+                  styleClass="w-full mb-4"
+                    [text]="(
+                        translationService.translate('REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.BALANCE_HINT') +
+                            ': ' +
+                            profile['remainingBalanceHint']
+                    )"
+                ></p-message>
+              }
+              <p-accordion [multiple]="true">
+                @for (sec of profileSections; track sec; let i = $index) {
+                  <p-accordion-panel [value]="i">
+                    <p-accordion-header>
+                      {{ profileSectionLabel(sec.key) }}
+                    </p-accordion-header>
+                    <p-accordion-content>
+                      @if (isNonEmptyArray(sec.value) && isPlainObject(sec.value[0])) {
+                        <p-table [value]="sec.value | slice : 0 : 100" styleClass="p-datatable-sm" responsiveLayout="scroll">
+                          <ng-template pTemplate="header">
+                            <tr>
+                              @for (col of arrayTableColumnsForArray(sec.value); track col) {
+                                <th>{{ humanizeKey(col) }}</th>
+                              }
+                            </tr>
+                          </ng-template>
+                          <ng-template pTemplate="body" let-row>
+                            @if (isPlainObject(row)) {
+                              <tr>
+                                @for (col of arrayTableColumnsForArray(sec.value); track col) {
+                                  <td>{{ stringifyCell(row[col]) }}</td>
+                                }
+                              </tr>
+                            }
+                          </ng-template>
+                        </p-table>
+                        @if (sec.value.length > 100) {
+                          <small class="block mt-2 text-500">{{
+                            'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.LIST_TRUNCATED' | translate
+                          }}</small>
+                        }
+                      }
+                      @if (isNonEmptyArray(sec.value) && !isPlainObject(sec.value[0])) {
+                        <pre class="text-sm overflow-x-auto surface-ground border-round p-3 m-0">{{ stringifyCell(sec.value) }}</pre>
+                      }
+                      @if (isPlainObject(sec.value) && !isNonEmptyArray(sec.value)) {
+                        <p-table [value]="objectEntries(sec.value)" styleClass="p-datatable-sm">
+                          <ng-template pTemplate="header">
+                            <tr>
+                              <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.COL_FIELD' | translate }}</th>
+                              <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.COL_VALUE' | translate }}</th>
+                            </tr>
+                          </ng-template>
+                          <ng-template pTemplate="body" let-e>
+                            <tr>
+                              <td><code>{{ e.k }}</code></td>
+                              <td>{{ stringifyCell(e.v) }}</td>
+                            </tr>
+                          </ng-template>
+                        </p-table>
+                      }
+                      @if (isScalarProfileValue(sec.value)) {
+                        <p class="m-0 text-lg font-semibold">{{ stringifyCell(sec.value) }}</p>
+                      }
+                    </p-accordion-content>
+                  </p-accordion-panel>
+                }
+              </p-accordion>
+            </div>
+          }
+        </p-tabpanel>
+        <p-tabpanel [value]="3">
+          <p-panel [header]="'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.PROGRESS_TITLE' | translate" styleClass="mb-4" [toggleable]="true">
+            @if (!progress) {
+              <div class="text-600">{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.NO_PROGRESS' | translate }}</div>
+            }
+            @if (progress) {
+              <div class="grid">
+                <div class="col-12 md:col-8">
+                  <p class="mt-0 text-700">{{ progress | inLanguage:'currentYearLabel' }}</p>
+                  <p-progressBar [value]="progressPercentForBar()"></p-progressBar>
+                  <div class="flex flex-wrap gap-3 mt-3 text-sm">
+                    <span>{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.PR_TOTAL_YEARS' | translate }}: <strong>{{ progress.totalYears }}</strong></span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </p-panel>
+            <p-panel [header]="'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.YEAR_RESULTS' | translate" styleClass="mb-4">
+              <p-table [value]="yearResults" styleClass="p-datatable-sm" responsiveLayout="scroll">
+                <ng-template pTemplate="header">
+                  <tr>
+                    <th>#</th>
+                    <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.COL_ACAD_YEAR' | translate }}</th>
+                    <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.COL_PASSED' | translate }}</th>
+                    <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.COL_GRADE' | translate }}</th>
+                    <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.COL_NOTES' | translate }}</th>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-r>
+                  <tr>
+                    <td>{{ r.yearNumber }}</td>
+                    <td>{{ r.academicYear }}</td>
+                    <td>
+                      <p-tag [severity]="outcomeSeverity(r)"
+                        [value]="(outcome(r) === 'not-recorded' ? 'STUDENT_QUICK_EDIT.YEAR_RESULTS.NOT_RECORDED' : (r.passed ? 'COMMON.YES' : 'COMMON.NO')) | translate"></p-tag>
+                    </td>
+                    <td>{{ r.grade }}</td>
+                    <td>{{ r.notes }}</td>
+                  </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                  <tr>
+                    <td colspan="5">{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.NO_YEAR_RESULTS' | translate }}</td>
+                  </tr>
+                </ng-template>
+              </p-table>
+            </p-panel>
+            <div class="surface-ground border-round p-3 flex align-items-center justify-content-between gap-3 flex-wrap">
+              <span class="text-600">{{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.ARCHIVE_HELP' | translate }}</span>
+              <button
+                pButton
+                type="button"
+                [label]="'NAVIGATION.STUDENT_HISTORY' | translate"
+                icon="pi pi-external-link"
+                class="p-button-sm"
+                routerLink="/student-history"
+              ></button>
+            </div>
+          </p-tabpanel>
+        </p-tabpanels>
+      </p-tabs>
+    }
+  </div>
+
+  <!-- Official documents (server-rendered Jasper PDFs) -->
+  @if (hasStudent) {
+    <div class="card mt-3" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+      <!-- Heading leads this row too; see the comment on the page header above. -->
+      <div class="flex align-items-center mb-3 flex-wrap gap-2">
+        <div class="flex-1">
+          <h4 class="m-0 flex align-items-center gap-2">
+            <i class="pi pi-verified text-primary"></i>
+            {{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.DOCS_TITLE' | translate }}
+          </h4>
+          <p class="text-600 text-sm mt-1 mb-0">
+            {{ 'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.DOCS_SUBTITLE' | translate }}
+          </p>
+        </div>
+        <p-selectButton [options]="reportLangOptions"
+          [(ngModel)]="selectedLang" optionLabel="label" optionValue="value"
+          (onChange)="generateReport()">
+        </p-selectButton>
+      </div>
+      <div class="grid">
+        @for (doc of officialDocsAllowed; track doc) {
+          <div class="col-12 md:col-6 xl:col-3">
+            <!-- The card matching the open tab is highlighted, so the tab and the
+            document it produces are visibly the same thing. -->
+            <div class="surface-ground border-round p-3 h-full flex flex-column gap-2"
+              [class.border-2]="doc.kind === activeDocKind"
+              [class.border-primary]="doc.kind === activeDocKind">
+              <div class="flex align-items-center gap-2">
+                <i [class]="doc.icon" class="text-primary text-xl"></i>
+                <span class="font-semibold">{{ doc.title }}</span>
+                @if (doc.kind === activeDocKind) {
+                  <p-tag severity="primary" styleClass="ml-auto"
+                  [value]="'REPORTS.INDIVIDUAL_REPORTS.INDIVIDUAL_STUDENT.DOC_CURRENT_TAB' | translate"></p-tag>
+                }
+              </div>
+              <p class="text-600 text-sm m-0 flex-grow-1">{{ doc.description }}</p>
+              <div class="flex gap-2 flex-wrap">
+                <button pButton type="button" icon="pi pi-eye"
+                  [label]="'REPORTS.REPORT_SUBPAGES.PREVIEW_SERVER_PDF' | translate"
+                  class="p-button-sm p-button-outlined"
+                  [disabled]="loading"
+                (click)="previewDoc(doc.kind)"></button>
+                <button pButton type="button" icon="pi pi-download"
+                  [label]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_SERVER_PDF' | translate"
+                  class="p-button-sm p-button-text"
+                  [disabled]="loading"
+                (click)="downloadDoc(doc.kind)"></button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (hasStudent) {
+    <div class="card mt-3">
+      <!-- Heading leads this row too; see the comment on the page header above. -->
+      <div class="flex align-items-center mb-3 flex-wrap gap-2">
+        <h4 class="m-0 flex align-items-center gap-2 flex-1">
+          <i [class]="activeDoc.icon" class="text-primary"></i>
+          {{ activeDoc.title }}
+        </h4>
+        <div class="flex align-items-center gap-2">
+          <p-selectButton [options]="reportLangOptions"
+            [(ngModel)]="selectedLang" optionLabel="label" optionValue="value"
+            (onChange)="generateReport()">
+          </p-selectButton>
+          <p-button icon="pi pi-refresh" [label]="'REPORTS.VIEWER.GENERATE_REPORT' | translate"
+          [loading]="reportLoading" (onClick)="generateReport()"></p-button>
+        </div>
+      </div>
+      <!-- Inline, not the shared modal (review item P2): this viewer sits inside the
+           document panel, under its own heading and language selector, and the
+           document follows the selected tab. Left on the default the page opened a
+           dialog over itself on every tab click, hiding the very panel it belongs
+           to — and the panel below stayed empty. -->
+      <app-report-viewer [pdfApiPath]="pdfApiPath" [pdfQuery]="pdfQuery" [loadTrigger]="loadTrigger" [loading]="reportLoading"
+        [filename]="activeDocFilename" [useModal]="false" viewerHeight="60vh">
+      </app-report-viewer>
+    </div>
+  }

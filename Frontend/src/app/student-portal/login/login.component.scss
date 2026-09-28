@@ -1,0 +1,285 @@
+/* ── Root: full-viewport two-panel layout ──────────────────── */
+.lp-root {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Left branding panel ───────────────────────────────────── */
+.lp-brand {
+  display: none;
+  width: 42%;
+  flex-shrink: 0;
+  background: linear-gradient(160deg, #001529 0%, #003a8c 60%, #1890ff 100%);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='40' cy='40' r='30'/%3E%3Ccircle cx='0' cy='0' r='15'/%3E%3Ccircle cx='80' cy='80' r='15'/%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  @media (min-width: 768px) { display: flex; align-items: center; justify-content: center; }
+}
+
+.lp-brand-inner {
+  padding: 48px 40px;
+  text-align: center;
+  color: #fff;
+  position: relative;
+  z-index: 1;
+}
+
+.lp-brand-logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  backdrop-filter: blur(6px);
+
+  [nz-icon] { font-size: 40px; color: #fff; }
+}
+
+.lp-brand-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.lp-brand-sub {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+.lp-divider {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  margin: 24px 0 !important;
+}
+
+.lp-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  text-align: start;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+    &:last-child { border-bottom: none; }
+
+    [nz-icon] {
+      font-size: 16px;
+      color: #40a9ff;
+      flex-shrink: 0;
+    }
+  }
+}
+
+/* ── Right form panel ──────────────────────────────────────── */
+.lp-form-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  padding: 32px 24px;
+
+  @media (min-width: 768px) { background: #f5f7fa; }
+}
+
+.lp-form-wrap {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 36px 32px;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.08);
+
+  @media (max-width: 767px) {
+    box-shadow: none;
+    padding: 24px 0;
+  }
+}
+
+/* Language toggle row */
+.lp-lang-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.lp-lang-toggle {
+  display: inline-flex;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+
+  button {
+    border: none;
+    padding: 0 12px;
+    height: 26px;
+    line-height: 24px;
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.65);
+    background: transparent;
+  }
+}
+
+.lp-lang-active {
+  background: #1890ff !important;
+  color: #fff !important;
+}
+
+/* Form header */
+.lp-form-header {
+  margin-bottom: 28px;
+
+  h2 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.85);
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* Form */
+.lp-form {
+  ::ng-deep .ant-form-item {
+    margin-bottom: 16px;
+  }
+  ::ng-deep .ant-input-affix-wrapper {
+    border-radius: 8px;
+    height: 42px;
+  }
+  ::ng-deep .ant-input-affix-wrapper input {
+    height: 100%;
+  }
+}
+
+.lp-pwd-toggle {
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.45);
+  &:hover { color: #1890ff; }
+}
+
+.lp-error {
+  margin-bottom: 16px;
+  border-radius: 8px;
+}
+
+.lp-retry-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 13px;
+
+  &:hover { text-decoration: underline; }
+}
+
+/* ── Security verification ─────────────────────────────────── */
+.lp-captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.lp-captcha-image {
+  width: 200px;
+  height: 80px;
+  max-width: 100%;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  /* The server draws it at exactly 200x80; contain keeps it undistorted if the
+     panel is narrower than that on a small screen. */
+  object-fit: contain;
+  background: #f8f9fa;
+  /* The glyphs are meant to be hard for a machine and easy for a person; letting
+     the pointer select them suggests they can be copied, and they cannot. */
+  user-select: none;
+}
+
+.lp-captcha-image--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.25);
+  font-size: 28px;
+}
+
+.lp-captcha-refresh {
+  height: 40px;
+  width: 40px;
+  border-radius: 8px !important;
+  flex: 0 0 auto;
+}
+
+.lp-captcha-input {
+  /* The alphabet has no ambiguous glyphs and the check is case-insensitive, but
+     spacing the characters makes a five-character code easier to proof-read. */
+  letter-spacing: 2px;
+}
+
+.lp-submit-btn {
+  margin-top: 8px;
+  height: 44px;
+  font-size: 15px;
+  border-radius: 8px !important;
+}
+
+.lp-forgot-row {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.lp-forgot-link {
+  font-size: 13px;
+  color: #1890ff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  &:hover { text-decoration: underline; }
+}
+
+.lp-modal-hint {
+  color: rgba(0, 0, 0, 0.65);
+  margin-bottom: 16px;
+}
+
+/* ── Mobile: single-column ─────────────────────────────────── */
+@media (max-width: 767px) {
+  .lp-root { background: linear-gradient(160deg, #001529 0%, #003a8c 40%, #1890ff 100%); }
+  .lp-form-panel { background: transparent; }
+  .lp-form-wrap  { background: #fff; box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25); }
+}
+
+/* ── RTL ───────────────────────────────────────────────────────
+   Nothing to add: .lp-root carries dir="rtl", so the two panels and the
+   language row mirror on their own. The `row-reverse` and `flex-start` that were
+   here flipped them a second time, which kept the brand panel on the left and
+   the language switch on the right in Arabic, as in English. */

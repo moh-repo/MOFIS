@@ -1,0 +1,250 @@
+<div class="report-settings-page" [class.rtl-layout]="isRtl" [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+  <p-toast></p-toast>
+  <p-confirmdialog></p-confirmdialog>
+
+  <div class="card page-header-card">
+    <div class="page-header">
+      <div class="page-header__content">
+        <i class="pi pi-file-edit text-primary page-header__icon"></i>
+        <div>
+          <h3 class="m-0 text-primary">{{ 'REPORT_SETTINGS.TITLE' | translate }}</h3>
+          <p class="text-600 mt-1 mb-0">{{ 'REPORT_SETTINGS.DESCRIPTION' | translate }}</p>
+        </div>
+      </div>
+      <p-button
+        icon="pi pi-plus"
+        [label]="'REPORT_SETTINGS.ADD_TYPE' | translate"
+        severity="success"
+        (onClick)="openAddDialog()">
+      </p-button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="col-12 lg:col-3">
+      <div class="card type-list-card h-full">
+        <h5 class="mb-3">{{ 'REPORT_SETTINGS.REPORT_TYPES' | translate }}</h5>
+
+        @if (loading) {
+          <div class="type-list-loading">
+            <p-progressSpinner styleClass="w-3rem h-3rem" strokeWidth="4"></p-progressSpinner>
+          </div>
+        }
+
+        @if (!loading) {
+          <ul class="type-list">
+            @for (type of reportTypes; track type) {
+              <li
+                class="type-item"
+                [class.selected]="selectedType?.id === type.id"
+                (click)="selectType(type)">
+                <div class="type-item__row">
+                  <div class="type-item__text">
+                    <div class="type-name">{{ isRtl ? type.reportTypeNameAr : type.reportTypeNameEn }}</div>
+                    <small class="type-code text-500">{{ type.reportTypeCode }}</small>
+                  </div>
+                  <button
+                    pButton
+                    pRipple
+                    type="button"
+                    icon="pi pi-trash"
+                    class="p-button-rounded p-button-text p-button-danger p-button-sm"
+                    (click)="$event.stopPropagation(); deleteType(type)"
+                    [pTooltip]="'COMMON.DELETE' | translate" [attr.aria-label]="'COMMON.DELETE' | translate">
+                  </button>
+                </div>
+              </li>
+            }
+            @if (reportTypes.length === 0) {
+              <li class="type-empty text-500">
+                {{ 'REPORT_SETTINGS.NO_TYPES' | translate }}
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+
+    <div class="col-12 lg:col-9">
+      @if (selectedType) {
+        <div class="card editor-card">
+          <h5 class="section-title">
+            <i class="pi pi-list text-primary"></i>
+            {{ 'REPORT_SETTINGS.HEADER_TITLES' | translate }}
+            <small class="text-500">({{ 'REPORT_SETTINGS.MAX_5' | translate }})</small>
+          </h5>
+          <p class="text-600 section-hint">{{ 'REPORT_SETTINGS.HEADER_TITLES_HINT' | translate }}</p>
+          <div class="title-table">
+            <div class="title-table__header grid">
+              <div class="col-12 md:col-1 title-table__col-num">#</div>
+              <div class="col-12 md:col-5">{{ 'REPORT_SETTINGS.TITLE_AR_PLACEHOLDER' | translate }}</div>
+              <div class="col-12 md:col-6">{{ 'REPORT_SETTINGS.TITLE_EN_PLACEHOLDER' | translate }}</div>
+            </div>
+            @for (slot of titleSlots; track slot) {
+              <div class="title-table__row grid align-items-center">
+                <div class="col-12 md:col-1 title-table__col-num">
+                  <span class="slot-badge">{{ slot.label }}</span>
+                </div>
+                <div class="col-12 md:col-5">
+                  <input
+                    pInputText
+                    [(ngModel)]="selectedType[slot.arField]"
+                    [placeholder]="('REPORT_SETTINGS.TITLE_AR_PLACEHOLDER' | translate) + ' ' + slot.label"
+                    dir="rtl"
+                    class="w-full">
+                </div>
+                <div class="col-12 md:col-6">
+                  <input
+                    pInputText
+                    [(ngModel)]="selectedType[slot.enField]"
+                    [placeholder]="('REPORT_SETTINGS.TITLE_EN_PLACEHOLDER' | translate) + ' ' + slot.label"
+                    dir="ltr"
+                    class="w-full">
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+        <div class="card editor-card">
+          <h5 class="section-title">
+            <i class="pi pi-align-center text-primary"></i>
+            {{ 'REPORT_SETTINGS.FOOTER_TEXT' | translate }}
+          </h5>
+          <p class="text-600 section-hint">{{ 'REPORT_SETTINGS.FOOTER_TEXT_HINT' | translate }}</p>
+          <div class="grid p-fluid">
+            <div class="col-12 md:col-6">
+              <label class="field-label">{{ 'REPORT_SETTINGS.FOOTER_TEXT_AR' | translate }}</label>
+              <textarea
+                pTextarea
+                [(ngModel)]="selectedType.footerTextAr"
+                [placeholder]="'REPORT_SETTINGS.FOOTER_TEXT_AR_PLACEHOLDER' | translate"
+                dir="rtl"
+                rows="3"
+                class="w-full">
+              </textarea>
+            </div>
+            <div class="col-12 md:col-6">
+              <label class="field-label">{{ 'REPORT_SETTINGS.FOOTER_TEXT_EN' | translate }}</label>
+              <textarea
+                pTextarea
+                [(ngModel)]="selectedType.footerTextEn"
+                [placeholder]="'REPORT_SETTINGS.FOOTER_TEXT_EN_PLACEHOLDER' | translate"
+                dir="ltr"
+                rows="3"
+                class="w-full">
+              </textarea>
+            </div>
+          </div>
+        </div>
+        <div class="card editor-card">
+          <h5 class="section-title">
+            <i class="pi pi-users text-primary"></i>
+            {{ 'REPORT_SETTINGS.SIGNATORIES' | translate }}
+          </h5>
+          <div class="signatory-count-row">
+            <label class="font-semibold">{{ 'REPORT_SETTINGS.SIGNATORY_COUNT' | translate }}</label>
+            <p-select
+              [options]="signatoryCountOptions"
+              [(ngModel)]="selectedType.signatoryCount"
+              styleClass="signatory-count-dropdown">
+            </p-select>
+            <small class="text-500">{{ 'REPORT_SETTINGS.SIGNATORY_COUNT_HINT' | translate }}</small>
+          </div>
+          <div class="signatory-list">
+            @for (slot of signatorySlots; track slot) {
+              <div
+                class="signatory-row"
+                [class.active-signatory]="(selectedType.signatoryCount ?? 0) >= slot.label">
+                <div class="signatory-row__header">
+                  <span class="slot-badge"
+                    [class.badge-active]="(selectedType.signatoryCount ?? 0) >= slot.label">
+                    {{ slot.label }}
+                  </span>
+                  <span class="signatory-row__label">{{ 'REPORT_SETTINGS.SIGNATORIES' | translate }} {{ slot.label }}</span>
+                </div>
+                <div class="grid p-fluid">
+                  <div class="col-12 md:col-6">
+                    <label class="field-label">{{ 'REPORT_SETTINGS.NAME_AR' | translate }}</label>
+                    <input pInputText
+                      [(ngModel)]="selectedType[slot.nameArField]"
+                      dir="rtl" class="w-full"
+                      [placeholder]="'REPORT_SETTINGS.NAME_AR' | translate">
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <label class="field-label">{{ 'REPORT_SETTINGS.NAME_EN' | translate }}</label>
+                    <input pInputText
+                      [(ngModel)]="selectedType[slot.nameEnField]"
+                      dir="ltr" class="w-full"
+                      [placeholder]="'REPORT_SETTINGS.NAME_EN' | translate">
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <label class="field-label">{{ 'REPORT_SETTINGS.POSITION_AR' | translate }}</label>
+                    <input pInputText
+                      [(ngModel)]="selectedType[slot.posArField]"
+                      dir="rtl" class="w-full"
+                      [placeholder]="'REPORT_SETTINGS.POSITION_AR' | translate">
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <label class="field-label">{{ 'REPORT_SETTINGS.POSITION_EN' | translate }}</label>
+                    <input pInputText
+                      [(ngModel)]="selectedType[slot.posEnField]"
+                      dir="ltr" class="w-full"
+                      [placeholder]="'REPORT_SETTINGS.POSITION_EN' | translate">
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+        <div class="editor-actions">
+          <p-button
+            icon="pi pi-save"
+            [label]="'COMMON.SAVE' | translate"
+            severity="success"
+            [loading]="saving"
+            [disabled]="saving"
+            (onClick)="save()">
+          </p-button>
+        </div>
+      } @else {
+        <div class="card empty-state-card">
+          <i class="pi text-400 empty-state-icon"
+          [ngClass]="isRtl ? 'pi-arrow-right' : 'pi-arrow-left'"></i>
+          <h4 class="text-600 mt-3 mb-0">{{ 'REPORT_SETTINGS.SELECT_TYPE_HINT' | translate }}</h4>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<p-dialog
+  [(visible)]="showAddDialog"
+  [header]="'REPORT_SETTINGS.ADD_TYPE' | translate"
+  [modal]="true"
+  [style]="{width: '420px'}"
+  [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+  <div class="p-fluid grid gap-3">
+    <div class="col-12">
+      <label class="block mb-2 font-semibold">{{ 'REPORT_SETTINGS.TYPE_CODE' | translate }} *</label>
+      <!-- A report the system prints, not free text (DEC-22, review M3). -->
+      <p-select [options]="catalogueCodes" [(ngModel)]="newTypeCode" [filter]="catalogueCodes.length > 8"
+        [loading]="catalogueLoading" appendTo="body" styleClass="w-full" dir="ltr"
+        [placeholder]="'REPORT_SETTINGS.TYPE_CODE_PICK' | translate"
+        [emptyMessage]="'REPORT_SETTINGS.CATALOGUE_EMPTY' | translate"></p-select>
+      <small class="text-500">{{ 'REPORT_SETTINGS.TYPE_CODE_HINT' | translate }}</small>
+    </div>
+    <div class="col-12">
+      <label class="block mb-2 font-semibold">{{ 'REPORT_SETTINGS.TYPE_NAME_AR' | translate }}</label>
+      <input pInputText [(ngModel)]="newTypeNameAr" dir="rtl" class="w-full">
+    </div>
+    <div class="col-12">
+      <label class="block mb-2 font-semibold">{{ 'REPORT_SETTINGS.TYPE_NAME_EN' | translate }}</label>
+      <input pInputText [(ngModel)]="newTypeNameEn" dir="ltr" class="w-full">
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button [label]="'COMMON.CANCEL' | translate" severity="secondary" (onClick)="showAddDialog = false"></p-button>
+    <p-button [label]="'COMMON.CREATE' | translate" severity="primary"
+    [disabled]="!newTypeCode" (onClick)="createType()"></p-button>
+  </ng-template>
+</p-dialog>

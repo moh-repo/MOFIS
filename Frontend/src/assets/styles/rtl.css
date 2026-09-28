@@ -1,0 +1,506 @@
+/* RTL Support for Arabic */
+.rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+.rtl .p-datatable .p-datatable-thead > tr > th {
+  text-align: right;
+}
+
+.rtl .p-datatable .p-datatable-tbody > tr > td {
+  text-align: right;
+}
+
+.rtl .p-button {
+  direction: rtl;
+}
+
+.rtl .p-inputtext {
+  text-align: right;
+}
+
+.rtl .p-select {
+  text-align: right;
+}
+
+.rtl .p-datepicker {
+  text-align: right;
+}
+
+.rtl .p-dialog .p-dialog-header {
+  text-align: right;
+}
+
+.rtl .p-dialog .p-dialog-content {
+  text-align: right;
+}
+
+.rtl .p-dialog .p-dialog-footer {
+  text-align: left;
+}
+
+.rtl .p-menu {
+  text-align: right;
+}
+
+.rtl .p-menuitem-text {
+  text-align: right;
+}
+
+.rtl .p-toolbar {
+  text-align: right;
+}
+
+.rtl .p-toolbar .p-toolbar-group-left {
+  float: right;
+}
+
+.rtl .p-toolbar .p-toolbar-group-right {
+  float: left;
+}
+
+.rtl .p-paginator {
+  text-align: right;
+}
+
+.rtl .p-paginator .p-paginator-left {
+  float: right;
+}
+
+.rtl .p-paginator .p-paginator-right {
+  float: left;
+}
+
+.rtl .p-input-icon-left > i {
+  left: auto;
+  right: 0.75rem;
+}
+
+.rtl .p-input-icon-left > input {
+  padding-left: 0.75rem;
+  padding-right: 2.5rem;
+}
+
+.rtl .p-input-icon-right > i {
+  right: auto;
+  left: 0.75rem;
+}
+
+.rtl .p-input-icon-right > input {
+  padding-right: 0.75rem;
+  padding-left: 2.5rem;
+}
+
+.rtl .p-checkbox .p-checkbox-box {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+.rtl .p-radiobutton .p-radiobutton-box {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+.rtl .p-tag {
+  text-align: center;
+}
+
+/* The selector's own spacing is `gap`-based (assets/styles/language-selector.css);
+   the mirrored margins that used to live here stacked on top of it. */
+.rtl .language-selector {
+  text-align: right;
+}
+
+.rtl .layout-topbar-menu {
+  text-align: right;
+}
+
+/* Fix for PrimeNG components in RTL */
+.rtl .p-datatable .p-datatable-thead > tr > th:first-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 6px;
+}
+
+.rtl .p-datatable .p-datatable-thead > tr > th:last-child {
+  border-top-right-radius: 0;
+  border-top-left-radius: 6px;
+}
+
+.rtl .p-datatable .p-datatable-tbody > tr > td:first-child {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 6px;
+}
+
+.rtl .p-datatable .p-datatable-tbody > tr > td:last-child {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 6px;
+}
+
+/* RTL specific spacing adjustments */
+.rtl .p-button + .p-button {
+  margin-right: 0.5rem;
+  margin-left: 0;
+}
+
+.rtl .p-button.p-button-success {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+.rtl .p-button.p-button-danger {
+  margin-right: 0;
+  margin-left: 0;
+}
+
+/* RTL for form layouts */
+.rtl .p-field {
+  text-align: right;
+}
+
+.rtl .p-field > label {
+  text-align: right;
+}
+
+.rtl .p-field > .p-inputtext,
+.rtl .p-field > .p-select,
+.rtl .p-field > .p-datepicker {
+  text-align: right;
+}
+
+/* RTL for dialogs */
+.rtl .p-dialog .p-dialog-header .p-dialog-title {
+  text-align: right;
+}
+
+.rtl .p-dialog .p-dialog-footer {
+  text-align: left;
+}
+
+.rtl .p-dialog .p-dialog-footer .p-button {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+.rtl .p-dialog .p-dialog-footer .p-button:first-child {
+  margin-left: 0;
+}
+
+/* RTL for tooltips */
+.rtl .p-tooltip {
+  text-align: right;
+}
+
+/* RTL for menu items */
+.rtl .p-menu .p-menuitem-link {
+  text-align: right;
+}
+
+.rtl .p-menu .p-menuitem-icon {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+/* RTL for sidebar */
+.rtl .layout-sidebar {
+  right: 0;
+  left: auto;
+}
+
+.rtl .layout-sidebar .layout-menu {
+  text-align: right;
+}
+
+.rtl .layout-sidebar .layout-menu .p-menuitem-link {
+  text-align: right;
+}
+
+.rtl .layout-sidebar .layout-menu .p-menuitem-icon {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+/* RTL for topbar */
+.rtl .layout-topbar {
+  text-align: right;
+}
+
+.rtl .layout-topbar .layout-topbar-menu {
+  text-align: right;
+}
+
+.rtl .layout-topbar .layout-topbar-menu .p-button {
+  text-align: right;
+}
+
+/* RTL for cards */
+.rtl .p-card .p-card-header {
+  text-align: right;
+}
+
+.rtl .p-card .p-card-content {
+  text-align: right;
+}
+
+.rtl .p-card .p-card-footer {
+  text-align: right;
+}
+
+/* RTL for flex layouts — INTENTIONALLY OMITTED:
+   Do NOT set `flex-direction: row-reverse` on .flex globally.
+   That breaks flex-column layouts (dashboard cards, notification lists, etc.).
+   Targeted RTL flex reversals for specific justify-content patterns are in styles.scss. */
+
+/* Actions column: keep LTR like English (same order, alignment, all buttons visible) */
+.rtl .actions-cell-ltr,
+.rtl .p-datatable .p-datatable-tbody > tr > td.actions-cell-ltr {
+  direction: ltr;
+  text-align: left;
+  overflow: visible;
+  min-width: 10rem;
+}
+
+.rtl .actions-cell-ltr .flex,
+.rtl .p-datatable .p-datatable-tbody > tr > td.actions-cell-ltr .flex {
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-start;
+  display: flex;
+}
+
+.rtl .actions-cell-ltr .p-button,
+.rtl .p-datatable .p-datatable-tbody > tr > td.actions-cell-ltr .p-button {
+  direction: ltr;
+  flex-shrink: 0;
+  min-width: 2.5rem;
+}
+
+.rtl .actions-cell-ltr .p-button + .p-button,
+.rtl .p-datatable .p-datatable-tbody > tr > td.actions-cell-ltr .p-button + .p-button {
+  margin-right: 0.5rem;
+  margin-left: 0;
+}
+
+.rtl .actions-cell-ltr .flex.gap-2 > * + *,
+.rtl .p-datatable .p-datatable-tbody > tr > td.actions-cell-ltr .flex.gap-2 > * + * {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+/* Actions column header: min-width so column doesn't shrink in RTL */
+.rtl .p-datatable .p-datatable-thead > tr > th.actions-col-header {
+  min-width: 10rem;
+}
+
+.rtl .flex.justify-content-between {
+  justify-content: space-between;
+}
+
+.rtl .flex.justify-content-start {
+  justify-content: flex-end;
+}
+
+.rtl .flex.justify-content-end {
+  justify-content: flex-start;
+}
+
+/* RTL for gap utilities */
+.rtl .gap-1 > * + * {
+  margin-right: 0.25rem;
+  margin-left: 0;
+}
+
+.rtl .gap-2 > * + * {
+  margin-right: 0.5rem;
+  margin-left: 0;
+}
+
+.rtl .gap-3 > * + * {
+  margin-right: 0.75rem;
+  margin-left: 0;
+}
+
+/* RTL for margin utilities */
+.rtl .mr-1 {
+  margin-right: 0;
+  margin-left: 0.25rem;
+}
+
+.rtl .mr-2 {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+.rtl .mr-3 {
+  margin-right: 0;
+  margin-left: 0.75rem;
+}
+
+.rtl .ml-1 {
+  margin-left: 0;
+  margin-right: 0.25rem;
+}
+
+.rtl .ml-2 {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+.rtl .ml-3 {
+  margin-left: 0;
+  margin-right: 0.75rem;
+}
+
+/* RTL for padding utilities */
+.rtl .pr-1 {
+  padding-right: 0;
+  padding-left: 0.25rem;
+}
+
+.rtl .pr-2 {
+  padding-right: 0;
+  padding-left: 0.5rem;
+}
+
+.rtl .pr-3 {
+  padding-right: 0;
+  padding-left: 0.75rem;
+}
+
+.rtl .pl-1 {
+  padding-left: 0;
+  padding-right: 0.25rem;
+}
+
+.rtl .pl-2 {
+  padding-left: 0;
+  padding-right: 0.5rem;
+}
+
+.rtl .pl-3 {
+  padding-left: 0;
+  padding-right: 0.75rem;
+}
+
+/* RTL for text alignment */
+.rtl .text-left {
+  text-align: right;
+}
+
+.rtl .text-right {
+  text-align: left;
+}
+
+.rtl .text-center {
+  text-align: center;
+}
+
+/* RTL for float utilities */
+.rtl .float-left {
+  float: right;
+}
+
+.rtl .float-right {
+  float: left;
+}
+
+/* RTL for position utilities */
+.rtl .position-left {
+  left: auto;
+  right: 0;
+}
+
+.rtl .position-right {
+  right: auto;
+  left: 0;
+}
+
+/* RTL for border radius */
+.rtl .border-left {
+  border-left: none;
+  border-right: 1px solid;
+}
+
+.rtl .border-right {
+  border-right: none;
+  border-left: 1px solid;
+}
+
+/* RTL for shadow utilities */
+.rtl .shadow-left {
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.rtl .shadow-right {
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+/* RTL for transform utilities */
+.rtl .transform-left {
+  transform: translateX(-100%);
+}
+
+.rtl .transform-right {
+  transform: translateX(100%);
+}
+
+/* RTL for animation utilities */
+.rtl .slide-left {
+  animation: slideInRight 0.3s ease-in-out;
+}
+
+.rtl .slide-right {
+  animation: slideInLeft 0.3s ease-in-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* RTL for responsive utilities */
+@media (max-width: 768px) {
+  .rtl .mobile-text-left {
+    text-align: right;
+  }
+  
+  .rtl .mobile-text-right {
+    text-align: left;
+  }
+  
+  .rtl .mobile-float-left {
+    float: right;
+  }
+  
+  .rtl .mobile-float-right {
+    float: left;
+  }
+}
+
+/* RTL for print styles */
+@media print {
+  .rtl {
+    direction: rtl;
+  }
+  
+  .rtl .p-datatable .p-datatable-thead > tr > th {
+    text-align: right;
+  }
+  
+  .rtl .p-datatable .p-datatable-tbody > tr > td {
+    text-align: right;
+  }
+}

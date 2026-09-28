@@ -1,0 +1,29 @@
+@if (!useModal) {
+  <div class="report-viewer-container">
+    @if (showLoadingOverlay) {
+      <div class="report-viewer-loading">
+        <p-progressSpinner strokeWidth="4" styleClass="viewer-spinner"></p-progressSpinner>
+        <p class="viewer-loading-text">{{ 'REPORTS.VIEWER.GENERATING' | translate }}</p>
+      </div>
+    }
+    @if (showPlaceholder) {
+      <div class="report-viewer-placeholder">
+        <i class="pi pi-file-pdf report-viewer-icon"></i>
+        <p class="report-viewer-hint">{{ 'REPORTS.VIEWER.NO_REPORT' | translate }}</p>
+      </div>
+    }
+    @if (loadError && !showLoadingOverlay) {
+      <div class="report-viewer-placeholder">
+        <i class="pi pi-exclamation-triangle report-viewer-icon" style="color:#c0392b"></i>
+        <p class="report-viewer-hint">{{ 'REPORTS.VIEWER.LOAD_FAILED' | translate }}</p>
+      </div>
+    }
+    <div
+      #pdfContainer
+      dir="ltr"
+      class="report-pdf-embedpdf"
+      [class.report-pdf-embedpdf--hidden]="!showPdfContainer"
+      [style.height]="viewerHeight">
+    </div>
+  </div>
+}

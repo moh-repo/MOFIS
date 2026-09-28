@@ -1,0 +1,354 @@
+<p-toast></p-toast>
+<p-confirmdialog [style]="{ width: '30rem' }"></p-confirmdialog>
+
+<div class="card">
+    <!-- Header. `flex-1` on the icon-and-title block, not
+         `justify-content-between` — see chart-of-accounts.component.html and
+         src/app/demo/components/page-headings.spec.ts. -->
+    <div class="flex align-items-center mb-4 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3 flex-1">
+            <i class="pi pi-chart-pie text-primary" style="font-size: 2.5rem"></i>
+            <div>
+                <h2 class="m-0 text-primary">{{ 'ACCOUNTING.BUDGET_TITLE' | translate }}</h2>
+                <p class="text-600 mt-1 mb-0">{{ 'ACCOUNTING.BUDGET_SUBTITLE' | translate }}</p>
+            </div>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+            <!-- The calendar stopped at the seeded years (W4-01). -->
+            <button pButton pRipple type="button" icon="pi pi-calendar-plus" class="p-button-outlined"
+                    *hasPermission="'FISCAL_YEAR.ADD'"
+                    [label]="'ACCOUNTING.OPEN_FISCAL_YEAR' | translate"
+                    (click)="openYearDialog()"></button>
+            <button pButton pRipple type="button" icon="pi pi-plus" *hasPermission="'BUDGET.EDIT'"
+                    [label]="'ACCOUNTING.NEW_APPROPRIATION' | translate"
+                    [disabled]="selectedFiscalYearId == null"
+                    (click)="openNew()"></button>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-4">
+            <div class="filter-bar__field" [class.filter-bar__field--active]="selectedFiscalYearId">
+                <label for="budgetFiscalYear">{{ 'ACCOUNTING.FISCAL_YEAR' | translate }}</label>
+                <p-select inputId="budgetFiscalYear" [options]="fiscalYears" [(ngModel)]="selectedFiscalYearId"
+                          optionLabel="yearNo" optionValue="id"
+                          [placeholder]="'ACCOUNTING.FISCAL_YEAR' | translate"
+                          (onChange)="reload()"></p-select>
+            </div>
+        </div>
+    </div>
+
+    <p-progressSpinner *ngIf="loading" styleClass="w-2rem h-2rem"></p-progressSpinner>
+
+    <p-table *ngIf="!loading" [value]="rows" [scrollable]="true" dataKey="id"
+             [customSort]="true" (sortFunction)="sortTable($event)">
+        <ng-template pTemplate="header">
+            <tr>
+                <th pSortableColumn="feeType">{{ 'ACCOUNTING.FEE_TYPE' | translate }} <p-sortIcon field="feeType"></p-sortIcon></th>
+                <th pSortableColumn="currency">{{ 'ACCOUNTING.CURRENCY' | translate }} <p-sortIcon field="currency"></p-sortIcon></th>
+                <th pSortableColumn="attache">{{ 'ACCOUNTING.ATTACHE' | translate }} <p-sortIcon field="attache"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="amount">{{ 'ACCOUNTING.AMOUNT' | translate }} <p-sortIcon field="amount"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="allocated">{{ 'ACCOUNTING.ALLOCATED' | translate }} <p-sortIcon field="allocated"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="transferred">{{ 'ACCOUNTING.TRANSFERRED' | translate }} <p-sortIcon field="transferred"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="remaining">{{ 'ACCOUNTING.REMAINING' | translate }} <p-sortIcon field="remaining"></p-sortIcon></th>
+                <th pSortableColumn="status">{{ 'ACCOUNTING.STATUS' | translate }} <p-sortIcon field="status"></p-sortIcon></th>
+                <th pSortableColumn="referenceNumber">{{ 'ACCOUNTING.REFERENCE_NUMBER' | translate }} <p-sortIcon field="referenceNumber"></p-sortIcon></th>
+                <th pSortableColumn="createdBy">{{ 'ACCOUNTING.CREATED_BY' | translate }} <p-sortIcon field="createdBy"></p-sortIcon></th>
+                <th style="width: 10rem">{{ 'COMMON.ACTIONS' | translate }}</th>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-row>
+            <tr [class.text-color-secondary]="row.status === 'REVISED'" [class.bg-red-50]="isOverAllocated(row)">
+                <td>{{ feeTypeName(row.feeTypeId) }}</td>
+                <td>{{ currencyName(row.currencyId) }}</td>
+                <td>
+                    <span [class.text-color-secondary]="row.studyCountryInId == null">{{ countryName(row.studyCountryInId) }}</span>
+                </td>
+                <td class="text-right font-medium">{{ row.amount | number:'1.2-2' }}</td>
+                <td class="text-right">{{ row.allocated | number:'1.2-2' }}</td>
+                <td class="text-right">{{ row.transferred | number:'1.2-2' }}</td>
+                <td class="text-right font-medium" [class.text-red-600]="isOverAllocated(row)">
+                    {{ row.remaining | number:'1.2-2' }}
+                </td>
+                <td>
+                    <p-tag [value]="row.status | codeLabel:'appropriation-status':currentLanguage"
+                           [severity]="row.status | codeSeverity:'appropriation-status'"></p-tag>
+                </td>
+                <td class="font-mono text-sm">{{ row.referenceNumber || '—' }}</td>
+                <td class="text-sm">
+                    <span *ngIf="row.createdBy != null">#{{ row.createdBy }}</span>
+                    <small class="block text-color-secondary">{{ row.createdAt | date:'yyyy-MM-dd HH:mm' }}</small>
+                </td>
+                <td>
+                    <button pButton pRipple type="button" icon="pi pi-eye" class="p-button-text p-button-sm"
+                            [pTooltip]="'COMMON.VIEW' | translate"
+                            (click)="openView(row)"></button>
+                    <ng-container *hasPermission="'BUDGET.EDIT'">
+                        <button pButton pRipple type="button" icon="pi pi-pencil" class="p-button-text p-button-sm"
+                                [pTooltip]="'ACCOUNTING.EDIT' | translate"
+                                [disabled]="!canEdit(row)"
+                                (click)="openEdit(row)"></button>
+                        <button *ngIf="row.status === 'DRAFT'" pButton pRipple type="button"
+                                icon="pi pi-check" class="p-button-text p-button-sm"
+                                [pTooltip]="'ACCOUNTING.APPROVE' | translate"
+                                (click)="confirmApprove(row)"></button>
+                    </ng-container>
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="footer" *ngIf="rows.length > 0">
+            <tr>
+                <td colspan="3" class="font-medium">{{ 'ACCOUNTING.TOTAL' | translate }}</td>
+                <td class="text-right font-medium">{{ amountTotal | number:'1.2-2' }}</td>
+                <td class="text-right font-medium">{{ allocatedTotal | number:'1.2-2' }}</td>
+                <td></td>
+                <td class="text-right font-medium">{{ remainingTotal | number:'1.2-2' }}</td>
+                <td colspan="4"></td>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+            <tr>
+                <td colspan="11" class="text-center text-color-secondary py-4">
+                    {{ 'ACCOUNTING.NO_APPROPRIATIONS' | translate }}
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+    <small class="block mt-3 text-color-secondary">{{ 'ACCOUNTING.BUDGET_NOTE' | translate }}</small>
+</div>
+
+
+<!-- Add / edit. Shared vocabulary: assets/layout/styles/_detail-dialog.scss.
+     Stream, currency and attaché identify the row and are fixed once it exists;
+     what an approved figure allows is a revision of the amount, which is why the
+     locked fields stay on screen rather than disappearing. -->
+<p-dialog [(visible)]="dialogVisible" [modal]="true" [draggable]="false"
+          [style]="{ width: '680px', maxWidth: '96vw' }" styleClass="dv-dialog"
+          (onHide)="submitted = false"
+          [header]="(editing.id ? 'ACCOUNTING.EDIT_APPROPRIATION' : 'ACCOUNTING.NEW_APPROPRIATION') | translate">
+    <ng-template pTemplate="content">
+        <div class="dv-hero" [class.dv-hero--new]="!editing.id">
+            <div class="dv-hero__badge">
+                <ng-container *ngIf="editing.id; else newBadge">{{ editing.id }}</ng-container>
+                <ng-template #newBadge><i class="pi pi-plus"></i></ng-template>
+            </div>
+            <div class="dv-hero__body">
+                <div class="dv-hero__eyebrow">
+                    {{ (editing.id ? 'ACCOUNTING.EDIT_APPROPRIATION' : 'ACCOUNTING.NEW_APPROPRIATION') | translate }}
+                </div>
+                <div class="dv-hero__title" [class.dv-hero__title--placeholder]="editing.feeTypeId == null">
+                    {{ editing.feeTypeId == null ? ('ACCOUNTING.FEE_TYPE' | translate) : feeTypeName(editing.feeTypeId) }}
+                </div>
+                <div class="dv-hero__meta">
+                    <span class="dv-chip">{{ countryName(editing.studyCountryInId) }}</span>
+                    <span class="dv-chip" *ngIf="editing.currencyId != null">{{ currencyName(editing.currencyId) }}</span>
+                    <p-tag *ngIf="editing.status"
+                           [value]="editing.status | codeLabel:'appropriation-status':currentLanguage"
+                           [severity]="editing.status | codeSeverity:'appropriation-status'"></p-tag>
+                </div>
+            </div>
+            <div class="dv-hero__amount" *ngIf="editing.amount">{{ editing.amount | number:'1.2-2' }}</div>
+        </div>
+
+        <div class="dv-notice dv-notice--info" *ngIf="editing.status === 'APPROVED'">
+            <i class="pi pi-info-circle"></i>
+            <span>{{ 'ACCOUNTING.REVISE_HINT' | translate }}</span>
+        </div>
+
+        <section class="dv-section">
+            <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-tags"></i></span>
+                <div><div class="dv-section__title">{{ 'ACCOUNTING.SECTION_CLASSIFICATION' | translate }}</div></div>
+            </header>
+            <div class="dv-fields">
+                <div class="dv-field">
+                    <label for="appropFee" class="dv-label">
+                        {{ 'ACCOUNTING.FEE_TYPE' | translate }} <span class="dv-required">*</span>
+                    </label>
+                    <p-select inputId="appropFee" [options]="feeTypes" [(ngModel)]="editing.feeTypeId"
+                              optionValue="id" appendTo="body" [disabled]="!!editing.id" styleClass="w-full"
+                              [placeholder]="'ACCOUNTING.FEE_TYPE' | translate">
+                        <ng-template pTemplate="selectedItem" let-f>{{ feeTypeName(f.id) }}</ng-template>
+                        <ng-template pTemplate="item" let-f>{{ feeTypeName(f.id) }}</ng-template>
+                    </p-select>
+                    <small class="dv-error" *ngIf="submitted && editing.feeTypeId == null">
+                        <i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                </div>
+                <div class="dv-field">
+                    <label for="appropCurrency" class="dv-label">
+                        {{ 'ACCOUNTING.CURRENCY' | translate }} <span class="dv-required">*</span>
+                    </label>
+                    <p-select inputId="appropCurrency" [options]="currencyOptions" [(ngModel)]="editing.currencyId"
+                              optionLabel="name" optionValue="id" [filter]="true" filterBy="name" appendTo="body"
+                              [disabled]="!!editing.id" styleClass="w-full"
+                              [placeholder]="'ACCOUNTING.CURRENCY' | translate"></p-select>
+                    <small class="dv-error" *ngIf="submitted && editing.currencyId == null">
+                        <i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                </div>
+                <div class="dv-field dv-field--full" *ngIf="needsAttacheChoice">
+                    <label for="appropCountry" class="dv-label">{{ 'ACCOUNTING.ATTACHE' | translate }}</label>
+                    <p-select inputId="appropCountry" [options]="countryOptions" [(ngModel)]="editing.studyCountryInId"
+                              optionLabel="name" optionValue="id" [showClear]="true" [filter]="true" filterBy="name"
+                              appendTo="body" styleClass="w-full"
+                              [placeholder]="'ACCOUNTING.MINISTRY_WIDE' | translate"></p-select>
+                    <small class="dv-hint">{{ 'ACCOUNTING.MINISTRY_WIDE_HINT' | translate }}</small>
+                </div>
+            </div>
+        </section>
+
+        <section class="dv-section">
+            <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-money-bill"></i></span>
+                <div><div class="dv-section__title">{{ 'ACCOUNTING.SECTION_AMOUNTS' | translate }}</div></div>
+            </header>
+            <div class="dv-fields">
+                <div class="dv-field">
+                    <label for="appropAmount" class="dv-label">
+                        {{ 'ACCOUNTING.AMOUNT' | translate }} <span class="dv-required">*</span>
+                    </label>
+                    <p-inputnumber inputId="appropAmount" [(ngModel)]="editing.amount" mode="decimal"
+                                   [minFractionDigits]="2" [maxFractionDigits]="2" [min]="0"
+                                   styleClass="w-full" inputStyleClass="w-full"></p-inputnumber>
+                    <small class="dv-error" *ngIf="submitted && !(editing.amount && editing.amount > 0)">
+                        <i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                </div>
+                <div class="dv-field">
+                    <label for="appropRef" class="dv-label">{{ 'ACCOUNTING.REFERENCE_NUMBER' | translate }}</label>
+                    <input pInputText id="appropRef" [(ngModel)]="editing.referenceNumber" class="w-full" />
+                    <small class="dv-hint">{{ 'ACCOUNTING.REFERENCE_HINT' | translate }}</small>
+                </div>
+                <div class="dv-field dv-field--full">
+                    <label for="appropNotes" class="dv-label">{{ 'ACCOUNTING.NOTES' | translate }}</label>
+                    <textarea pTextarea id="appropNotes" rows="2" [(ngModel)]="editing.notes" class="w-full"></textarea>
+                </div>
+            </div>
+        </section>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+        <div class="dv-footer">
+            <small class="dv-footer__hint">
+                <span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+            </small>
+            <div class="dv-footer__actions">
+                <button pButton type="button" class="p-button-text p-button-secondary" icon="pi pi-times"
+                        [label]="'COMMON.CANCEL' | translate" [disabled]="saving"
+                        (click)="dialogVisible = false"></button>
+                <button pButton type="button" icon="pi pi-check" [label]="'COMMON.SAVE' | translate"
+                        [loading]="saving" (click)="save()"></button>
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>
+
+<!-- View. The four figures the fund chain turns on read as a row of numbers in
+     the table; here they are named, alongside the note and the reference the
+     appropriation was raised against, which the list has no room for. -->
+<p-dialog [(visible)]="yearDialogVisible" [modal]="true" [draggable]="false"
+          [style]="{ width: '420px', maxWidth: '96vw' }"
+          [header]="'ACCOUNTING.OPEN_FISCAL_YEAR' | translate">
+    <p class="text-600 mt-0">{{ 'ACCOUNTING.OPEN_FISCAL_YEAR_HINT' | translate }}</p>
+    <label for="newFiscalYear" class="block mb-2">{{ 'ACCOUNTING.FISCAL_YEAR' | translate }} <span class="dv-required">*</span></label>
+    <p-inputNumber inputId="newFiscalYear" [(ngModel)]="newYearNo" [useGrouping]="false"
+                   [min]="2000" [max]="9999" styleClass="w-full" inputStyleClass="w-full"></p-inputNumber>
+    <ng-template pTemplate="footer">
+        <button pButton type="button" class="p-button-text p-button-secondary" icon="pi pi-times"
+                [label]="'COMMON.CANCEL' | translate" [disabled]="openingYear"
+                (click)="yearDialogVisible = false"></button>
+        <button pButton type="button" icon="pi pi-check" [label]="'ACCOUNTING.OPEN_FISCAL_YEAR' | translate"
+                [loading]="openingYear" [disabled]="!newYearNo" (click)="openYear()"></button>
+    </ng-template>
+</p-dialog>
+
+<p-dialog [(visible)]="viewVisible" [modal]="true" [draggable]="false"
+          [style]="{ width: '680px', maxWidth: '96vw' }" styleClass="dv-dialog"
+          [header]="'ACCOUNTING.VIEW_APPROPRIATION' | translate">
+    <ng-template pTemplate="content">
+        <div class="dv-view" *ngIf="viewing as v">
+            <div class="dv-hero" [class.dv-hero--muted]="v.status === 'REVISED'"
+                 [class.dv-hero--warn]="isOverAllocated(v)">
+                <div class="dv-hero__badge"><i class="pi pi-chart-pie"></i></div>
+                <div class="dv-hero__body">
+                    <div class="dv-hero__eyebrow">{{ countryName(v.studyCountryInId) }}</div>
+                    <div class="dv-hero__title">{{ feeTypeName(v.feeTypeId) }}</div>
+                    <div class="dv-hero__meta">
+                        <span class="dv-chip">{{ currencyName(v.currencyId) }}</span>
+                        <p-tag [value]="v.status | codeLabel:'appropriation-status':currentLanguage"
+                               [severity]="v.status | codeSeverity:'appropriation-status'"></p-tag>
+                    </div>
+                </div>
+                <div class="dv-hero__amount">{{ v.amount | number:'1.2-2' }}</div>
+            </div>
+
+            <div class="dv-kpis dv-kpis--cols-3">
+                <div class="dv-kpi dv-kpi--blue">
+                    <div class="dv-kpi__icon"><i class="pi pi-share-alt"></i></div>
+                    <div class="dv-kpi__body">
+                        <div class="dv-kpi__label">{{ 'ACCOUNTING.ALLOCATED' | translate }}</div>
+                        <div class="dv-kpi__value">{{ v.allocated | number:'1.2-2' }}</div>
+                    </div>
+                </div>
+                <div class="dv-kpi dv-kpi--green">
+                    <div class="dv-kpi__icon"><i class="pi pi-send"></i></div>
+                    <div class="dv-kpi__body">
+                        <div class="dv-kpi__label">{{ 'ACCOUNTING.TRANSFERRED' | translate }}</div>
+                        <div class="dv-kpi__value">{{ v.transferred | number:'1.2-2' }}</div>
+                    </div>
+                </div>
+                <!-- Red when the allocations have gone past the figure they draw
+                     down; the table says the same thing with a tinted row. -->
+                <div class="dv-kpi" [class.dv-kpi--red]="isOverAllocated(v)" [class.dv-kpi--gray]="!isOverAllocated(v)">
+                    <div class="dv-kpi__icon"><i class="pi pi-wallet"></i></div>
+                    <div class="dv-kpi__body">
+                        <div class="dv-kpi__label">{{ 'ACCOUNTING.REMAINING' | translate }}</div>
+                        <div class="dv-kpi__value">{{ v.remaining | number:'1.2-2' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <section class="dv-section">
+                <header class="dv-section__head">
+                    <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-history"></i></span>
+                    <div><div class="dv-section__title">{{ 'ACCOUNTING.SECTION_AUDIT' | translate }}</div></div>
+                </header>
+                <dl class="dv-dl">
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.REFERENCE_NUMBER' | translate }}</dt>
+                        <dd class="font-mono">{{ v.referenceNumber || ('COMMON.NOT_AVAILABLE' | translate) }}</dd>
+                    </div>
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.CREATED_BY' | translate }}</dt>
+                        <dd>
+                            <span *ngIf="v.createdBy != null">#{{ v.createdBy }}</span>
+                            <span *ngIf="v.createdBy == null">{{ 'COMMON.NOT_AVAILABLE' | translate }}</span>
+                            <span class="text-color-secondary">{{ v.createdAt | date:'yyyy-MM-dd HH:mm' }}</span>
+                        </dd>
+                    </div>
+                </dl>
+            </section>
+
+            <div class="dv-notes" [class.dv-notes--empty]="!v.notes">
+                {{ v.notes || ('COMMON.NOT_AVAILABLE' | translate) }}
+            </div>
+        </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+        <div class="dv-footer">
+            <div class="dv-footer__actions">
+                <button pButton type="button" class="p-button-text p-button-secondary" icon="pi pi-times"
+                        [label]="'COMMON.CLOSE' | translate" (click)="viewVisible = false"></button>
+                <button pButton type="button" icon="pi pi-pencil" *hasPermission="'BUDGET.EDIT'"
+                        [label]="'ACCOUNTING.EDIT' | translate" [disabled]="!viewing || !canEdit(viewing)"
+                        (click)="viewVisible = false; openEdit(viewing!)"></button>
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>

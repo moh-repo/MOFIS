@@ -1,0 +1,170 @@
+<!-- [dir], not [attr.dir]: the Dir directive (BidiModule) is what ng-zorro's
+     components read their direction from; the bare attribute left date pickers,
+     selects and tables left-to-right in Arabic (QA SP-003). -->
+<nz-layout class="portal-shell" [class.portal-rtl]="isRTL" [dir]="isRTL ? 'rtl' : 'ltr'">
+
+  <!-- ── Side menu (desktop) ───────────────────────────────────
+       Eleven destinations do not fit a horizontal bar; they used to scroll
+       sideways inside the header, which hid whatever came after Extensions.
+       Down the side they all fit at once, under headings that say what each
+       run of links is for. -->
+  @if (!isMobile) {
+    <nz-sider class="portal-sider" nzTheme="dark" [nzCollapsed]="isCollapsed"
+      [nzWidth]="248" [nzCollapsedWidth]="72" nzCollapsible [nzTrigger]="null">
+
+      <a class="portal-brand" routerLink="/student-portal/dashboard">
+        <span class="portal-brand__mark" nz-icon nzType="read" nzTheme="outline"></span>
+        @if (!isCollapsed) {
+          <span class="portal-brand__text">
+            <span class="portal-brand__title">{{ 'STUDENT_PORTAL.PORTAL_TITLE' | translate }}</span>
+            <span class="portal-brand__sub">{{ 'STUDENT_PORTAL.NAV_GROUP.OVERVIEW' | translate }}</span>
+          </span>
+        }
+      </a>
+
+      <nav class="portal-nav">
+        @for (group of navGroups; track group.labelKey) {
+          <!-- A heading per group rather than nz-menu-group: the heading has to
+               disappear when the rail collapses, and a plain element is far
+               easier to style that way than the widget's own title slot. -->
+          @if (!isCollapsed) {
+            <p class="portal-nav__heading">{{ group.labelKey | translate }}</p>
+          } @else {
+            <span class="portal-nav__rule"></span>
+          }
+          <ul nz-menu nzTheme="dark" nzMode="inline" [nzInlineCollapsed]="isCollapsed" class="portal-menu">
+            @for (item of group.items; track item.route) {
+              <li nz-menu-item nzMatchRouter [routerLink]="item.route"
+                nz-tooltip [nzTooltipTitle]="isCollapsed ? (item.labelKey | translate) : ''"
+                [nzTooltipPlacement]="isRTL ? 'left' : 'right'">
+                <span nz-icon [nzType]="item.icon" nzTheme="outline"></span>
+                <span>{{ item.labelKey | translate }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </nav>
+
+      <!-- Who is signed in. At the foot of the menu rather than in the header:
+           it is the one piece of the shell that is about the person, not the page. -->
+      <div class="portal-identity" [class.portal-identity--tight]="isCollapsed">
+        <span class="portal-identity__avatar">{{ studentInitials }}</span>
+        @if (!isCollapsed) {
+          <span class="portal-identity__text">
+            <span class="portal-identity__name">{{ studentName || ('STUDENT_PORTAL.PORTAL_TITLE' | translate) }}</span>
+            @if (studentId != null) {
+              <span class="portal-identity__id">{{ 'STUDENT_PORTAL.STUDENT_ID' | translate }}: {{ studentId }}</span>
+            }
+          </span>
+        }
+      </div>
+    </nz-sider>
+  }
+
+  <nz-layout class="portal-body">
+
+    <!-- ── Header ─────────────────────────────────────────────
+         Light, and it names the page. The old one was a dark bar carrying the
+         whole menu, so nothing on screen ever said where you were. -->
+    <nz-header class="portal-header">
+      <button class="portal-icon-btn portal-header__toggle" type="button"
+        (click)="isMobile ? toggleMobileMenu() : toggleCollapsed()"
+        [attr.aria-label]="'STUDENT_PORTAL.MENU' | translate"
+        [attr.aria-expanded]="isMobile ? mobileMenuVisible : !isCollapsed">
+        <span nz-icon [nzType]="isMobile && mobileMenuVisible ? 'close' : 'menu'" nzTheme="outline"></span>
+      </button>
+
+      <div class="portal-header__titles">
+        @if (sectionTitleKey) {
+          <p class="portal-header__trail">
+            <span>{{ 'STUDENT_PORTAL.PORTAL_TITLE' | translate }}</span>
+            <span class="portal-header__sep" nz-icon [nzType]="isRTL ? 'left' : 'right'" nzTheme="outline"></span>
+            <span>{{ sectionTitleKey | translate }}</span>
+          </p>
+        }
+        <h1 class="portal-header__title">{{ pageTitleKey | translate }}</h1>
+      </div>
+
+      <div class="portal-header__actions">
+        <button class="portal-icon-btn" type="button" nz-tooltip
+          [nzTooltipTitle]="'STUDENT_PORTAL.NOTIFICATIONS' | translate"
+          [attr.aria-label]="'STUDENT_PORTAL.NOTIFICATIONS' | translate"
+          (click)="goToNotifications()">
+          <span nz-icon nzType="bell" nzTheme="outline"></span>
+        </button>
+
+        <div class="portal-lang" role="group" [attr.aria-label]="'STUDENT_PORTAL.LANGUAGE' | translate">
+          <button type="button" [class.is-active]="currentLang === 'en'" (click)="switchLanguage('en')">EN</button>
+          <button type="button" [class.is-active]="currentLang === 'ar'" (click)="switchLanguage('ar')">ع</button>
+        </div>
+
+        <button nz-button nzType="default" class="portal-logout" (click)="logout()">
+          <span nz-icon nzType="logout" nzTheme="outline"></span>
+          <span class="portal-logout__text">{{ 'STUDENT_PORTAL.LOGOUT' | translate }}</span>
+        </button>
+      </div>
+    </nz-header>
+
+    <nz-content class="portal-content">
+      <div class="portal-content-inner">
+        <!-- Out of the DOM for one turn on a language switch, so the page is built
+             again and re-reads anything the server chose the language of. See
+             PortalLayoutComponent.reinitialiseRoute. -->
+        @if (routeAlive) {
+          <router-outlet></router-outlet>
+        }
+      </div>
+    </nz-content>
+  </nz-layout>
+
+  <!-- ── Mobile drawer ─────────────────────────────────────────
+       The same groups as the rail, from the same array. -->
+  @if (isMobile) {
+    <div class="portal-drawer" [class.portal-drawer--open]="mobileMenuVisible" [class.portal-drawer--rtl]="isRTL">
+      <div class="portal-drawer__mask" (click)="closeMobileMenu()"></div>
+      <div class="portal-drawer__panel">
+        <div class="portal-drawer__header">
+          <span class="portal-brand__mark" nz-icon nzType="read" nzTheme="outline"></span>
+          <span class="portal-drawer__title">{{ 'STUDENT_PORTAL.PORTAL_TITLE' | translate }}</span>
+          <button class="portal-icon-btn portal-icon-btn--onDark" type="button" (click)="closeMobileMenu()"
+            [attr.aria-label]="'STUDENT_PORTAL.CLOSE' | translate">
+            <span nz-icon nzType="close" nzTheme="outline"></span>
+          </button>
+        </div>
+
+        <div class="portal-drawer__identity">
+          <span class="portal-identity__avatar">{{ studentInitials }}</span>
+          <span class="portal-identity__text">
+            <span class="portal-identity__name">{{ studentName || ('STUDENT_PORTAL.PORTAL_TITLE' | translate) }}</span>
+            @if (studentId != null) {
+              <span class="portal-identity__id">{{ 'STUDENT_PORTAL.STUDENT_ID' | translate }}: {{ studentId }}</span>
+            }
+          </span>
+        </div>
+
+        <nav class="portal-drawer__nav">
+          @for (group of navGroups; track group.labelKey) {
+            <p class="portal-nav__heading portal-nav__heading--light">{{ group.labelKey | translate }}</p>
+            <ul>
+              @for (item of group.items; track item.route) {
+                <li>
+                  <a (click)="navigateAndClose(item.route)">
+                    <span nz-icon [nzType]="item.icon" nzTheme="outline"></span>
+                    <span>{{ item.labelKey | translate }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+        </nav>
+
+        <div class="portal-drawer__footer">
+          <button nz-button nzType="default" nzDanger nzBlock (click)="logout()">
+            <span nz-icon nzType="logout" nzTheme="outline"></span>
+            {{ 'STUDENT_PORTAL.LOGOUT' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</nz-layout>

@@ -1,0 +1,26 @@
+.pdf-preview-page {
+    min-height: 100vh;
+    background: #525659;
+}
+
+.pdf-preview-loading,
+.pdf-preview-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 1rem;
+    color: #fff;
+}
+
+.pdf-preview-embedpdf {
+    display: block;
+    width: 100%;
+    min-height: 100vh;
+    background: #525659;
+}
+
+.pdf-preview-embedpdf--hidden {
+    display: none;
+}

@@ -1,0 +1,37 @@
+.student-info-requests { padding: 1rem; }
+.student-info-requests h2 { margin: 0 0 0.5rem 0; }
+/* .toolbar is gone: it held one button on a line of its own, which now sits at
+   the far end of the heading's row. Nothing else declared the class. */
+.pagination { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; }
+/* Both dialogs, create and detail, are laid out with the .dv-* vocabulary in
+   assets/layout/styles/_detail-dialog.scss, like every other record's dialogs,
+   and carry no rules of their own here. (Dialogs are appended to <body>, so
+   nothing scoped to this component could reach them anyway.) */
+
+/* Status/review badges in the list table. (The detail dialog uses .dv-chip instead.) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.badge-type {
+  background: var(--primary-100, #e3f2fd);
+  color: var(--primary-700, #1565c0);
+}
+.badge-status {
+  &.status-PENDING { background: #fff3e0; color: #e65100; }
+  &.status-OVERDUE { background: #ffebee; color: #c62828; }
+  &.status-RESPONDED { background: #e3f2fd; color: #1565c0; }
+  &.status-CANCELLED { background: #f5f5f5; color: #616161; }
+}
+.badge-review {
+  &.review-PENDING_REVIEW { background: #fff8e1; color: #f57f17; }
+  &.review-APPROVED { background: #e8f5e9; color: #2e7d32; }
+  &.review-REJECTED { background: #ffebee; color: #c62828; }
+  &.review-none { background: #f5f5f5; color: #757575; }
+}

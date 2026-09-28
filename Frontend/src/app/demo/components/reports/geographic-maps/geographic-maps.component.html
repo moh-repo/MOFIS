@@ -1,0 +1,258 @@
+<p-toast></p-toast>
+
+<div class="page-wrapper" id="geographic-maps-print-area" [ngClass]="{ 'rtl-layout': isRTL(), 'ltr-layout': !isRTL() }">
+
+  <!-- ── Header ── -->
+  <div class="page-hero card surface-0 border-none shadow-none">
+    <div class="page-hero__content">
+      <span class="page-hero__icon surface-100 border-round-xl">
+        <i class="pi pi-map"></i>
+      </span>
+      <div>
+        <h2 class="page-hero__title">{{ 'GEOGRAPHIC_MAPS.TITLE' | translate }}</h2>
+        <p class="page-hero__subtitle">{{ 'GEOGRAPHIC_MAPS.SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+    <div class="page-hero__actions">
+      <button pButton pRipple type="button"
+        [icon]="isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+        class="p-button-text"
+        [label]="'COMMON.BACK' | translate"
+      (click)="goBack()"></button>
+      <button pButton pRipple type="button"
+        icon="pi pi-refresh"
+        class="p-button-primary"
+        [label]="'COMMON.REFRESH' | translate"
+        (click)="refresh()"
+      [loading]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-eye" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.PREVIEW_CHARTS_PDF' | translate"
+      (click)="previewChartsPdf()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-print" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.PRINT' | translate"
+      (click)="printCharts()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-file-pdf" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.EXPORT_PDF' | translate"
+      (click)="downloadChartsPdf()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-images" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_IMAGES' | translate"
+      (click)="downloadChartImages()" [disabled]="loading"></button>
+    </div>
+  </div>
+
+  <!-- ── Summary stats ── -->
+  <div class="stats-grid">
+    <div class="stat-card primary">
+      <div class="stat-card__icon"><i class="pi pi-users"></i></div>
+      <div class="stat-card__label">{{ 'GEOGRAPHIC_MAPS.SUMMARY.TOTAL_STUDENTS' | translate }}</div>
+      <div class="stat-card__value">{{ summary.totalStudents | number:'1.0-0' }}</div>
+    </div>
+
+    <div class="stat-card success">
+      <div class="stat-card__icon"><i class="pi pi-globe"></i></div>
+      <div class="stat-card__label">{{ 'GEOGRAPHIC_MAPS.SUMMARY.COUNTRY_COUNT' | translate }}</div>
+      <div class="stat-card__value">{{ summary.countryCount | number:'1.0-0' }}</div>
+    </div>
+
+    @if (summary.topCountry) {
+      <div class="stat-card info">
+        <div class="stat-card__icon"><i class="pi pi-star-fill"></i></div>
+        <div class="stat-card__label">{{ 'GEOGRAPHIC_MAPS.SUMMARY.TOP_COUNTRY' | translate }}</div>
+        <div class="stat-card__value">{{ summary.topCountry?.country }}</div>
+        <div class="stat-card__hint">
+          {{ summary.topCountry?.studentCount | number:'1.0-0' }}
+          {{ 'GEOGRAPHIC_MAPS.SUMMARY.TOP_COUNTRY_STUDENTS' | translate }}
+        </div>
+      </div>
+    }
+
+    <div class="stat-card warning">
+      <div class="stat-card__icon"><i class="pi pi-chart-bar"></i></div>
+      <div class="stat-card__label">{{ 'GEOGRAPHIC_MAPS.SUMMARY.AVG_STUDENTS' | translate }}</div>
+      <div class="stat-card__value">
+        {{ summary.countryCount > 0 ? (summary.totalStudents / summary.countryCount | number:'1.0-0') : '—' }}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Map + Details layout ── -->
+  <div class="map-layout">
+
+    <!-- Map -->
+    <div class="map-panel">
+      <div #mapContainer class="map-container"></div>
+      @if (tilesUnavailable) {
+        <!-- L8 (D13-a): the base map is fetched from a tile server; say so when it cannot be. -->
+        <div class="map-offline-notice" role="status" data-testid="map-tiles-offline">
+          <i class="pi pi-wifi"></i>
+          <span>{{ 'GEOGRAPHIC_MAPS.TILES_OFFLINE' | translate }}</span>
+        </div>
+      }
+
+      <!-- Legend overlay -->
+      <div class="map-legend" [class.map-legend--rtl]="isRTL()">
+        <div class="map-legend__title">{{ 'GEOGRAPHIC_MAPS.LEGEND.TITLE' | translate }}</div>
+        <div class="map-legend__items">
+          <div class="map-legend__item">
+            <span class="legend-dot" style="background:#22c55e; border-color:#16a34a"></span>
+            <span>{{ 'GEOGRAPHIC_MAPS.LEGEND.FEW' | translate }}</span>
+          </div>
+          <div class="map-legend__item">
+            <span class="legend-dot" style="background:#f59e0b; border-color:#d97706"></span>
+            <span>{{ 'GEOGRAPHIC_MAPS.LEGEND.MODERATE' | translate }}</span>
+          </div>
+          <div class="map-legend__item">
+            <span class="legend-dot" style="background:#ef4444; border-color:#dc2626"></span>
+            <span>{{ 'GEOGRAPHIC_MAPS.LEGEND.MANY' | translate }}</span>
+          </div>
+        </div>
+        <div class="map-legend__note">{{ 'GEOGRAPHIC_MAPS.LEGEND.SIZE_NOTE' | translate }}</div>
+      </div>
+    </div>
+
+    <!-- Details panel -->
+    @if (locations.length) {
+      <div class="details-panel">
+        <!-- ── Country section ── -->
+        <div class="details-section">
+          <h3>
+            <i class="pi pi-globe section-icon"></i>
+            {{ 'GEOGRAPHIC_MAPS.PANELS.COUNTRY_HEADER' | translate }}
+            <span class="section-count">{{ locations.length }}</span>
+          </h3>
+          <!-- Dropdown (quick jump) -->
+          <p-select
+            [options]="locations"
+            optionLabel="country"
+            [placeholder]="'GEOGRAPHIC_MAPS.PANELS.SELECT_COUNTRY' | translate"
+            [ngModel]="selectedCountry"
+            (onChange)="selectCountry($event.value)"
+            appendTo="body"
+            styleClass="w-full">
+            <ng-template let-location pTemplate="selectedItem">
+              <div class="dropdown-item">
+                <span class="dropdown-name">{{ location?.country }}</span>
+                <span class="dropdown-value">{{ location?.studentCount | number:'1.0-0' }}</span>
+              </div>
+            </ng-template>
+            <ng-template let-location pTemplate="item">
+              <div class="dropdown-item">
+                <span class="dropdown-name">{{ location.country }}</span>
+                <span class="dropdown-value">{{ location.studentCount | number:'1.0-0' }}</span>
+              </div>
+            </ng-template>
+          </p-select>
+          <!-- Search filter -->
+          <div class="details-search">
+            <span class="p-input-icon-left w-full">
+              <i class="pi pi-search"></i>
+              <input pInputText type="text"
+                [(ngModel)]="searchTerm"
+                [placeholder]="'GEOGRAPHIC_MAPS.PANELS.SEARCH_COUNTRY' | translate"
+                class="w-full" />
+            </span>
+          </div>
+          <!-- Country ranked list -->
+          @if (filteredCountries.length) {
+            <ul class="list country-list">
+              @for (location of filteredCountries; track trackByCountry(i, location); let i = $index) {
+                <li
+                  [class.active]="location === selectedCountry"
+                  (click)="selectCountry(location)">
+                  <span class="rank">{{ i + 1 }}</span>
+                  <span class="name">{{ location.country }}</span>
+                  <div class="count-progress">
+                    <div class="count-progress__bar"
+                    [style.width.%]="getStudentPercentage(location.studentCount)"></div>
+                  </div>
+                  <span class="value">{{ location.studentCount | number:'1.0-0' }}</span>
+                </li>
+              }
+            </ul>
+          }
+          @if (!filteredCountries.length) {
+            <div class="empty-state">
+              <i class="pi pi-search"></i>
+              <p>{{ 'GEOGRAPHIC_MAPS.PANELS.NO_RESULTS' | translate }}</p>
+            </div>
+          }
+        </div>
+        <!-- ── Selected country card ── -->
+        @if (selectedCountry) {
+          <div class="country-info-card">
+            <div class="country-info-card__header">
+              <i class="pi pi-map-marker"></i>
+              <span class="country-info-card__name">{{ selectedCountry.country }}</span>
+            </div>
+            <div class="country-info-card__stats">
+              <div class="info-stat">
+                <span class="info-stat__value">{{ selectedCountry.studentCount | number:'1.0-0' }}</span>
+                <span class="info-stat__label">{{ 'GEOGRAPHIC_MAPS.SUMMARY.TOTAL_STUDENTS' | translate }}</span>
+              </div>
+              <div class="info-stat">
+                <span class="info-stat__value">{{ getStudentPercentage(selectedCountry.studentCount) | number:'1.1-1' }}%</span>
+                <span class="info-stat__label">{{ 'GEOGRAPHIC_MAPS.PANELS.SHARE' | translate }}</span>
+              </div>
+              <div class="info-stat">
+                <span class="info-stat__value">{{ selectedCountry.governorates?.length || 0 }}</span>
+                <span class="info-stat__label">{{ 'GEOGRAPHIC_MAPS.PANELS.GOVERNORATES_COUNT' | translate }}</span>
+              </div>
+            </div>
+          </div>
+        }
+        <!-- ── Governorates ── -->
+        @if (filteredGovernorates.length) {
+          <div class="details-section">
+            <h3>
+              <i class="pi pi-map-marker section-icon"></i>
+              {{ 'GEOGRAPHIC_MAPS.PANELS.GOVERNORATE_HEADER' | translate }}
+              <span class="section-count">{{ filteredGovernorates.length }}</span>
+            </h3>
+            <ul class="list gov-list">
+              @for (governorate of filteredGovernorates; track trackByName($index, governorate)) {
+                <li
+                  [class.active]="governorate === selectedGovernorate"
+                  (click)="selectGovernorate(governorate)">
+                  <span class="name">{{ governorate.name }}</span>
+                  <span class="value">{{ governorate.value | number:'1.0-0' }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+        @if (selectedCountry && !filteredGovernorates.length) {
+          <div class="details-section empty-section">
+            <div class="empty-state">
+              <i class="pi pi-info-circle"></i>
+              <p>{{ 'GEOGRAPHIC_MAPS.PANELS.NO_GOVERNORATES' | translate }}</p>
+            </div>
+          </div>
+        }
+        <!-- ── Municipalities ── -->
+        @if (filteredMunicipalities.length) {
+          <div class="details-section">
+            <h3>
+              <i class="pi pi-building section-icon"></i>
+              {{ 'GEOGRAPHIC_MAPS.PANELS.MUNICIPALITY_HEADER' | translate }}
+              <span class="section-count">{{ filteredMunicipalities.length }}</span>
+            </h3>
+            <ul class="list municipality-list">
+              @for (municipality of filteredMunicipalities; track trackByName($index, municipality)) {
+                <li>
+                  <span class="name">{{ municipality.name }}</span>
+                  <span class="value">{{ municipality.value | number:'1.0-0' }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>
+
+@if (loading) {
+  <div class="loading-overlay">
+    <p-progressSpinner></p-progressSpinner>
+  </div>
+}

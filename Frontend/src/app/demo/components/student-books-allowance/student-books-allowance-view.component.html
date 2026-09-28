@@ -1,0 +1,174 @@
+<p-toast></p-toast>
+
+<!-- Page Header -->
+<div class="flex align-items-center gap-3 mb-4 flex-wrap">
+  <button pButton pRipple type="button"
+    [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+    class="p-button-text p-button-rounded p-button-lg"
+  (click)="goBack()"></button>
+  <div class="flex-grow-1">
+    <div class="text-500 text-sm mb-1">
+      <span class="cursor-pointer hover:text-primary transition-colors transition-duration-150"
+      (click)="goBack()">{{ 'STUDENT_BOOKS_ALLOWANCE.TITLE' | translate }}</span>
+      <span class="mx-2 text-300">/</span>
+      <span>{{ 'STUDENT_BOOKS_ALLOWANCE.VIEW' | translate }}</span>
+    </div>
+    <h2 class="m-0 text-900 font-semibold">
+      {{ record ? getStudentName(record.studentId) : ('STUDENT_BOOKS_ALLOWANCE.VIEW' | translate) }}
+    </h2>
+  </div>
+  @if (record && !loading) {
+    <button pButton pRipple type="button"
+      icon="pi pi-pencil"
+      class="p-button-warn"
+      [label]="'STUDENT_BOOKS_ALLOWANCE.EDIT' | translate"
+      (click)="navigateToEdit()"
+    ></button>
+  }
+</div>
+
+<!-- Loading -->
+@if (loading) {
+  <div class="card flex justify-content-center align-items-center" style="min-height: 300px">
+    <p-progressSpinner strokeWidth="4"></p-progressSpinner>
+  </div>
+}
+
+<!-- Content -->
+@if (!loading && record) {
+  <!-- Summary strip -->
+  <div class="card mb-3">
+    <div class="grid">
+      <div class="col-12 sm:col-4">
+        <div class="flex align-items-center gap-3 p-3 border-round surface-100 h-full">
+          <div class="flex align-items-center justify-content-center border-circle flex-shrink-0"
+            style="width:3rem;height:3rem;background:var(--primary-100)">
+            <i class="pi pi-hashtag" style="color:var(--primary-color)"></i>
+          </div>
+          <div>
+            <div class="text-500 text-sm mb-1">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.ID' | translate }}</div>
+            <div class="text-900 font-bold text-2xl"># {{ record.booksAllowId }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 sm:col-4">
+        <div class="flex align-items-center gap-3 p-3 border-round surface-100 h-full">
+          <div class="flex align-items-center justify-content-center border-circle flex-shrink-0"
+            style="width:3rem;height:3rem;background:var(--green-100)">
+            <i class="pi pi-book" style="color:var(--green-600)"></i>
+          </div>
+          <div>
+            <div class="text-500 text-sm mb-1">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.AMOUNT' | translate }}</div>
+            <div class="text-900 font-bold text-xl">{{ record.allowanceAmount | number:'1.0-0' }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 sm:col-4">
+        <div class="flex align-items-center gap-3 p-3 border-round surface-100 h-full">
+          <div class="flex align-items-center justify-content-center border-circle flex-shrink-0"
+            style="width:3rem;height:3rem;background:var(--orange-100)">
+            <i class="pi pi-check-circle" style="color:var(--orange-500)"></i>
+          </div>
+          <div>
+            <div class="text-500 text-sm mb-1">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.STATUS' | translate }}</div>
+            <p-tag [value]="getStatusName(record.payStatus)"
+              [severity]="getStatusSeverity(record.payStatus)"
+            styleClass="mt-1"></p-tag>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Allowance Details -->
+  <div class="card mb-3">
+    <div class="flex align-items-center gap-2 mb-4 pb-3 border-bottom-1 surface-border">
+      <div class="flex align-items-center justify-content-center border-round"
+        style="width:2.25rem;height:2.25rem;background:var(--green-50,#f0fdf4)">
+        <i class="pi pi-book" style="color:var(--green-600);font-size:1rem"></i>
+      </div>
+      <span class="font-semibold text-900 text-lg">{{ 'STUDENT_BOOKS_ALLOWANCE.SECTIONS.ALLOWANCE_DETAILS' | translate }}</span>
+    </div>
+    <div class="grid">
+      <div class="col-12 md:col-6 lg:col-4">
+        <div class="mb-4">
+          <div class="text-500 text-sm font-medium mb-1">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.STUDENT' | translate }}</div>
+          <div class="text-900">{{ getStudentName(record.studentId) }}</div>
+        </div>
+      </div>
+      <div class="col-12 md:col-6 lg:col-4">
+        <div class="mb-4">
+          <div class="text-500 text-sm font-medium mb-1">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.STUDY_YEAR' | translate }}</div>
+          <div class="text-900">{{ record.studyYear || '—' }}</div>
+        </div>
+      </div>
+      <div class="col-12 md:col-6 lg:col-4">
+        <div class="mb-4">
+          <div class="text-500 text-sm font-medium mb-1">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.QUARTER' | translate }}</div>
+          <div class="text-900">{{ getQuarterName(record.moheQuarterId) }}</div>
+        </div>
+      </div>
+      <div class="col-12 md:col-6 lg:col-4">
+        <div class="mb-4">
+          <div class="text-500 text-sm font-medium mb-1">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.AMOUNT' | translate }}</div>
+          <div class="text-900">{{ record.allowanceAmount | number:'1.0-0' }}</div>
+        </div>
+      </div>
+      <div class="col-12 md:col-6 lg:col-4">
+        <div class="mb-4">
+          <div class="text-500 text-sm font-medium mb-1">{{ 'STUDENT_BOOKS_ALLOWANCE.FORM.RECEIPT_DATE' | translate }}</div>
+          <div class="text-900">{{ record.receiptDate ? (record.receiptDate | date:'dd/MM/yyyy') : '—' }}</div>
+        </div>
+      </div>
+      <div class="col-12 md:col-6 lg:col-4">
+        <div class="mb-4">
+          <div class="text-500 text-sm font-medium mb-1">{{ 'STUDENT_BOOKS_ALLOWANCE.TABLE.MIDATE' | translate }}</div>
+          <div class="text-900">{{ record.midate ? (record.midate | date:'dd/MM/yyyy') : '—' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Notes -->
+  <div class="card mb-4">
+    <div class="flex align-items-center gap-2 mb-3 pb-3 border-bottom-1 surface-border">
+      <div class="flex align-items-center justify-content-center border-round"
+        style="width:2.25rem;height:2.25rem;background:var(--surface-200)">
+        <i class="pi pi-align-left text-600" style="font-size:1rem"></i>
+      </div>
+      <span class="font-semibold text-900 text-lg">{{ 'STUDENT_BOOKS_ALLOWANCE.SECTIONS.NOTES' | translate }}</span>
+    </div>
+    @if (record.notes) {
+      <p class="m-0 text-700 line-height-3">
+        {{ record.notes }}
+      </p>
+    } @else {
+      <span class="text-400 font-italic">{{ 'COMMON.NOT_AVAILABLE' | translate }}</span>
+    }
+  </div>
+  <!-- Bottom actions -->
+  <div class="flex gap-3">
+    <button pButton pRipple type="button"
+      class="p-button-outlined"
+      [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+      [label]="'COMMON.BACK' | translate"
+    (click)="goBack()"></button>
+    <button pButton pRipple type="button"
+      class="p-button-warn"
+      icon="pi pi-pencil"
+      [label]="'STUDENT_BOOKS_ALLOWANCE.EDIT' | translate"
+    (click)="navigateToEdit()"></button>
+  </div>
+}
+
+<!-- Not found / error -->
+@if (!loading && !record) {
+  <div
+    class="card flex flex-column align-items-center justify-content-center py-8 gap-3">
+    <i class="pi pi-exclamation-circle text-400" style="font-size:3rem"></i>
+    <span class="text-600 text-lg">{{ 'STUDENT_BOOKS_ALLOWANCE.EMPTY.TITLE' | translate }}</span>
+    <button pButton pRipple type="button"
+      class="p-button-text"
+      [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+      [label]="'COMMON.BACK' | translate"
+    (click)="goBack()"></button>
+  </div>
+}

@@ -1,0 +1,144 @@
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>
+
+<!-- No `.grid > .col-12` around the card. PrimeFlex gives `.grid` a negative
+     margin of -0.5rem and puts the matching padding on the column, so a grid
+     holding one full-width column is 1rem — 13px at this application's 12.6px
+     root — wider than the box it sits in, and this page overflowed the main
+     container by exactly that: 1046px of page in 1033px. There is one column
+     here; the card is it, and it wants no wrapper of its own — nothing on this
+     page needs a hook to hang a rule on. Measured in
+     src/app/demo/components/student-sessions-widths.spec.ts. -->
+<div class="card">
+  <!-- Header Section. `flex-1` on the icon-and-title block, not
+       `justify-content-between`: under `direction: rtl` a flex row already
+       runs right to left, and the global rule in styles.scss reverses every
+       `.flex.justify-content-between` again, which put the heading back on
+       the left and the buttons on the right in Arabic. See
+       src/app/demo/components/page-headings.spec.ts. -->
+  <div class="flex align-items-center mb-4 flex-wrap gap-3">
+    <div class="flex align-items-center gap-3 flex-1">
+      <i class="pi pi-clock text-primary" style="font-size: 2.5rem"></i>
+      <div>
+        <h2 class="m-0 text-primary">{{ 'STUDENT_ADMIN.SESSIONS.TITLE' | translate }}</h2>
+        <p class="text-600 mt-1 mb-0">{{ 'STUDENT_ADMIN.SESSIONS.SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+    <div class="flex gap-2 flex-wrap">
+      <button pButton pRipple type="button" icon="pi pi-trash" class="p-button-warning p-button-outlined"
+        [attr.aria-label]="'STUDENT_ADMIN.SESSIONS.PURGE_EXPIRED' | translate"
+        [label]="'STUDENT_ADMIN.SESSIONS.PURGE_EXPIRED' | translate"
+        [loading]="purging" (click)="purgeExpired()"></button>
+      <button pButton pRipple type="button" icon="pi pi-refresh" class="p-button-outlined"
+        [attr.aria-label]="'COMMON.REFRESH' | translate"
+        [label]="'COMMON.REFRESH' | translate" (click)="load()" [loading]="loading"></button>
+    </div>
+  </div>
+
+  <!--
+    Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+    Narrowing is the server's job: the table is lazy and holds one page at
+    a time, so a filter applied here would search that page only.
+  -->
+  <div class="filter-bar">
+    <div class="filter-bar__grid filter-bar__grid--cols-2">
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterUserId">
+        <label for="ssUser">{{ 'STUDENT_ADMIN.SESSIONS.FILTER_USER' | translate }}</label>
+        <p-inputnumber inputId="ssUser" [(ngModel)]="filterUserId" [min]="1" [useGrouping]="false"
+          [placeholder]="'STUDENT_ADMIN.SESSIONS.USER_ID_PLACEHOLDER' | translate"
+          (onKeyDown)="$event.key === 'Enter' && onFilter()"></p-inputnumber>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="activeOnly">
+        <label for="ssStatus">{{ 'STUDENT_ADMIN.SESSIONS.STATUS' | translate }}</label>
+        <p-select inputId="ssStatus" [options]="statusOptions" [(ngModel)]="activeOnly"
+          optionLabel="label" optionValue="value" (onChange)="onFilter()"></p-select>
+      </div>
+    </div>
+    <div class="filter-bar__actions">
+      <button pButton pRipple type="button" icon="pi pi-search" class="p-button-search"
+        [label]="'COMMON.SEARCH' | translate" (click)="onFilter()"></button>
+      <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+        [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters()"></button>
+      <span class="filter-bar__hint filter-bar__actions-spacer">{{ 'COMMON.TOTAL' | translate }}: {{ totalRecords }}</span>
+    </div>
+  </div>
+
+  <!--
+    Nine columns, not ten, and the pinned widths are what the content needs.
+
+    Ten columns asked for 1030px of fixed width inside a 981px table before
+    the two columns with no width of their own were given anything, so those
+    two paid for all of it: the student's name had 50px to be read in and the
+    token 49px, while three date columns held 150px each to show
+    `dd/MM/yy HH:mm`. The name is the only thing on this row a person reads.
+
+    The token is the one column here that was never sortable, and it names the
+    same thing the session id above it does, so it folds into that cell — the
+    same move the staff Reports table made on 30 August. Every sortable column
+    keeps its own.
+  -->
+  <p-table [value]="sessions" [lazy]="true" (onLazyLoad)="onPage($event)"
+    [totalRecords]="totalRecords" [loading]="loading"
+    [paginator]="true" [rows]="rows" [(first)]="first" [rowsPerPageOptions]="[10,20,50]"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="{first} - {last} / {totalRecords}"
+    styleClass="p-datatable-sm p-datatable-gridlines" responsiveLayout="scroll">
+    <ng-template pTemplate="header">
+      <tr>
+        <th pSortableColumn="sessionId" style="width:100px">{{ 'STUDENT_ADMIN.SESSIONS.SESSION_ID' | translate }} <p-sortIcon field="sessionId"></p-sortIcon></th>
+        <th pSortableColumn="studentUserId" style="width:84px">{{ 'STUDENT_ADMIN.SESSIONS.USER_ID' | translate }} <p-sortIcon field="studentUserId"></p-sortIcon></th>
+        <th pSortableColumn="studentId" style="width:96px">{{ 'STUDENTS.STUDENT_ID' | translate }} <p-sortIcon field="studentId"></p-sortIcon></th>
+        <th pSortableColumn="studentName">{{ 'STUDENT_PORTAL.NAME' | translate }} <p-sortIcon field="studentName"></p-sortIcon></th>
+        <th pSortableColumn="createdAt" style="width:104px">{{ 'STUDENT_ADMIN.SESSIONS.CREATED' | translate }} <p-sortIcon field="createdAt"></p-sortIcon></th>
+        <th pSortableColumn="loggedOutAt" style="width:104px">{{ 'STUDENT_ADMIN.SESSIONS.LOGGED_OUT_AT' | translate }} <p-sortIcon field="loggedOutAt"></p-sortIcon></th>
+        <th pSortableColumn="expiresAt" style="width:104px">{{ 'STUDENT_ADMIN.SESSIONS.EXPIRES' | translate }} <p-sortIcon field="expiresAt"></p-sortIcon></th>
+        <th pSortableColumn="status" style="width:92px">{{ 'STUDENT_ADMIN.SESSIONS.STATUS' | translate }} <p-sortIcon field="status"></p-sortIcon></th>
+        <th style="width:88px">{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-s>
+      <tr>
+        <td>
+          {{ s.sessionId }}
+          <div class="cell-note" [pTooltip]="'STUDENT_ADMIN.SESSIONS.TOKEN' | translate" tooltipPosition="top">
+            <code style="word-break:break-all">{{ s.token | slice:0:20 }}…</code>
+          </div>
+        </td>
+        <td>{{ s.studentUserId }}</td>
+        <td>{{ s.studentId }}</td>
+        <td class="font-semibold">{{ s.studentName || '—' }}</td>
+        <td class="text-sm text-500">{{ s.createdAt | date:'dd/MM/yy HH:mm' }}</td>
+        <td class="text-sm" [ngClass]="s.loggedOutAt ? 'text-orange-500' : 'text-500'">
+          {{ s.loggedOutAt ? (s.loggedOutAt | date:'dd/MM/yy HH:mm') : '—' }}
+        </td>
+        <td class="text-sm" [ngClass]="isExpired(s.expiresAt) ? 'text-red-500' : 'text-green-600'">
+          {{ s.expiresAt | date:'dd/MM/yy HH:mm' }}
+        </td>
+        <td>
+          <p-tag [value]="statusLabel(s)" [severity]="statusSeverity(s)"></p-tag>
+        </td>
+        <td>
+          <div class="flex gap-1">
+            <button pButton pRipple icon="pi pi-ban" class="p-button-danger p-button-sm p-button-outlined"
+              [pTooltip]="'STUDENT_ADMIN.SESSIONS.REVOKE' | translate" tooltipPosition="top"
+              (click)="revoke(s)">
+            </button>
+            <button pButton pRipple icon="pi pi-users" class="p-button-warning p-button-sm p-button-outlined"
+              [pTooltip]="'STUDENT_ADMIN.SESSIONS.REVOKE_ALL_USER' | translate" tooltipPosition="top"
+              (click)="revokeAllForUser(s.studentUserId)">
+            </button>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="9" class="text-center text-500 py-4">
+          {{ (hasFilters ? 'COMMON.NO_MATCH' : 'STUDENT_ADMIN.SESSIONS.NO_SESSIONS') | translate }}
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+
+</div>

@@ -1,0 +1,1177 @@
+<p-toast></p-toast>
+
+<!-- Frames a picked photo to the ID-card format before it enters the form -->
+<app-photo-cropper [source]="pictureToCrop"
+  (cropped)="onPictureCropped($event)"
+(cancelled)="onCropCancelled()"></app-photo-cropper>
+<p-confirmdialog [key]="saveConfirmKey" [style]="{width: '440px'}" [baseZIndex]="10000"
+  appendTo="body" [dismissableMask]="true"
+[attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"></p-confirmdialog>
+
+<div class="sa-wizard"
+  [class.sa-wizard--embedded]="dialogMode"
+  [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+  <!-- ═══════════ SIDEBAR ═══════════ -->
+  <aside class="sa-sidebar">
+    <div class="sa-sidebar__brand">
+      <span class="sa-sidebar__brand-icon"><i class="pi pi-user-edit"></i></span>
+      <span class="sa-sidebar__brand-label">
+        {{ isEditMode ? ('STUDENT_ADD.EDIT_TITLE' | translate) : ('STUDENT_ADD.TITLE' | translate) }}
+      </span>
+    </div>
+
+    <nav class="sa-sidebar__steps">
+      @for (step of steps; track step; let i = $index) {
+        <!-- While editing each step is a button; while adding it is only a progress marker. -->
+        <div
+          class="sa-step"
+          [class.sa-step--active]="i === activeIndex"
+          [class.sa-step--done]="i < activeIndex"
+          [class.sa-step--pickable]="isEditMode"
+          [attr.role]="isEditMode ? 'button' : null"
+          [attr.tabindex]="isEditMode ? 0 : null"
+          [attr.aria-current]="i === activeIndex ? 'step' : null"
+          (click)="goToStep(i)"
+          (keydown.enter)="goToStep(i)"
+          (keydown.space)="goToStep(i); $event.preventDefault()">
+          <div class="sa-step__track">
+            <div class="sa-step__dot"
+              [class.sa-step__dot--active]="i === activeIndex"
+              [class.sa-step__dot--done]="i < activeIndex">
+              @if (i < activeIndex) {
+                <i class="pi pi-check"></i>
+              }
+              @if (i >= activeIndex) {
+                <span>{{ i + 1 }}</span>
+              }
+            </div>
+            @if (i < steps.length - 1) {
+              <div class="sa-step__line"
+              [class.sa-step__line--done]="i < activeIndex"></div>
+            }
+          </div>
+          <span class="sa-step__label">{{ step.label }}</span>
+        </div>
+      }
+    </nav>
+
+    <div class="sa-sidebar__footer">
+      <div class="sa-sidebar__progress">
+        <div class="sa-sidebar__progress-fill"
+          [style.width.%]="steps.length > 1 ? (activeIndex / (steps.length - 1)) * 100 : 0">
+        </div>
+      </div>
+      <span class="sa-sidebar__progress-text">{{ activeIndex + 1 }} / {{ steps.length }}</span>
+    </div>
+  </aside>
+
+  <!-- ═══════════ MAIN PANEL ═══════════ -->
+  <div class="sa-main">
+
+    <!-- Loading -->
+    @if (loading) {
+      <div class="sa-loading">
+        <p-progressSpinner></p-progressSpinner>
+      </div>
+    }
+
+    @if (!loading) {
+      <!-- Step header -->
+      <header class="sa-step-header">
+        <div class="sa-step-header__icon">
+          @if (activeIndex === 0) {
+            <i class="pi pi-user"></i>
+          }
+          @if (activeIndex === 1) {
+            <i class="pi pi-home"></i>
+          }
+          @if (activeIndex === 2) {
+            <i class="pi pi-camera"></i>
+          }
+          @if (activeIndex === 3) {
+            <i class="pi pi-graduation-cap"></i>
+          }
+          @if (activeIndex === 4) {
+            <i class="pi pi-book"></i>
+          }
+          @if (activeIndex === 5) {
+            <i class="pi pi-wallet"></i>
+          }
+          @if (activeIndex === 6) {
+            <i class="pi pi-map-marker"></i>
+          }
+          @if (activeIndex === 7) {
+            <i class="pi pi-users"></i>
+          }
+          @if (activeIndex === 8) {
+            <i class="pi pi-file-edit"></i>
+          }
+          @if (activeIndex === 9) {
+            <i class="pi pi-upload"></i>
+          }
+        </div>
+        <div class="sa-step-header__text">
+          <h4>{{ steps[activeIndex]?.label }}</h4>
+          @if (activeIndex === 0) {
+            <p>{{ 'STUDENT_ADD.STEP0_HINT' | translate }}</p>
+          }
+          @if (activeIndex === 1) {
+            <p>{{ 'STUDENT_ADD.RESIDENCE_CONTACT_HINT' | translate }}</p>
+          }
+          @if (activeIndex === 2) {
+            <p>{{ 'STUDENT_ADD.STEP1_HINT' | translate }}</p>
+          }
+          @if (activeIndex === 3) {
+            <p>{{ 'STUDENT_ADD.STEP2_HINT' | translate }}</p>
+          }
+          @if (activeIndex === 4) {
+            <p>{{ 'STUDENT_ADD.STEP3_HINT' | translate }}</p>
+          }
+          @if (activeIndex === 5) {
+            <p>{{ 'STUDENT_ADD.STEP4_HINT' | translate }}</p>
+          }
+          @if (activeIndex === 6) {
+            <p>{{ 'STUDENT_ADD.STEP5_HINT' | translate }}</p>
+          }
+          @if (activeIndex === 7) {
+            <p>{{ 'STUDENT_ADD.FAMILY_HINT' | translate }}</p>
+          }
+          @if (activeIndex === 8) {
+            <p>{{ 'STUDENT_ADD.STEP6_HINT' | translate }}</p>
+          }
+          @if (activeIndex === 9) {
+            <p>{{ 'STUDENT_ADD.STEP7_HINT' | translate }}</p>
+          }
+        </div>
+        <span class="sa-step-header__counter">{{ activeIndex + 1 }}&thinsp;/&thinsp;{{ steps.length }}</span>
+      </header>
+      <!-- Edit-mode photo strip (step 2 only) -->
+      @if (isEditMode && studentId > 0 && activeIndex === 2) {
+        <div class="sa-photo-strip">
+          <div class="sa-photo-strip__thumb">
+            @if (previewImageSrc && !profilePhotoUnreachable) {
+              <img
+                [src]="previewImageSrc" [alt]="student.studentName || ''"
+                class="sa-photo-strip__img"
+                (error)="onProfilePictureLoadError($event)" />
+            }
+            @if (!previewImageSrc || profilePhotoUnreachable) {
+              <span class="sa-photo-strip__placeholder">
+                <i class="pi pi-user"></i>
+              </span>
+            }
+          </div>
+          <div>
+            <div class="font-semibold text-900 mb-1">{{ student.studentName }}</div>
+            <div class="text-600 text-sm">{{ 'STUDENT_ADD.PHOTO_EDIT_STRIP_HINT' | translate }}</div>
+          </div>
+        </div>
+      }
+      <!-- ══════════════ FORM STEPS ══════════════ -->
+      <div class="sa-form p-fluid">
+        <!-- ─── Step 0: Personal Information ─── -->
+        @if (activeIndex === 0) {
+          <div>
+            <div class="sa-section">
+              <div class="sa-section__header">
+                <span class="sa-section__icon"><i class="pi pi-id-card"></i></span>
+                <span class="sa-section__title">{{ 'STUDENT_ADD.BASIC_INFO' | translate }}</span>
+              </div>
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="studentName">{{ 'STUDENT_ADD.STUDENT_NAME' | translate }}<span class="required-star" aria-hidden="true">*</span></label>
+                  <div class="p-inputgroup">
+                    <input pInputText id="studentName" [(ngModel)]="student.studentName" required
+                      [ngClass]="{'ng-invalid ng-dirty': submitted && !student.studentName}" />
+                    <button pButton pRipple type="button"
+                      [icon]="checkingDuplicate ? 'pi pi-spin pi-spinner' : 'pi pi-search'"
+                      class="p-button-warn"
+                      [disabled]="checkingDuplicate || !student.studentName?.trim()"
+                      [pTooltip]="'STUDENT_ADD.CHECK_DUPLICATE' | translate"
+                    (click)="validateStudentName()"></button>
+                  </div>
+                  @if (submitted && !student.studentName) {
+                    <small class="ng-dirty ng-invalid">{{ 'STUDENT_ADD.NAME_REQUIRED' | translate }}</small>
+                  }
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="gender">{{ 'STUDENT_ADD.GENDER' | translate }}<span class="required-star" aria-hidden="true">*</span></label>
+                  <p-select id="gender" [options]="genderOptions"
+                    [(ngModel)]="student.studentGender" optionLabel="name" optionValue="value"
+                    [placeholder]="'STUDENT_ADD.SELECT_GENDER' | translate"
+                    [ngClass]="{'ng-invalid ng-dirty': submitted && !student.studentGender}">
+                  </p-select>
+                  @if (submitted && !student.studentGender) {
+                    <small class="ng-dirty ng-invalid">{{ 'STUDENT_ADD.GENDER_REQUIRED' | translate }}</small>
+                  }
+                </div>
+                <div class="field col-12 md:col-4">
+                  <label htmlFor="birthdate">{{ 'STUDENTS.STUDENT_FORM.BIRTH_DATE' | translate }}</label>
+                  <p-datepicker id="birthdate" [(ngModel)]="student.studentBirthdate"
+                    dateFormat="dd/mm/yy" [showIcon]="true" appendTo="body"
+                  (onSelect)="onBirthdateChange()" (onInput)="onBirthdateChange()"></p-datepicker>
+                </div>
+                <div class="field col-12 md:col-2">
+                  <label>{{ 'STUDENT_ADD.STUDENT_AGE' | translate }}</label>
+                  <input pInputText [value]="studentAgeDisplay" [readonly]="true"
+                    class="text-center font-semibold" style="background:var(--surface-100);" />
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="birthdatePlace">{{ 'STUDENT_ADD.BIRTH_PLACE' | translate }}</label>
+                  <p-select id="birthdatePlace" [options]="countriesAllOptions"
+                    [(ngModel)]="student.studentBirthdatePlace" optionLabel="name" optionValue="value"
+                    [placeholder]="'STUDENT_ADD.SELECT_BIRTH_PLACE' | translate"
+                    [filter]="true" filterBy="name" [showClear]="true" [resetFilterOnHide]="true"
+                    appendTo="body"
+                    (onChange)="onBirthdatePlaceChange()">
+                  </p-select>
+                </div>
+              </div>
+            </div>
+            <div class="sa-section">
+              <div class="sa-section__header">
+                <span class="sa-section__icon sa-section__icon--purple"><i class="pi pi-credit-card"></i></span>
+                <span class="sa-section__title">{{ 'STUDENT_ADD.PASSPORT_INFO' | translate }}</span>
+              </div>
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="passportNumber">{{ 'STUDENTS.STUDENT_FORM.PASSPORT_NUMBER' | translate }}</label>
+                  <input pInputText id="passportNumber" [(ngModel)]="student.studentPassportNumber" />
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="passportIssueDate">{{ 'STUDENT_ADD.PASSPORT_ISSUE_DATE' | translate }}</label>
+                  <p-datepicker id="passportIssueDate" [(ngModel)]="student.studentPassportIssueDate"
+                    dateFormat="dd/mm/yy" [showIcon]="true" appendTo="body"
+                  (onSelect)="onPassportDateChange()"></p-datepicker>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="passportExpireDate">{{ 'STUDENTS.STUDENT_FORM.PASSPORT_EXPIRE_DATE' | translate }}</label>
+                  <p-datepicker id="passportExpireDate" [(ngModel)]="student.studentPassportExpireDate"
+                    dateFormat="dd/mm/yy" [showIcon]="true" appendTo="body"
+                  (onSelect)="onPassportDateChange()"></p-datepicker>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="passportIssueCountry">{{ 'STUDENT_ADD.PASSPORT_ISSUE_COUNTRY' | translate }}</label>
+                  <!-- STUDENT_COUNTRY, not the all-countries list: the FK on
+                       STUDENT_PASSPORT_ISSUE_COUNTRY_ID points there, and an id from the
+                       other list was accepted at submit and failed at approval (review A2). -->
+                  <p-select id="passportIssueCountry" [options]="passportIssueCountryOptions"
+                    [(ngModel)]="student.studentPassportIssueCountryId" optionLabel="name" optionValue="value"
+                    [placeholder]="'STUDENT_ADD.SELECT_PASSPORT_ISSUE_COUNTRY' | translate"
+                    [filter]="true" filterBy="name" [showClear]="true" [resetFilterOnHide]="true"
+                    appendTo="body">
+                  </p-select>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+        <!-- ─── Step 1: Residence & Contact ─── -->
+        @if (activeIndex === 1) {
+          <div>
+            <div class="sa-section">
+              <div class="sa-section__header">
+                <span class="sa-section__icon sa-section__icon--green"><i class="pi pi-home"></i></span>
+                <span class="sa-section__title">{{ 'STUDENT_ADD.RESIDENCE_INFO' | translate }}</span>
+              </div>
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="studentCountry">{{ 'STUDENT_ADD.STUDENT_COUNTRY' | translate }}</label>
+                  <p-select id="studentCountry" [options]="countryOptions"
+                    [(ngModel)]="student.studentCountryId" optionLabel="name" optionValue="value"
+                    [placeholder]="'STUDENT_ADD.SELECT_STUDENT_COUNTRY' | translate"
+                    [filter]="true" filterBy="name" [showClear]="true" [resetFilterOnHide]="true"
+                    appendTo="body"
+                    (onChange)="onStudentCountryChange()">
+                  </p-select>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="government">{{ 'STUDENT_ADD.GOVERNMENT' | translate }}</label>
+                  <p-select id="government" [options]="governmentOptions"
+                    [(ngModel)]="selectedGovernment" optionLabel="name"
+                    [placeholder]="'STUDENT_ADD.SELECT_GOVERNMENT' | translate"
+                    appendTo="body"
+                    (onChange)="onGovernmentChange()">
+                  </p-select>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="municipality">{{ 'STUDENT_ADD.MUNICIPALITY' | translate }}</label>
+                  <p-select id="municipality" [options]="municipalityOptions"
+                    [(ngModel)]="student.studentMudId" optionLabel="name" optionValue="id"
+                    [placeholder]="'STUDENT_ADD.SELECT_MUNICIPALITY' | translate"
+                    appendTo="body">
+                  </p-select>
+                </div>
+              </div>
+            </div>
+            <div class="sa-section">
+              <div class="sa-section__header">
+                <span class="sa-section__icon sa-section__icon--teal"><i class="pi pi-phone"></i></span>
+                <span class="sa-section__title">{{ 'STUDENT_ADD.CONTACT_INFO' | translate }}</span>
+              </div>
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="studentEmail">{{ 'STUDENT_ADD.STUDENT_EMAIL' | translate }}</label>
+                  <input pInputText id="studentEmail" [(ngModel)]="student.studentEmail" type="email"
+                    [ngClass]="{'ng-invalid ng-dirty': emailInvalid}"
+                    (input)="recheckContactField()" (blur)="validateContactFields()" />
+                  @if (emailInvalid) {
+                    <small class="ng-dirty ng-invalid">{{ 'STUDENT_ADD.EMAIL_INVALID' | translate }}</small>
+                  }
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="studentCellphone">{{ 'STUDENT_ADD.STUDENT_CELLPHONE' | translate }}<span class="required-star" aria-hidden="true">*</span></label>
+                  <input pInputText id="studentCellphone" [(ngModel)]="student.studentCellphone"
+                    type="tel" inputmode="tel" dir="ltr" [attr.maxlength]="phoneMaxLength" required aria-required="true"
+                    [ngClass]="{'ng-invalid ng-dirty': cellphoneInvalid || cellphoneMissing}"
+                    (input)="recheckContactField()" (blur)="validateContactFields()" />
+                  @if (cellphoneMissing) {
+                    <small class="ng-dirty ng-invalid" data-testid="mobile-required">{{ 'STUDENT_ADD.MOBILE_REQUIRED' | translate }}</small>
+                  } @else if (cellphoneInvalid) {
+                    <small class="ng-dirty ng-invalid">{{ 'STUDENT_ADD.MOBILE_INVALID' | translate }}</small>
+                  }
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="studentHomeNumber">{{ 'STUDENT_ADD.STUDENT_HOME_NUMBER' | translate }}</label>
+                  <input pInputText id="studentHomeNumber" [(ngModel)]="student.studentHomeNumber"
+                    type="tel" inputmode="tel" dir="ltr" [attr.maxlength]="phoneMaxLength"
+                    [ngClass]="{'ng-invalid ng-dirty': homeNumberInvalid}"
+                    (input)="recheckContactField()" (blur)="validateContactFields()" />
+                  @if (homeNumberInvalid) {
+                    <small class="ng-dirty ng-invalid">{{ 'STUDENT_ADD.PHONE_INVALID' | translate }}</small>
+                  }
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="studentEmergencyContact">{{ 'STUDENT_ADD.STUDENT_EMERGENCY_CONTACT' | translate }}</label>
+                  <input pInputText id="studentEmergencyContact" [(ngModel)]="student.studentEmergencyContact"
+                    type="tel" inputmode="tel" dir="ltr" [attr.maxlength]="phoneMaxLength"
+                    [ngClass]="{'ng-invalid ng-dirty': emergencyContactInvalid}"
+                    (input)="recheckContactField()" (blur)="validateContactFields()" />
+                  @if (emergencyContactInvalid) {
+                    <small class="ng-dirty ng-invalid">{{ 'STUDENT_ADD.PHONE_INVALID' | translate }}</small>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+        <!-- ─── Step 2: Picture ─── -->
+        @if (activeIndex === 2) {
+          <div>
+            <div class="sa-section">
+              <div class="sa-section__header">
+                <span class="sa-section__icon sa-section__icon--amber"><i class="pi pi-camera"></i></span>
+                <span class="sa-section__title">{{ 'STUDENTS.PROFILE_PICTURE' | translate }}</span>
+              </div>
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <div class="flex flex-column">
+                    @if (previewImageSrc && isEditMode && !profilePhotoUnreachable) {
+                      <div
+                        class="existing-picture-container mb-3">
+                        <div class="existing-picture-label mb-2">
+                          <i class="pi pi-image mr-2"></i>{{ 'STUDENT_ADD.CURRENT_PICTURE' | translate }}
+                        </div>
+                        <div class="picture-preview-container">
+                          <img [src]="previewImageSrc" class="existing-picture" alt=""
+                            (error)="onProfilePictureLoadError($event)" />
+                          <div class="picture-overlay">
+                            <button pButton type="button" icon="pi pi-times"
+                              class="p-button-rounded p-button-danger p-button-text remove-picture-btn"
+                              [pTooltip]="'COMMON.DELETE' | translate"
+                            (click)="clearProfilePicture(); fileUpload.clear()"></button>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                    @if (isEditMode && (!previewImageSrc || profilePhotoUnreachable)) {
+                      <div
+                        class="text-600 mb-3 flex align-items-center gap-2 surface-50 border-round p-3 border-1 surface-border">
+                        <i class="pi pi-info-circle"></i>
+                        <span>{{ 'STUDENT_ADD.NO_PROFILE_OR_REMOVED_HINT' | translate }}</span>
+                      </div>
+                    }
+                    <!-- Re-frame the current pick without choosing the file again -->
+                    @if (originalPicture) {
+                      <button pButton pRipple type="button" icon="pi pi-crop"
+                        class="p-button-outlined p-button-sm mb-3 align-self-start"
+                        [label]="'PHOTO_CROPPER.RECROP' | translate"
+                      (click)="recropPicture()"></button>
+                    }
+                    <p-fileupload #fileUpload [showUploadButton]="false" [showCancelButton]="false"
+                      (onSelect)="onProfilePictureSelect($event)" accept=".jpg,.jpeg,.png,.gif"
+                      [maxFileSize]="1000000" [style]="{'width':'100%'}"
+                      [chooseLabel]="'STUDENT_ADD.CHOOSE_NEW_PICTURE' | translate">
+                      <ng-template pTemplate="content">
+                        @if (studentPicture && !isEditMode) {
+                          <div class="flex flex-column align-items-center mt-2">
+                            <div class="new-picture-label mb-2">
+                              <i class="pi pi-upload mr-2"></i>{{ 'STUDENT_ADD.NEW_PICTURE_PREVIEW' | translate }}
+                            </div>
+                            <img [src]="previewImageSrc" width="150" class="mb-2 new-picture-preview" [alt]="'STUDENT_ADD.NEW_PICTURE_PREVIEW' | translate" />
+                            <button pButton type="button" icon="pi pi-times"
+                              class="p-button-rounded p-button-danger p-button-text"
+                              (click)="clearProfilePicture(); fileUpload.clear()"
+                    [pTooltip]="'COMMON.CLEAR' | translate" [attr.aria-label]="'COMMON.CLEAR' | translate">
+                              {{ 'COMMON.DELETE' | translate }}
+                            </button>
+                          </div>
+                        }
+                      </ng-template>
+                    </p-fileupload>
+                  </div>
+                  <small class="text-muted mt-2 block">
+                    <i class="pi pi-info-circle mr-1"></i>{{ 'STUDENT_ADD.PICTURE_ALLOWED_HINT' | translate }}
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+        <!-- ─── Step 3: Academic ─── -->
+        @if (activeIndex === 3) {
+          <div>
+            <div class="sa-section">
+              <div class="sa-section__header">
+                <span class="sa-section__icon sa-section__icon--purple"><i class="pi pi-graduation-cap"></i></span>
+                <span class="sa-section__title">{{ 'STUDENTS.ACADEMIC_INFO' | translate }}</span>
+              </div>
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="delegationYear">{{ 'STUDENT_ADD.DELEGATION_DECISION_YEAR' | translate }}<span class="required-star" aria-hidden="true">*</span></label>
+                  <p-inputnumber id="delegationYear" [(ngModel)]="student.studentDelegationDecisionYear"
+                    [useGrouping]="false" [minFractionDigits]="0" [maxFractionDigits]="0"
+                    inputMode="numeric" [min]="1990" [max]="2099"
+                    [ngClass]="{'ng-invalid ng-dirty': submitted && (!student.studentDelegationDecisionYear || student.studentDelegationDecisionYear <= 0)}">
+                  </p-inputnumber>
+                  @if (submitted && (!student.studentDelegationDecisionYear || student.studentDelegationDecisionYear <= 0)) {
+                    <small class="ng-dirty ng-invalid"
+                    >{{ 'STUDENT_ADD.DELEGATION_YEAR_REQUIRED' | translate }}</small>
+                  }
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="delegateDecisionNo">{{ 'STUDENT_ADD.DELEGATE_DECISION_NO' | translate }}<span class="required-star" aria-hidden="true">*</span></label>
+                  <p-inputnumber id="delegateDecisionNo" [(ngModel)]="student.studentDelegateDecisionNo"
+                    [min]="0" [useGrouping]="false" [minFractionDigits]="0" [maxFractionDigits]="0" inputMode="numeric"
+                    [ngClass]="{'ng-invalid ng-dirty': submitted && (!student.studentDelegateDecisionNo || student.studentDelegateDecisionNo <= 0)}">
+                  </p-inputnumber>
+                  @if (submitted && (!student.studentDelegateDecisionNo || student.studentDelegateDecisionNo <= 0)) {
+                    <small class="ng-dirty ng-invalid"
+                    >{{ 'STUDENT_ADD.DELEGATE_DECISION_NO_REQUIRED' | translate }}</small>
+                  }
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="studentDegree">{{ 'STUDENT_ADD.STUDENT_DEGREE' | translate }}<span class="required-star" aria-hidden="true">*</span></label>
+                  <p-select id="studentDegree" [options]="studentDegreeOptions"
+                    [(ngModel)]="student.studentDegreeId" optionLabel="name" optionValue="value"
+                    [placeholder]="'STUDENT_ADD.SELECT_STUDENT_DEGREE' | translate"
+                    appendTo="body"
+                    (onChange)="onDegreeOrMajorChange()"
+                    [ngClass]="{'ng-invalid ng-dirty': submitted && !student.studentDegreeId}">
+                  </p-select>
+                  @if (submitted && !student.studentDegreeId) {
+                    <small class="ng-dirty ng-invalid">{{ 'STUDENT_ADD.STUDENT_DEGREE_REQUIRED' | translate }}</small>
+                  }
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="studentMajor">{{ 'STUDENT_ADD.STUDENT_MAJOR' | translate }}<span class="required-star" aria-hidden="true">*</span></label>
+                  <p-select id="studentMajor" [options]="studentMajorOptions"
+                    [(ngModel)]="student.studentMajorId" optionLabel="name" optionValue="value"
+                    [placeholder]="'STUDENT_ADD.SELECT_STUDENT_MAJOR' | translate"
+                    [filter]="true" filterBy="name" [showClear]="true" [resetFilterOnHide]="true"
+                    appendTo="body"
+                    (onChange)="onDegreeOrMajorChange()"
+                    [ngClass]="{'ng-invalid ng-dirty': submitted && !student.studentMajorId}">
+                  </p-select>
+                  @if (submitted && !student.studentMajorId) {
+                    <small class="ng-dirty ng-invalid">{{ 'STUDENT_ADD.STUDENT_MAJOR_REQUIRED' | translate }}</small>
+                  }
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="studyYearsAcademic">{{ 'STUDENT_ADD.STUDY_YEARS' | translate }}<span class="required-star" aria-hidden="true">*</span></label>
+                  <div class="p-inputgroup">
+                    <p-inputnumber id="studyYearsAcademic" [(ngModel)]="student.studentStudyNoOfYears"
+                      [useGrouping]="false" [minFractionDigits]="0" [maxFractionDigits]="0"
+                      inputMode="numeric" [min]="1"
+                      (ngModelChange)="onStudyYearsChange()"
+                      [ngClass]="{'ng-invalid ng-dirty': submitted && (!student.studentStudyNoOfYears || student.studentStudyNoOfYears <= 0)}">
+                    </p-inputnumber>
+                    @if (studyYearsLookupLoading) {
+                      <span class="p-inputgroup-addon">
+                        <i class="pi pi-spin pi-spinner"></i>
+                      </span>
+                    }
+                  </div>
+                  @if (submitted && (!student.studentStudyNoOfYears || student.studentStudyNoOfYears <= 0)) {
+                    <small class="ng-dirty ng-invalid"
+                    >{{ 'STUDENT_ADD.STUDY_YEARS_REQUIRED' | translate }}</small>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+        <!-- ─── Step 4: Study Details ─── -->
+        @if (activeIndex === 4) {
+          <div>
+            <div class="sa-section">
+              <div class="sa-section__header">
+                <span class="sa-section__icon sa-section__icon--indigo"><i class="pi pi-list"></i></span>
+                <span class="sa-section__title">{{ 'STUDENT_ADD.STUDY_DETAILS' | translate }}</span>
+              </div>
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="studyStatusId">{{ 'STUDENT_ADD.STUDY_STATUS' | translate }}</label>
+                  <p-select id="studyStatusId" [options]="studentStudyStatusOptions"
+                    [(ngModel)]="student.studentStudyStatusId" optionLabel="name" optionValue="value"
+                    [placeholder]="'STUDENT_ADD.SELECT_STUDY_STATUS' | translate"
+                    appendTo="body">
+                  </p-select>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="studyTypeId">{{ 'STUDENT_ADD.STUDY_TYPE' | translate }}</label>
+                  <p-select id="studyTypeId" [options]="studentStudyTypeOptions"
+                    [(ngModel)]="student.studentStudyTypeId" optionLabel="name" optionValue="value"
+                    [placeholder]="'STUDENT_ADD.SELECT_STUDY_TYPE' | translate"
+                    appendTo="body">
+                  </p-select>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="agencyTypeId">{{ 'STUDENT_ADD.AGENCY_TYPE' | translate }}</label>
+                  <p-select id="agencyTypeId" [options]="agencyTypeOptions"
+                    [(ngModel)]="student.studentAgencyTypeId" optionLabel="name" optionValue="value"
+                    [placeholder]="'STUDENT_ADD.SELECT_AGENCY_TYPE' | translate"
+                    appendTo="body"
+                    (onChange)="onAgencyTypeChange()">
+                  </p-select>
+                </div>
+                @if (showMinistryField) {
+                  <div class="field col-12 md:col-6">
+                    <label htmlFor="ministryTypeId">{{ 'STUDENT_ADD.MINISTRY_TYPE' | translate }}</label>
+                    <p-select id="ministryTypeId" [options]="ministryTypeOptions"
+                      [(ngModel)]="student.studentMinistryTypeId"
+                      [disabled]="!student.studentAgencyTypeId" optionLabel="name" optionValue="value"
+                      [placeholder]="'STUDENT_ADD.SELECT_MINISTRY_TYPE' | translate"
+                      appendTo="body">
+                    </p-select>
+                  </div>
+                }
+                @if (showUniversityField) {
+                  <div class="field col-12 md:col-6">
+                    <label htmlFor="universityTypeId">{{ 'STUDENT_ADD.UNIVERSITY_TYPE' | translate }}</label>
+                    <p-select id="universityTypeId" [options]="universityTypeOptions"
+                      [(ngModel)]="student.studentUniversityTypeId"
+                      [disabled]="!student.studentAgencyTypeId" optionLabel="name" optionValue="value"
+                      [placeholder]="'STUDENT_ADD.SELECT_UNIVERSITY_TYPE' | translate"
+                      appendTo="body">
+                    </p-select>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="sa-section">
+              <div class="sa-section__header">
+                <span class="sa-section__icon sa-section__icon--purple"><i class="pi pi-graduation-cap"></i></span>
+                <span class="sa-section__title">{{ 'STUDENT_ADD.ACADEMIC_LEVEL' | translate }}</span>
+              </div>
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="currentLevel">{{ 'STUDENT_ADD.CURRENT_LEVEL' | translate }}</label>
+                  <p-select id="currentLevel" [options]="currentLevelOptions"
+                    [(ngModel)]="student.studentCurrentLevelId" optionLabel="name" optionValue="value"
+                    [placeholder]="'STUDENT_ADD.SELECT_CURRENT_LEVEL' | translate"
+                    appendTo="body">
+                  </p-select>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+        <!-- ─── Step 5: Financial ─── -->
+        @if (activeIndex === 5) {
+          <div>
+            <div class="sa-section">
+              <div class="sa-section__header">
+                <span class="sa-section__icon sa-section__icon--green"><i class="pi pi-wallet"></i></span>
+                <span class="sa-section__title">{{ 'FINANCE.TITLE' | translate }}</span>
+              </div>
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="firstReceiptOfDue">{{ 'STUDENT_ADD.FIRST_RECEIPT_OF_DUE' | translate }}</label>
+                  <p-inputnumber id="firstReceiptOfDue" [(ngModel)]="student.studentFirstReceiptOfDue"
+                    [min]="0" [useGrouping]="false" [minFractionDigits]="0" [maxFractionDigits]="0" inputMode="numeric">
+                  </p-inputnumber>
+                </div>
+                <div class="field col-12 md:col-3">
+                  <label htmlFor="amount">{{ 'STUDENT_ADD.AMOUNT' | translate }}<span class="required-star" aria-hidden="true">*</span></label>
+                  <p-inputnumber id="amount" [(ngModel)]="student.studentAmount" [useGrouping]="false"
+                    [min]="0" [minFractionDigits]="0" [maxFractionDigits]="0" inputMode="numeric"
+                    [ngClass]="{'ng-invalid ng-dirty': submitted && (!student.studentAmount || student.studentAmount <= 0)}">
+                  </p-inputnumber>
+                  @if (submitted && (!student.studentAmount || student.studentAmount <= 0)) {
+                    <small class="ng-dirty ng-invalid"
+                    >{{ 'FINANCE.AMOUNT_REQUIRED' | translate }}</small>
+                  }
+                </div>
+                <div class="field col-12 md:col-3">
+                  <label htmlFor="amountCurrency">{{ 'STUDY_UNIVERSITY_FEE.CURRENCY' | translate }}</label>
+                  <p-select id="amountCurrency" [options]="studyCurrencyOptions"
+                    [(ngModel)]="student.studentAmountCurrencyId" optionLabel="name" optionValue="value"
+                    [placeholder]="'GENERAL.SELECT_CURRENCY' | translate"
+                    appendTo="body">
+                  </p-select>
+                </div>
+              </div>
+            </div>
+            <div class="sa-section">
+              <div class="sa-section__header">
+                <span class="sa-section__icon sa-section__icon--amber"><i class="pi pi-building"></i></span>
+                <span class="sa-section__title">{{ 'STUDENT_ADD.UNIVERSITY_FEE' | translate }}</span>
+              </div>
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label htmlFor="universityFeeId">{{ 'STUDENT_ADD.UNIVERSITY_FEE' | translate }}</label>
+                  <p-select id="universityFeeId" [options]="yesNoOptions"
+                    [(ngModel)]="student.studyUniversityFeeId" optionLabel="name" optionValue="value"
+                    [placeholder]="'STUDENT_ADD.SELECT_YES_NO' | translate"
+                    appendTo="body">
+                  </p-select>
+                </div>
+                @if (student.studyUniversityFeeId) {
+                  <div class="field col-12 md:col-3">
+                    <label htmlFor="universityFeeStatusId">{{ 'STUDENT_ADD.UNIVERSITY_FEE_STATUS' | translate }}</label>
+                    <p-inputnumber id="universityFeeStatusId" [(ngModel)]="student.studyUniversityFeeStatusId"
+                      [min]="0" [useGrouping]="false" [minFractionDigits]="0" [maxFractionDigits]="0" inputMode="numeric">
+                    </p-inputnumber>
+                  </div>
+                }
+                @if (student.studyUniversityFeeId) {
+                  <div class="field col-12 md:col-3">
+                    <label htmlFor="universityFeeStatusCurrencyId">{{ 'STUDY_UNIVERSITY_FEE.CURRENCY' | translate }}</label>
+                    <p-select id="universityFeeStatusCurrencyId" [options]="studyCurrencyOptions"
+                      [(ngModel)]="student.studyUniversityFeeStatusCurrencyId" optionLabel="name" optionValue="value"
+                      [placeholder]="'GENERAL.SELECT_CURRENCY' | translate"
+                      appendTo="body">
+                    </p-select>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="sa-section">
+              <div class="sa-section__header">
+                <span class="sa-section__icon"><i class="pi pi-calendar"></i></span>
+                <span class="sa-section__title">{{ 'STUDENT_ADD.QUARTERS' | translate }}</span>
+              </div>
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-4">
+                  <label class="sa-quarter__label">{{ 'STUDENT_ADD.ADDED_QUARTER' | translate }}</label>
+                  <div class="sa-quarter">
+                    <p-inputnumber id="addedQuarterYear" [(ngModel)]="addedQuarterYear"
+                      [useGrouping]="false" [minFractionDigits]="0" [maxFractionDigits]="0"
+                      inputMode="numeric" [min]="1990" [max]="2099"
+                      [placeholder]="'STUDENT_ADD.YEAR' | translate"
+                      styleClass="sa-quarter__year" inputStyleClass="w-full"
+                      (ngModelChange)="onAddedQuarterChange()">
+                    </p-inputnumber>
+                    <p-select [(ngModel)]="addedQuarterQ" [options]="quarterOptions"
+                      optionLabel="label" optionValue="value"
+                      [placeholder]="'STUDENT_ADD.QUARTER' | translate"
+                      appendTo="body" styleClass="sa-quarter__q"
+                      (onChange)="onAddedQuarterChange()">
+                    </p-select>
+                  </div>
+                  <small class="sa-quarter__hint">{{ 'STUDENT_ADD.QUARTER_FORMAT_HINT' | translate }}:
+                    <b>{{ student.studentAddedQuarter || '—' }}</b></small>
+                  </div>
+                  <div class="field col-12 md:col-4">
+                    <label class="sa-quarter__label">{{ 'STUDENT_ADD.LAST_QUARTER' | translate }}</label>
+                    <div class="sa-quarter">
+                      <p-inputnumber id="lastQuarterYear" [(ngModel)]="lastQuarterYear"
+                        [useGrouping]="false" [minFractionDigits]="0" [maxFractionDigits]="0"
+                        inputMode="numeric" [min]="1990" [max]="2099"
+                        [placeholder]="'STUDENT_ADD.YEAR' | translate"
+                        styleClass="sa-quarter__year" inputStyleClass="w-full"
+                        (ngModelChange)="onLastQuarterChange()">
+                      </p-inputnumber>
+                      <p-select [(ngModel)]="lastQuarterQ" [options]="quarterOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_ADD.QUARTER' | translate"
+                        appendTo="body" styleClass="sa-quarter__q"
+                        (onChange)="onLastQuarterChange()">
+                      </p-select>
+                    </div>
+                    <small class="sa-quarter__hint">{{ 'STUDENT_ADD.QUARTER_FORMAT_HINT' | translate }}:
+                      <b>{{ student.studentLastQuarter || '—' }}</b></small>
+                    </div>
+                    <div class="field col-12 md:col-4">
+                      <label class="sa-quarter__label">{{ 'STUDENT_ADD.CURRENT_QUARTER' | translate }}</label>
+                      <div class="sa-quarter">
+                        <p-inputnumber id="currentQuarterYear" [(ngModel)]="currentQuarterYear"
+                          [useGrouping]="false" [minFractionDigits]="0" [maxFractionDigits]="0"
+                          inputMode="numeric" [min]="1990" [max]="2099"
+                          [placeholder]="'STUDENT_ADD.YEAR' | translate"
+                          styleClass="sa-quarter__year" inputStyleClass="w-full"
+                          (ngModelChange)="onCurrentQuarterChange()">
+                        </p-inputnumber>
+                        <p-select [(ngModel)]="currentQuarterQ" [options]="quarterOptions"
+                          optionLabel="label" optionValue="value"
+                          [placeholder]="'STUDENT_ADD.QUARTER' | translate"
+                          appendTo="body" styleClass="sa-quarter__q"
+                          (onChange)="onCurrentQuarterChange()">
+                        </p-select>
+                      </div>
+                      <small class="sa-quarter__hint">{{ 'STUDENT_ADD.CURRENT_QUARTER_HINT' | translate }}:
+                        <b>{{ student.currentQuarter || '—' }}</b></small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+              <!-- ─── Step 6: Study Location ─── -->
+              @if (activeIndex === 6) {
+                <div>
+                  <div class="sa-section">
+                    <div class="sa-section__header">
+                      <span class="sa-section__icon sa-section__icon--teal"><i class="pi pi-globe"></i></span>
+                      <span class="sa-section__title">{{ 'STUDENT_ADD.SECTION_COUNTRY' | translate }}</span>
+                    </div>
+                    <div class="formgrid grid">
+                      <div class="field col-12 md:col-6">
+                        <label htmlFor="studyCountryIn">{{ 'STUDENT_ADD.STUDY_COUNTRY_IN' | translate }}</label>
+                        <p-select id="studyCountryIn" [options]="studyCountryInOptions"
+                          [(ngModel)]="student.studyCountryIn" optionLabel="name" optionValue="value"
+                          [placeholder]="'STUDENT_ADD.SELECT_STUDY_COUNTRY_IN' | translate"
+                          [filter]="true" filterBy="name" [showClear]="true" [resetFilterOnHide]="true"
+                          appendTo="body"
+                          (onChange)="onStudyCountryInChange()">
+                        </p-select>
+                      </div>
+                      <div class="field col-12 md:col-6">
+                        <label htmlFor="studyGovIn">{{ 'STUDENT_ADD.STUDY_GOV_IN' | translate }}</label>
+                        <p-select id="studyGovIn" [options]="studyGovInOptions"
+                          [(ngModel)]="student.syudyGovIn" optionLabel="name" optionValue="value"
+                          [placeholder]="'STUDENT_ADD.SELECT_STUDY_GOV_IN' | translate"
+                          [filter]="true" filterBy="name" [showClear]="true" [resetFilterOnHide]="true"
+                          appendTo="body"
+                          (onChange)="onStudyGovInChange()">
+                        </p-select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sa-section">
+                    <div class="sa-section__header">
+                      <span class="sa-section__icon sa-section__icon--amber"><i class="pi pi-building"></i></span>
+                      <span class="sa-section__title">{{ 'STUDENT_ADD.SECTION_UNIVERSITY' | translate }}</span>
+                    </div>
+                    <div class="formgrid grid">
+                      <div class="field col-12 md:col-6">
+                        <label htmlFor="studyUniversityIn">{{ 'STUDENT_ADD.STUDY_UNIVERSITY_IN' | translate }}</label>
+                        <p-select id="studyUniversityIn" [options]="studyUniversityInOptions"
+                          [(ngModel)]="student.studyUniversityIn" optionLabel="name" optionValue="value"
+                          [placeholder]="'STUDENT_ADD.SELECT_STUDY_UNIVERSITY_IN' | translate"
+                          [emptyMessage]="(student.studyCountryIn ? 'STUDENT_ADD.NO_STUDY_UNIVERSITY_IN' : 'STUDENT_ADD.SELECT_STUDY_COUNTRY_FIRST') | translate"
+                          [filter]="true" filterBy="name" [showClear]="true" [resetFilterOnHide]="true"
+                          appendTo="body"
+                          (onChange)="onStudyUniversityInChange()">
+                        </p-select>
+                      </div>
+                      <div class="field col-12 md:col-6">
+                        <label htmlFor="studyCollegeIn">{{ 'STUDENT_ADD.STUDY_COLLEGE_IN' | translate }}</label>
+                        <p-select id="studyCollegeIn" [options]="studyCollegeInOptions"
+                          [(ngModel)]="student.studyCollegeIn" optionLabel="name" optionValue="value"
+                          [placeholder]="'STUDENT_ADD.SELECT_STUDY_COLLEGE_IN' | translate"
+                          [filter]="true" filterBy="name" [showClear]="true" [resetFilterOnHide]="true"
+                          [disabled]="!student.studyUniversityIn"
+                          appendTo="body"
+                          (onChange)="onStudyCollegeInChange()">
+                        </p-select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sa-section">
+                    <div class="sa-section__header">
+                      <span class="sa-section__icon sa-section__icon--red"><i class="pi pi-bookmark"></i></span>
+                      <span class="sa-section__title">{{ 'STUDENT_ADD.SECTION_EDUCATION' | translate }}</span>
+                    </div>
+                    <div class="formgrid grid">
+                      <div class="field col-12 md:col-6">
+                        <label htmlFor="studyEducationIn">{{ 'STUDENT_ADD.STUDY_EDUCATION_IN' | translate }}
+                          <i class="pi pi-info-circle sa-field-hint" [pTooltip]="'STUDENT_ADD.STUDY_EDUCATION_IN_HINT' | translate"
+                            tooltipPosition="top" tabindex="0" [attr.aria-label]="'STUDENT_ADD.STUDY_EDUCATION_IN_HINT' | translate"></i>
+                        </label>
+                        <p-select id="studyEducationIn" [options]="studyEducationInOptions"
+                          [(ngModel)]="student.studyEducationIn" optionLabel="name" optionValue="value"
+                          [placeholder]="'STUDENT_ADD.SELECT_STUDY_EDUCATION_IN' | translate"
+                          [filter]="true" filterBy="name" [showClear]="true" [resetFilterOnHide]="true"
+                          [disabled]="!student.studyCollegeIn"
+                          appendTo="body"
+                          (onChange)="onStudyEducationInChange()">
+                        </p-select>
+                      </div>
+                      <div class="field col-12 md:col-6">
+                        <label htmlFor="studyMajorIn">{{ 'STUDENT_ADD.STUDY_MAJOR_IN' | translate }}
+                          <i class="pi pi-info-circle sa-field-hint" [pTooltip]="'STUDENT_ADD.STUDY_MAJOR_IN_HINT' | translate"
+                            tooltipPosition="top" tabindex="0" [attr.aria-label]="'STUDENT_ADD.STUDY_MAJOR_IN_HINT' | translate"></i>
+                        </label>
+                        <p-select id="studyMajorIn" [options]="studyMajorInOptions"
+                          [(ngModel)]="student.studyMajorIn" optionLabel="name" optionValue="value"
+                          [placeholder]="'STUDENT_ADD.SELECT_STUDY_MAJOR_IN' | translate"
+                          [filter]="true" filterBy="name" [showClear]="true" [resetFilterOnHide]="true"
+                          [disabled]="student.studyEducationIn == null"
+                          appendTo="body">
+                        </p-select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+              <!-- Step 7: Family Info -->
+              @if (activeIndex === 7) {
+                <div>
+                  <div class="sa-section">
+                    <div class="sa-section__header">
+                      <span class="sa-section__icon sa-section__icon--blue"><i class="pi pi-users"></i></span>
+                      <span class="sa-section__title">{{ 'STUDENT_ADD.FAMILY_PARENTS' | translate }}</span>
+                      <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-sm p-button-outlined ml-auto"
+                      [label]="'STUDENT_ADD.FAMILY_ADD_PARENT' | translate" (click)="addParentRow()"></button>
+                    </div>
+                    <p-table [value]="parentRows" styleClass="p-datatable-sm">
+                      <ng-template pTemplate="header">
+                        <tr>
+                          <th>{{ 'STUDENT_ADD.FAMILY_RELATIONSHIP' | translate }}</th>
+                          <th>{{ 'STUDENT_ADD.FAMILY_PARENT_NAME' | translate }}</th>
+                          <th>{{ 'STUDENT_ADD.FAMILY_NATIONAL_ID' | translate }}</th>
+                          <th>{{ 'STUDENT_ADD.FAMILY_OCCUPATION' | translate }}</th>
+                          <th>{{ 'STUDENT_ADD.FAMILY_PHONE' | translate }}</th>
+                          <th>{{ 'STUDENT_ADD.FAMILY_ADDRESS' | translate }}</th>
+                          <th>{{ 'STUDENT_ADD.FAMILY_IS_ALIVE' | translate }}</th>
+                          <th style="width:4rem"></th>
+                        </tr>
+                      </ng-template>
+                      <ng-template pTemplate="body" let-row let-i="rowIndex">
+                        <tr>
+                          <td>
+                            <p-select [options]="familyRelationshipOptions" [(ngModel)]="row.relationshipId"
+                            optionLabel="name" optionValue="value" appendTo="body" styleClass="w-full"></p-select>
+                          </td>
+                          <td><input pInputText [(ngModel)]="row.parentName" class="w-full" /></td>
+                          <td><input pInputText [(ngModel)]="row.nationalId" class="w-full" /></td>
+                          <td><input pInputText [(ngModel)]="row.occupation" class="w-full" /></td>
+                          <td><input pInputText [(ngModel)]="row.phone" class="w-full" /></td>
+                          <td><input pInputText [(ngModel)]="row.address" class="w-full" /></td>
+                          <td class="text-center"><p-toggleswitch [(ngModel)]="row.isAlive"></p-toggleswitch></td>
+                          <td>
+                            <button pButton pRipple type="button" icon="pi pi-trash"
+                              class="p-button-rounded p-button-danger p-button-text"
+                            (click)="removeParentRow(i)"
+                    [pTooltip]="'COMMON.DELETE' | translate" [attr.aria-label]="'COMMON.DELETE' | translate"></button>
+                          </td>
+                        </tr>
+                      </ng-template>
+                      <ng-template pTemplate="emptymessage">
+                        <tr><td colspan="8" class="text-center text-500 p-4">{{ 'STUDENT_ADD.FAMILY_NO_PARENTS' | translate }}</td></tr>
+                      </ng-template>
+                    </p-table>
+                  </div>
+                  <div class="sa-section">
+                    <div class="sa-section__header">
+                      <span class="sa-section__icon sa-section__icon--teal"><i class="pi pi-link"></i></span>
+                      <span class="sa-section__title">{{ 'STUDENT_ADD.FAMILY_RELATIVES' | translate }}</span>
+                      <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-sm p-button-outlined ml-auto"
+                      [label]="'STUDENT_ADD.FAMILY_ADD_RELATIVE' | translate" (click)="addRelativeRow()"></button>
+                    </div>
+                    <p-table [value]="relativeRows" styleClass="p-datatable-sm">
+                      <ng-template pTemplate="header">
+                        <tr>
+                          <th>{{ 'STUDENT_ADD.FAMILY_RELATIONSHIP' | translate }}</th>
+                          <th>{{ 'STUDENT_ADD.FAMILY_RELATED_STUDENT' | translate }}</th>
+                          <th>{{ 'STUDENT_ADD.NOTE_1' | translate }}</th>
+                          <th style="width:4rem"></th>
+                        </tr>
+                      </ng-template>
+                      <ng-template pTemplate="body" let-row let-i="rowIndex">
+                        <tr>
+                          <td>
+                            <p-select [options]="familyRelationshipOptions" [(ngModel)]="row.relationshipId"
+                            optionLabel="name" optionValue="value" appendTo="body" styleClass="w-full"></p-select>
+                          </td>
+                          <td>
+                            <p-autoComplete [(ngModel)]="row.selectedStudent" [suggestions]="relativeSearchResults"
+                              (completeMethod)="searchRelativeStudents($event, row)"
+                              (onSelect)="onRelativeStudentSelected(row, $event.value)"
+                              (onClear)="onRelativeStudentSelected(row, null)"
+                              optionLabel="studentName" [dropdown]="false" [forceSelection]="true"
+                              appendTo="body" styleClass="w-full"
+                              [placeholder]="'STUDENT_ADD.FAMILY_SEARCH_STUDENT' | translate">
+                              <ng-template let-item pTemplate="item">
+                                <div>{{ relativeStudentLabel(item) }}</div>
+                              </ng-template>
+                            </p-autoComplete>
+                          </td>
+                          <td><input pInputText [(ngModel)]="row.notes" class="w-full" /></td>
+                          <td>
+                            <button pButton pRipple type="button" icon="pi pi-trash"
+                              class="p-button-rounded p-button-danger p-button-text"
+                            (click)="removeRelativeRow(i)"
+                    [pTooltip]="'COMMON.DELETE' | translate" [attr.aria-label]="'COMMON.DELETE' | translate"></button>
+                          </td>
+                        </tr>
+                      </ng-template>
+                      <ng-template pTemplate="emptymessage">
+                        <tr><td colspan="4" class="text-center text-500 p-4">{{ 'STUDENT_ADD.FAMILY_NO_RELATIVES' | translate }}</td></tr>
+                      </ng-template>
+                    </p-table>
+                  </div>
+                </div>
+              }
+              <!-- Step 8: Notes -->
+              @if (activeIndex === 8) {
+                <div>
+                  <div class="sa-section">
+                    <div class="sa-section__header">
+                      <span class="sa-section__icon sa-section__icon--indigo"><i class="pi pi-comment"></i></span>
+                      <span class="sa-section__title">{{ 'STUDENT_ADD.DOCUMENTS_STATUS' | translate }}</span>
+                    </div>
+                    <div class="formgrid grid">
+                      <div class="field col-12 md:col-6">
+                        <label htmlFor="note1">{{ 'STUDENT_ADD.NOTE_1' | translate }}</label>
+                        <textarea pTextarea id="note1" [(ngModel)]="student.studentNote1" rows="5"></textarea>
+                      </div>
+                      <div class="field col-12 md:col-6">
+                        <label htmlFor="note2">{{ 'STUDENT_ADD.NOTE_2' | translate }}</label>
+                        <textarea pTextarea id="note2" [(ngModel)]="student.studentNote2" rows="5"></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+              <!-- Step 9: Upload Documents -->
+              @if (activeIndex === 9) {
+                <div>
+                  <div class="sa-section">
+                    <div class="sa-section__header">
+                      <span class="sa-section__icon sa-section__icon--purple"><i class="pi pi-folder-open"></i></span>
+                      <span class="sa-section__title">{{ 'STUDENT_ADD.EXISTING_DOCUMENTS' | translate }}
+                        <p-tag [value]="existingDocuments.length.toString()" severity="info" styleClass="ml-2 text-xs"></p-tag>
+                      </span>
+                    </div>
+                    <p-table [value]="existingDocuments" dataKey="documentId" [paginator]="true" [rows]="5"
+                      [showCurrentPageReport]="true"
+                      [currentPageReportTemplate]="'STUDENTS.SHOWING_ENTRIES' | translate"
+                      [rowsPerPageOptions]="[5, 10, 25]" styleClass="p-datatable-sm">
+                      <ng-template pTemplate="header">
+                        <tr>
+                          <th style="width:26%">{{ 'STUDENTS.DOCUMENTS' | translate }}</th>
+                          <th style="width:18%">{{ 'STUDENTS.DOCUMENT_TYPE' | translate }}</th>
+                          <th style="width:12%">{{ 'STUDENTS.DOCUMENT_FORMAT' | translate }}</th>
+                          <th style="width:12%">{{ 'GENERAL.SIZE' | translate }}</th>
+                          <th style="width:14%">{{ 'REPORTS.COMMON_FIELDS.DATE' | translate }}</th>
+                          <th style="width:18%">{{ 'LOOKUP_TABLES.ACTIONS' | translate }}</th>
+                        </tr>
+                      </ng-template>
+                      <ng-template pTemplate="body" let-doc>
+                        <tr>
+                          <td>
+                            <div class="flex align-items-center">
+                              <i [class]="getDocumentFormatIcon(doc)" class="mr-2"></i>
+                              <div class="flex flex-column">
+                                <span class="font-medium">{{doc.documentName}}</span>
+                                <small class="text-color-secondary">{{doc.originalFilename}}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <p-tag [value]="getDocumentTypeLabel(doc.documentType)"
+                            [severity]="hasDocumentType(doc.documentType) ? 'info' : 'warning'"></p-tag>
+                          </td>
+                          <td><p-tag [value]="getDocumentFormatLabel(doc)" severity="secondary"></p-tag></td>
+                          <td>{{formatFileSize(doc.fileSize)}}</td>
+                          <td>{{formatUploadDate(doc.uploadDate)}}</td>
+                          <td>
+                            <div class="flex gap-2">
+                              <button pButton pRipple icon="pi pi-eye"
+                                class="p-button-rounded p-button-info p-button-text"
+                              [pTooltip]="'COMMON.VIEW' | translate" (click)="viewDocument(doc)"></button>
+                              <button pButton pRipple icon="pi pi-refresh"
+                                class="p-button-rounded p-button-warning p-button-text"
+                                [pTooltip]="'STUDENT_ADD.REPLACE_DOCUMENT' | translate"
+                              (click)="triggerReplaceDocument(doc)"></button>
+                              <button pButton pRipple icon="pi pi-trash"
+                                class="p-button-rounded p-button-danger p-button-text"
+                                [pTooltip]="'COMMON.DELETE' | translate"
+                              (click)="deleteDocument(doc)"></button>
+                            </div>
+                          </td>
+                        </tr>
+                      </ng-template>
+                      <ng-template pTemplate="emptymessage">
+                        <tr>
+                          <td colspan="6" class="text-center p-4">
+                            <i class="pi pi-file text-4xl text-300 mb-3 block"></i>
+                            <span class="text-500">{{ 'STUDENT_ADD.NO_DOCUMENTS' | translate }}</span>
+                          </td>
+                        </tr>
+                      </ng-template>
+                    </p-table>
+                  </div>
+                  <div class="sa-section">
+                    <div class="sa-section__header">
+                      <span class="sa-section__icon sa-section__icon--rose"><i class="pi pi-upload"></i></span>
+                      <span class="sa-section__title">{{ 'STUDENT_ADD.UPLOAD_NEW_DOCUMENTS' | translate }}</span>
+                    </div>
+                    <p-fileupload #documentsUpload [showUploadButton]="false" [showCancelButton]="false"
+                      (onSelect)="onDocumentUpload($event)" [multiple]="true"
+                      accept=".pdf,.jpg,.jpeg,.png,.gif" [maxFileSize]="5000000"
+                      [style]="{'width':'100%'}"
+                      [chooseLabel]="'STUDENT_ADD.CHOOSE_DOCUMENTS' | translate">
+                      <ng-template pTemplate="content">
+                        <div class="flex flex-column">
+                          @for (file of uploadedFiles; track file; let i = $index) {
+                            <div
+                              class="flex align-items-center justify-content-between p-3 border-bottom-1 surface-border mb-1">
+                              <div class="flex align-items-center flex-1">
+                                <i [class]="getDocumentFormatIcon(file)" class="mr-3 text-2xl text-primary"></i>
+                                <div class="flex flex-column">
+                                  <span class="font-medium">{{file.name}}</span>
+                                  <small class="text-500">{{formatFileSize(file.size)}}</small>
+                                  <div class="flex gap-1 mt-1">
+                                    <p-tag styleClass="text-xs" [value]="getDocumentTypeLabel(file.documentType)"
+                                      [severity]="hasDocumentType(file.documentType) ? 'info' : 'warning'"
+                                    [pTooltip]="'STUDENTS.DOCUMENT_TYPE' | translate"></p-tag>
+                                    <p-tag styleClass="text-xs" [value]="getDocumentFormatLabel(file)" severity="secondary"
+                                    [pTooltip]="'STUDENTS.DOCUMENT_FORMAT' | translate"></p-tag>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="flex align-items-center gap-2">
+                                <p-select [options]="documentTypes" [(ngModel)]="file.documentType"
+                                  optionLabel="documentTypeName" optionValue="documentTypeName"
+                                  [placeholder]="'STUDENT_ADD.SELECT_DOCUMENT_TYPE' | translate"
+                                  appendTo="body"
+                                  styleClass="w-12rem">
+                                </p-select>
+                                <button pButton type="button" icon="pi pi-times"
+                                  class="p-button-rounded p-button-danger p-button-text"
+                                  [pTooltip]="'STUDENT_ADD.REMOVE_FILE' | translate"
+                                (click)="removeDocument(i)"></button>
+                              </div>
+                            </div>
+                          }
+                          @if (uploadedFiles.length === 0) {
+                            <div class="text-center p-4 text-500">
+                              <i class="pi pi-cloud-upload text-4xl mb-2 block"></i>
+                              <p>{{ 'STUDENT_ADD.NO_FILES' | translate }}</p>
+                              <small>{{ 'STUDENT_ADD.CLICK_CHOOSE' | translate }}</small>
+                            </div>
+                          }
+                        </div>
+                      </ng-template>
+                    </p-fileupload>
+                    <div class="sa-upload-info mt-3">
+                      <i class="pi pi-info-circle"></i>
+                      <div>
+                        <p class="font-medium mb-1">{{ 'STUDENT_ADD.UPLOAD_GUIDELINES' | translate }}</p>
+                        <ul class="text-sm m-0 pl-3">
+                          <li>{{ 'STUDENT_ADD.ALLOWED_FORMATS' | translate }}</li>
+                          <li>{{ 'STUDENT_ADD.MAX_FILE_SIZE' | translate }}</li>
+                          <li>{{ 'STUDENT_ADD.SELECT_DOC_TYPE' | translate }}</li>
+                          <li>{{ 'STUDENT_ADD.UPLOAD_ON_SAVE' | translate }}</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div><!-- /.sa-form -->
+            <!-- ═══════════ NAVIGATION ═══════════ -->
+            <footer class="sa-nav">
+              <div class="sa-nav__progress-bar">
+                <div class="sa-nav__progress-fill"
+                [style.width.%]="steps.length > 1 ? ((activeIndex + 1) / steps.length) * 100 : 100"></div>
+              </div>
+              <div class="sa-nav__row">
+                <button pButton pRipple [label]="'COMMON.BACK' | translate" [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+                  class="p-button-secondary"
+                (click)="prevStep()" [disabled]="activeIndex === 0"></button>
+                <div class="sa-nav__actions">
+                  <button pButton pRipple [label]="'COMMON.CANCEL' | translate" icon="pi pi-times"
+                    class="p-button-outlined p-button-secondary"
+                  (click)="cancel()"></button>
+                  @if (activeIndex !== steps.length - 1) {
+                    <button pButton pRipple
+                      [label]="'COMMON.NEXT' | translate"
+                      [icon]="translationService.isRTL() ? 'pi pi-arrow-left' : 'pi pi-arrow-right'" iconPos="right"
+                    class="p-button-primary" (click)="nextStep()"></button>
+                  }
+                  @if (activeIndex === steps.length - 1) {
+                    <button pButton pRipple
+                      [label]="(isEditMode ? 'COMMON.UPDATE' : 'COMMON.SUBMIT') | translate"
+                      icon="pi pi-check" class="p-button-success"
+                    (click)="saveStudent()"></button>
+                  }
+                </div>
+              </div>
+            </footer>
+          }
+        </div><!-- /.sa-main -->
+
+      </div><!-- /.sa-wizard -->
+
+      <!-- Hidden replace-document input -->
+      <input #docReplaceInput type="file" style="display:none"
+        accept=".pdf,.jpg,.jpeg,.png,.gif"
+        (change)="onReplaceFileSelected($event)" />
+
+      <!-- ═══════════ DUPLICATE DIALOG ═══════════ -->
+      <p-dialog [(visible)]="showDuplicateDialog"
+        [header]="'STUDENT_ADD.DUPLICATE_CHECK_TITLE' | translate"
+        [modal]="true" [style]="{width:'70vw'}" [draggable]="false" [resizable]="false">
+
+        @if (duplicateStudents.length === 0) {
+          <div class="text-center p-4">
+            <i class="pi pi-check-circle text-6xl text-green-500 mb-3"></i>
+            <h5 class="text-green-700 mb-2">{{ 'STUDENT_ADD.NO_DUPLICATE_FOUND' | translate }}</h5>
+            <p class="text-600">{{ 'STUDENT_ADD.NAME_IS_UNIQUE' | translate }}</p>
+          </div>
+        }
+
+        @if (duplicateStudents.length > 0) {
+          <div>
+            <div class="mb-3 p-3 bg-orange-50 border-inline-start-3 border-orange-500">
+              <i class="pi pi-exclamation-triangle text-orange-500 me-2"></i>
+              <span class="font-medium text-orange-900">
+                {{ 'STUDENT_ADD.DUPLICATES_FOUND' | translate }} ({{duplicateStudents.length}})
+              </span>
+            </div>
+            <p-table [value]="duplicateStudents" dataKey="studentId" [paginator]="true" [rows]="5" [showCurrentPageReport]="true"
+              [rowsPerPageOptions]="[5,10,20]"
+              [currentPageReportTemplate]="'STUDENTS.SHOWING_ENTRIES' | translate"
+              styleClass="p-datatable-sm">
+              <ng-template pTemplate="header">
+                <tr>
+                  <th>{{ 'STUDENT_ADD.STUDENT_NAME' | translate }}</th>
+                  <th>{{ 'STUDENTS.STUDENT_FORM.PASSPORT_NUMBER' | translate }}</th>
+                  <th>{{ 'STUDENT_ADD.STUDENT_MAJOR' | translate }}</th>
+                  <th>{{ 'STUDENT_ADD.STUDENT_COUNTRY' | translate }}</th>
+                  <th>{{ 'STUDENT_ADD.STUDENT_DEGREE' | translate }}</th>
+                </tr>
+              </ng-template>
+              <ng-template pTemplate="body" let-student>
+                <tr>
+                  <td><span class="font-medium">{{student.studentName}}</span></td>
+                  <td>{{student.studentPassportNumber || '—'}}</td>
+                  <td>{{getMajorName(student.studentMajorId)}}</td>
+                  <td>{{getCountryName(student.studentCountryId)}}</td>
+                  <td>{{getDegreeName(student.studentDegreeId)}}</td>
+                </tr>
+              </ng-template>
+            </p-table>
+          </div>
+        }
+
+        <ng-template pTemplate="footer">
+          <button pButton pRipple [label]="'COMMON.CLOSE' | translate" icon="pi pi-times"
+          class="p-button-text" (click)="closeDuplicateDialog()"></button>
+        </ng-template>
+      </p-dialog>

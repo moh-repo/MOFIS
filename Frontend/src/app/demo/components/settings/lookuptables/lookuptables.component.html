@@ -1,0 +1,606 @@
+<div class="lookuptables-page" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <!-- No `.grid > .col-12` around the card. PrimeFlex gives `.grid` a negative
+       margin of -0.5rem and puts the matching padding on the column, so a grid
+       holding one full-width column is 1rem — 13px at this application's 12.6px
+       root — wider than the box it sits in, and the page overflowed the main
+       container by exactly that. There is one column here; the card is it.
+       Measured in lookuptables-fields.spec.ts. -->
+  <div class="card">
+    <!-- Header Section. `flex-1` on the heading, not
+         `justify-content-between`: under `direction: rtl` a flex row already
+         runs right to left, and the global rule in styles.scss reverses every
+         `.flex.justify-content-between` again, which put the heading back on
+         the left and the buttons on the right in Arabic. See
+         src/app/demo/components/page-headings.spec.ts. New and Delete
+         selected used to sit beside the search box; they change the data,
+         the bar below narrows it, and the header is where the page's own
+         actions live. -->
+    <div class="flex align-items-center mb-4 flex-wrap gap-3">
+      <!-- The icon leads the block rather than sitting inside the heading, and
+           at the size the rest of the application uses. -->
+      <div class="flex align-items-center gap-3 flex-1">
+        <i class="pi pi-table text-primary" style="font-size: 2.5rem"></i>
+        <div>
+          <h2 class="m-0 text-primary">{{ 'LOOKUP_TABLES.TITLE' | translate }}</h2>
+          <p class="text-600 mt-1 mb-0">{{ 'LOOKUP_TABLES.SUBTITLE' | translate }}</p>
+        </div>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button pButton pRipple type="button" icon="pi pi-plus" class="p-button-success"
+          [label]="'COMMON.NEW' | translate" [attr.aria-label]="'COMMON.ADD' | translate"
+          (click)="openNew()"></button>
+        <button pButton pRipple type="button" icon="pi pi-trash" class="p-button-danger"
+          [label]="'COMMON.DELETE_SELECTED' | translate" [attr.aria-label]="'COMMON.DELETE_SELECTED' | translate"
+          [disabled]="!selectedItems || !selectedItems.length" (click)="deleteSelectedItems()"></button>
+      </div>
+    </div>
+
+    <!-- Tab View for grouped lookup tables — 6 tabs -->
+    <p-tabs [(value)]="activeTabIndex" (valueChange)="onTabChange($event)">
+
+      <p-tablist>
+        <p-tab [value]="0">
+          <i class="pi pi-user"></i>
+          <span>{{ 'LOOKUP_TABLES.TAB_STUDENT' | translate }}</span>
+        </p-tab>
+        <p-tab [value]="1">
+          <i class="pi pi-book"></i>
+          <span>{{ 'LOOKUP_TABLES.TAB_STUDY_UNIVERSITY' | translate }}</span>
+        </p-tab>
+        <p-tab [value]="2">
+          <i class="pi pi-dollar"></i>
+          <span>{{ 'LOOKUP_TABLES.TAB_FINANCE' | translate }}</span>
+        </p-tab>
+        <p-tab [value]="3">
+          <i class="pi pi-cog"></i>
+          <span>{{ 'LOOKUP_TABLES.TAB_OPERATIONS' | translate }}</span>
+        </p-tab>
+        <p-tab [value]="4">
+          <i class="pi pi-desktop"></i>
+          <span>{{ 'LOOKUP_TABLES.TAB_SYSTEM' | translate }}</span>
+        </p-tab>
+        <p-tab [value]="5">
+          <i class="pi pi-map-marker"></i>
+          <span>{{ 'LOOKUP_TABLES.TAB_LOCATION' | translate }}</span>
+        </p-tab>
+      </p-tablist>
+
+      <!-- Only the open tab builds its chooser and its table. A p-tabpanel keeps
+           its content in the DOM whether or not it is showing, so all six used to
+           render the shared template at once: six p-tables over the same rows, and
+           six of them [lazy], each firing its own onLazyLoad — six identical
+           requests for every page, sort and search. Measured in
+           lookuptables-fields.spec.ts. -->
+      <p-tabpanels>
+        <p-tabpanel [value]="0">
+          @if (activeTabIndex === 0) {
+            <div class="mb-3">
+              <p-selectButton
+                [options]="studentLookups"
+                [(ngModel)]="selectedTableType"
+                optionLabel="name"
+                (onChange)="onTableTypeChange(selectedTableType)"
+                [allowEmpty]="false">
+              </p-selectButton>
+            </div>
+            <ng-container *ngTemplateOutlet="tableTemplate"></ng-container>
+          }
+        </p-tabpanel>
+        <p-tabpanel [value]="1">
+          @if (activeTabIndex === 1) {
+            <div class="mb-3">
+              <p-selectButton
+                [options]="studyUniversityLookups"
+                [(ngModel)]="selectedTableType"
+                optionLabel="name"
+                (onChange)="onTableTypeChange(selectedTableType)"
+                [allowEmpty]="false">
+              </p-selectButton>
+            </div>
+            <ng-container *ngTemplateOutlet="tableTemplate"></ng-container>
+          }
+        </p-tabpanel>
+        <p-tabpanel [value]="2">
+          @if (activeTabIndex === 2) {
+            <div class="mb-3">
+              <p-selectButton
+                [options]="financeLookups"
+                [(ngModel)]="selectedTableType"
+                optionLabel="name"
+                (onChange)="onTableTypeChange(selectedTableType)"
+                [allowEmpty]="false">
+              </p-selectButton>
+            </div>
+            <ng-container *ngTemplateOutlet="tableTemplate"></ng-container>
+          }
+        </p-tabpanel>
+        <p-tabpanel [value]="3">
+          @if (activeTabIndex === 3) {
+            <div class="mb-3">
+              <p-selectButton
+                [options]="operationsLookups"
+                [(ngModel)]="selectedTableType"
+                optionLabel="name"
+                (onChange)="onTableTypeChange(selectedTableType)"
+                [allowEmpty]="false">
+              </p-selectButton>
+            </div>
+            <ng-container *ngTemplateOutlet="tableTemplate"></ng-container>
+          }
+        </p-tabpanel>
+        <p-tabpanel [value]="4">
+          @if (activeTabIndex === 4) {
+            <div class="mb-3">
+              <p-selectButton
+                [options]="systemLookups"
+                [(ngModel)]="selectedTableType"
+                optionLabel="name"
+                (onChange)="onTableTypeChange(selectedTableType)"
+                [allowEmpty]="false">
+              </p-selectButton>
+            </div>
+            <ng-container *ngTemplateOutlet="tableTemplate"></ng-container>
+          }
+        </p-tabpanel>
+        <p-tabpanel [value]="5">
+          @if (activeTabIndex === 5) {
+            <div class="mb-3">
+              <p-selectButton
+                [options]="locationLookups"
+                [(ngModel)]="selectedTableType"
+                optionLabel="name"
+                (onChange)="onTableTypeChange(selectedTableType)"
+                [allowEmpty]="false">
+              </p-selectButton>
+            </div>
+            <ng-container *ngTemplateOutlet="tableTemplate"></ng-container>
+          }
+        </p-tabpanel>
+      </p-tabpanels>
+
+    </p-tabs>
+  </div>
+
+  <!-- Table Template (Shared across all tabs) -->
+  <ng-template #tableTemplate>
+    @if (selectedTableType) {
+      <div>
+        <!-- Description -->
+        <div class="mb-4">
+          <p class="text-600 text-sm">
+            <i class="pi pi-info-circle mr-2"></i>{{ selectedTableType.description }}
+          </p>
+        </div>
+        <!-- Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+             Narrowing is the server's job: the table is lazy and holds one
+             page at a time, so the search goes to the endpoint. -->
+        <div class="filter-bar">
+          <div class="filter-bar__grid filter-bar__grid--cols-2">
+            <div class="filter-bar__field filter-bar__field--wide" [class.filter-bar__field--active]="globalFilter">
+              <label for="ltSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+              <span class="p-input-icon-left">
+                <i class="pi pi-search"></i>
+                <input id="ltSearch" pInputText type="text" [(ngModel)]="globalFilter" (input)="onGlobalFilter($event)"
+                  [placeholder]="'LOOKUP_TABLES.SEARCH_PLACEHOLDER' | translate" />
+              </span>
+            </div>
+          </div>
+          <div class="filter-bar__actions">
+            <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+              [label]="'COMMON.CLEAR' | translate" [disabled]="!globalFilter" (click)="clearGlobalFilter()"></button>
+            <span class="filter-bar__hint filter-bar__actions-spacer">{{ 'COMMON.TOTAL' | translate }}: {{ totalRecords }}</span>
+          </div>
+        </div>
+        <!-- Data Table -->
+        <p-table
+          #dt
+          [value]="currentData"
+          [rows]="rows"
+          [loading]="loading"
+          [rowHover]="true"
+          [dataKey]="getIdField()"
+          [paginator]="true"
+          [globalFilterFields]="[getNameField()]"
+          [rowsPerPageOptions]="rowsPerPageOptions"
+          [selection]="selectedItems"
+          (selectionChange)="onSelectionChange($event)"
+          [totalRecords]="totalRecords"
+          [lazy]="true"
+          [sortField]="sortField"
+          [sortOrder]="sortOrder"
+          [(first)]="first"
+          (onLazyLoad)="onLazyLoad($event)"
+          [showCurrentPageReport]="true"
+          [currentPageReportTemplate]="'LOOKUP_TABLES.SHOWING_ENTRIES' | translate">
+          <ng-template pTemplate="header">
+            <tr>
+              <th style="width: 3rem">
+                <p-tableHeaderCheckbox></p-tableHeaderCheckbox>
+              </th>
+              <!-- Columns come from the selected lookup's descriptor
+                   (lookup-descriptors.ts), so they are the columns that table
+                   has: no Description or Created Date, which no lookup entity
+                   carries and which were blank in all 33 lists. A column with no
+                   fixed width is a free-text one and wraps when space is tight. -->
+              @for (col of columns; track col.key) {
+                <th [pSortableColumn]="col.key" [style.width]="col.width"
+              [class.lk-col-flex]="!col.width" [class.lk-col-wrap]="col.wrap">
+                  {{ col.label | translate }}
+                  <p-sortIcon [field]="col.key"></p-sortIcon>
+                </th>
+              }
+              <th class="lk-col-actions">{{ 'LOOKUP_TABLES.ACTIONS' | translate }}</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-item>
+            <tr>
+              <td>
+                <!-- A system row has no checkbox for the same reason it has no
+                     delete button: the server refuses it, and select-all must not
+                     put it in a batch that then fails as a whole. -->
+                @if (canDelete(item)) {
+                  <p-tableCheckbox [value]="item"></p-tableCheckbox>
+                }
+              </td>
+              @for (col of columns; track col.key) {
+                <td [class.lk-col-flex]="!col.width" [class.lk-col-wrap]="col.wrap"
+              [attr.dir]="col.dir || null">
+                  @switch (col.kind) {
+                    @case ('boolean') {
+                      <p-tag [value]="displayValue(item, col)"
+                        [severity]="item[col.key] ? 'success' : 'danger'"></p-tag>
+                    }
+                    @case ('code') {
+                      <!-- The lock rides here rather than in a column of its own:
+                           it is either shown or not, and nine fixed columns did
+                           not fit the main container. -->
+                      <span class="lk-code">
+                        @if (isSystemRow(item)) {
+                          <i class="pi pi-lock lk-code__lock"
+                            [pTooltip]="'LOOKUP_TABLES.SYSTEM_CODE_HINT' | translate"
+                            tooltipPosition="top"
+                            [attr.aria-label]="'COMMON.SYSTEM' | translate"></i>
+                        }
+                        {{ displayValue(item, col) }}
+                      </span>
+                    }
+                    @default {
+                      {{ displayValue(item, col) }}
+                    }
+                  }
+                </td>
+              }
+              <td class="lk-col-actions">
+                <div class="flex gap-1">
+                  <button pButton pRipple type="button" icon="pi pi-eye"
+                    class="p-button-rounded p-button-text p-button-info"
+                    (click)="viewItem(item)"
+                    [pTooltip]="'LOOKUP_TABLES.VIEW' | translate" tooltipPosition="top"
+                    [attr.aria-label]="'LOOKUP_TABLES.VIEW' | translate"
+                  *hasPermission="'SETTINGS.VIEW'"></button>
+                  <button pButton pRipple type="button" icon="pi pi-pencil"
+                    class="p-button-rounded p-button-text p-button-warning"
+                    (click)="editItem(item)"
+                    [pTooltip]="'LOOKUP_TABLES.EDIT' | translate" tooltipPosition="top"
+                    [attr.aria-label]="'LOOKUP_TABLES.EDIT' | translate"
+                  *hasPermission="'SETTINGS.EDIT'"></button>
+                  @if (canDelete(item)) {
+                    <button pButton pRipple type="button" icon="pi pi-trash"
+                      class="p-button-rounded p-button-text p-button-danger"
+                      [attr.aria-label]="'COMMON.DELETE' | translate"
+                      (click)="deleteItem(item)"
+                      [pTooltip]="'LOOKUP_TABLES.DELETE' | translate" tooltipPosition="top"
+                    *hasPermission="'SETTINGS.EDIT'"></button>
+                  } @else {
+                    <button pButton pRipple type="button" icon="pi pi-lock" disabled
+                      class="p-button-rounded p-button-text p-button-secondary"
+                      [attr.aria-label]="'LOOKUP_TABLES.SYSTEM_CANNOT_DELETE' | translate"
+                      [pTooltip]="'LOOKUP_TABLES.SYSTEM_CANNOT_DELETE' | translate" tooltipPosition="top"
+                    *hasPermission="'SETTINGS.EDIT'"></button>
+                  }
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="emptymessage">
+            <tr>
+              <td [attr.colspan]="columns.length + 2" class="text-center">{{ 'LOOKUP_TABLES.NO_DATA_FOUND' | translate }}</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    }
+  </ng-template>
+
+  <!-- Create/Edit Dialog -->
+  <p-dialog
+    [(visible)]="dataDialog"
+    [modal]="true"
+    [closable]="true"
+    [style]="{width: '640px'}"
+    [draggable]="false"
+    [resizable]="false"
+    [header]="(isEditMode ? 'LOOKUP_TABLES.EDIT' : 'LOOKUP_TABLES.CREATE_NEW') | translate"
+    styleClass="dv-dialog">
+
+    <!-- Shared vocabulary: assets/layout/styles/_detail-dialog.scss. The form is
+         generated from the selected lookup's descriptor, so it offers the columns
+         that lookup has and no others: the Description textarea that used to
+         stand here was written to a column no lookup entity owns, and the server
+         dropped it every time. -->
+    <div class="dv-form">
+      <div class="dv-hero" [class.dv-hero--new]="!isEditMode">
+        <div class="dv-hero__badge">
+          @if (isEditMode) { <i class="pi pi-pencil"></i> } @else { <i class="pi pi-plus"></i> }
+        </div>
+        <div class="dv-hero__body">
+          <div class="dv-hero__eyebrow">{{ (isEditMode ? 'LOOKUP_TABLES.EDIT' : 'LOOKUP_TABLES.CREATE_NEW') | translate }}</div>
+          <div class="dv-hero__title">{{ selectedTableType?.name }}</div>
+          @if (selectedTableType?.description) {
+            <div class="dv-hero__meta"><span class="dv-chip">{{ selectedTableType?.description }}</span></div>
+          }
+        </div>
+      </div>
+
+      @if (isEditMode && isSystemRow(currentItem)) {
+        <div class="dv-notice dv-notice--warn">
+          <i class="pi pi-lock mx-1"></i>{{ 'LOOKUP_TABLES.SYSTEM_CODE_HINT' | translate }}
+        </div>
+      }
+
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-info-circle"></i></span>
+          <div class="dv-section__title">{{ 'LOOKUP_TABLES.BASIC_INFORMATION' | translate }}</div>
+        </header>
+
+        <div class="dv-fields">
+          @for (field of formFields; track field.key) {
+            <div class="dv-field" [class.dv-field--full]="!field.width">
+              <label class="dv-label" [for]="'lk-' + field.key">
+                {{ field.label | translate }}
+                @if (field.required) { <span class="dv-required">*</span> }
+              </label>
+
+              @switch (field.kind) {
+                @case ('ref') {
+                  <p-select
+                    [inputId]="'lk-' + field.key"
+                    [options]="optionsFor(field)"
+                    [(ngModel)]="currentItem[field.key]"
+                    [optionLabel]="optionLabelField(field)"
+                    [optionValue]="optionValueField(field)"
+                    [placeholder]="'COMMON.SELECT' | translate"
+                    [showClear]="true"
+                    [filter]="true"
+                    [filterBy]="optionLabelField(field)"
+                    [disabled]="awaitingParent(field)"
+                    (onChange)="onRefChange(field)"
+                    [class.ng-invalid]="missing(field)"
+                    styleClass="w-full">
+                  </p-select>
+                  @if (awaitingParent(field)) {
+                    <small class="dv-hint">
+                      <i class="pi pi-info-circle mx-1"></i>{{ 'LOOKUP_TABLES.PLEASE_SELECT_COUNTRY_FIRST' | translate }}
+                    </small>
+                  }
+                }
+                @case ('boolean') {
+                  <div class="flex align-items-center gap-2">
+                    <p-checkbox [(ngModel)]="currentItem[field.key]" [binary]="true"
+                      [inputId]="'lk-' + field.key"></p-checkbox>
+                    <span class="text-600 text-sm">
+                      {{ (currentItem[field.key] ? 'LOOKUP_TABLES.ACTIVE_DESCRIPTION' : 'LOOKUP_TABLES.INACTIVE_DESCRIPTION') | translate }}
+                    </span>
+                  </div>
+                }
+                @case ('number') {
+                  <input [id]="'lk-' + field.key" type="number" pInputText
+                    [(ngModel)]="currentItem[field.key]"
+                    [class.ng-invalid]="missing(field)" class="w-full" />
+                }
+                @default {
+                  <input [id]="'lk-' + field.key" type="text" pInputText
+                    [(ngModel)]="currentItem[field.key]"
+                    [attr.dir]="field.dir || null"
+                    [attr.maxlength]="field.maxLength || null"
+                    [placeholder]="field.label | translate"
+                    [class.ng-invalid]="missing(field)" class="w-full" />
+                  @if (field.maxLength) {
+                    <small class="dv-hint lk-max-length">
+                      <i class="pi pi-info-circle mx-1"></i>{{ 'LOOKUP_TABLES.MAX_CHARS' | translate:{ max: field.maxLength } }}
+                    </small>
+                  }
+                }
+              }
+
+              @if (missing(field)) {
+                <small class="dv-error">
+                  <i class="pi pi-exclamation-circle mx-1"></i>{{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <div class="dv-footer">
+        <small class="dv-footer__hint"><span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+        <div class="dv-footer__actions">
+        <button
+          pButton
+          pRipple
+          [label]="'LOOKUP_TABLES.CANCEL' | translate"
+          icon="pi pi-times"
+          class="p-button-text p-button-secondary"
+          (click)="hideDialog()">
+        </button>
+        <button
+          pButton
+          pRipple
+          [label]="isEditMode ? ('LOOKUP_TABLES.UPDATE' | translate) : ('LOOKUP_TABLES.CREATE_NEW' | translate)"
+          [icon]="isEditMode ? 'pi pi-check' : 'pi pi-plus'"
+          [class]="isEditMode ? 'p-button-primary' : 'p-button-success'"
+          (click)="saveItem()">
+        </button>
+        </div>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- View Dialog. The same descriptor, so it lists this lookup's fields and no
+       others — it used to show Description, Created and Last Modified on every
+       table, all three reading "N/A" because no lookup entity has them. -->
+  <p-dialog
+    [(visible)]="viewDialog"
+    [modal]="true"
+    [closable]="true"
+    [style]="{width: '640px'}"
+    [draggable]="false"
+    [resizable]="false"
+    [header]="('LOOKUP_TABLES.VIEW_TITLE' | translate) + ' ' + (selectedTableType?.name || '')"
+    styleClass="dv-dialog">
+
+    <div class="dv-form">
+      <div class="dv-hero">
+        <div class="dv-hero__badge">
+          <span class="dv-hero__badge-prefix">#</span>{{ getFieldValue(currentItem, getIdField()) }}
+        </div>
+        <div class="dv-hero__body">
+          <div class="dv-hero__eyebrow">{{ selectedTableType?.name }}</div>
+          <div class="dv-hero__title" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+            {{ getFieldValue(currentItem, getNameField()) || getFieldValue(currentItem, getNameFieldAr()) || ('COMMON.NOT_AVAILABLE' | translate) }}
+          </div>
+          <div class="dv-hero__meta">
+            @if (isBilingualTable() && currentItem.code) {
+              <span class="dv-chip" dir="ltr">{{ currentItem.code }}</span>
+            }
+            @if (isSystemRow(currentItem)) {
+              <p-tag [value]="'COMMON.SYSTEM' | translate" severity="warn" icon="pi pi-lock"></p-tag>
+            }
+          </div>
+        </div>
+      </div>
+
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-list"></i></span>
+          <div class="dv-section__title">{{ 'LOOKUP_TABLES.DETAILED_INFORMATION' | translate }}</div>
+        </header>
+        <dl class="dv-dl">
+          @for (field of viewFields; track field.key) {
+            <div class="dv-dl__row">
+              <dt>{{ field.label | translate }}</dt>
+              <dd [attr.dir]="field.dir || null">
+                @if (field.kind === 'boolean' || field.kind === 'system') {
+                  <p-tag [value]="displayValue(currentItem, field)"
+                    [severity]="currentItem[field.key] ? 'success' : 'secondary'"></p-tag>
+                } @else {
+                  {{ displayValue(currentItem, field) || ('COMMON.NOT_AVAILABLE' | translate) }}
+                }
+              </dd>
+            </div>
+          }
+        </dl>
+      </section>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <div class="dv-footer">
+        <div class="dv-footer__hint"></div>
+        <div class="dv-footer__actions">
+          <button
+            pButton
+            pRipple
+            [label]="'LOOKUP_TABLES.CLOSE' | translate"
+            icon="pi pi-times"
+            class="p-button-text p-button-secondary"
+            (click)="hideViewDialog()">
+          </button>
+          <button
+            pButton
+            pRipple
+            [label]="'LOOKUP_TABLES.EDIT' | translate"
+            icon="pi pi-pencil"
+            (click)="editFromView()">
+          </button>
+        </div>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Delete Confirmation Dialog -->
+  <p-dialog
+    [(visible)]="deleteDialog"
+    [header]="'LOOKUP_TABLES.CONFIRM_DELETE' | translate"
+    [modal]="true"
+    [closable]="true"
+    [style]="{width: '350px'}"
+    [draggable]="false"
+    [resizable]="false">
+
+    <div class="flex align-items-center justify-content-center">
+      <i class="pi pi-exclamation-triangle mx-3" style="font-size: 2rem"></i>
+      <span>{{ 'LOOKUP_TABLES.CONFIRM_DELETE_MESSAGE' | translate }}</span>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <button
+        pButton
+        pRipple
+        [label]="'LOOKUP_TABLES.CANCEL' | translate"
+        icon="pi pi-times"
+        class="p-button-text"
+        (click)="hideDeleteDialog()">
+      </button>
+      <button
+        pButton
+        pRipple
+        [label]="'LOOKUP_TABLES.DELETE' | translate"
+        icon="pi pi-check"
+        class="p-button-danger"
+        (click)="confirmDelete()">
+      </button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Delete Multiple Confirmation Dialog -->
+  <p-dialog
+    [(visible)]="deleteMultipleDialog"
+    [header]="'LOOKUP_TABLES.CONFIRM_DELETE' | translate"
+    [modal]="true"
+    [closable]="true"
+    [style]="{width: '350px'}"
+    [draggable]="false"
+    [resizable]="false">
+
+    <div class="flex align-items-center justify-content-center">
+      <i class="pi pi-exclamation-triangle mx-3" style="font-size: 2rem"></i>
+      <span>{{ 'LOOKUP_TABLES.CONFIRM_DELETE_MULTIPLE' | translate: {count: selectedItems.length} }}</span>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <button
+        pButton
+        pRipple
+        [label]="'LOOKUP_TABLES.CANCEL' | translate"
+        icon="pi pi-times"
+        class="p-button-text"
+        (click)="hideDeleteMultipleDialog()">
+      </button>
+      <button
+        pButton
+        pRipple
+        [label]="'LOOKUP_TABLES.DELETE' | translate"
+        icon="pi pi-check"
+        class="p-button-danger"
+        (click)="confirmDeleteMultiple()">
+      </button>
+    </ng-template>
+  </p-dialog>
+
+</div>
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>

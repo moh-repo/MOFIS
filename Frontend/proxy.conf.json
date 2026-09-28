@@ -1,0 +1,15 @@
+{
+  "/mohe/api/pdf/": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn",
+    "pathRewrite": { "^/mohe/api/pdf": "/mohe/api" }
+  },
+  "/mohe": {
+    "target": "http://localhost:8082",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  }
+}

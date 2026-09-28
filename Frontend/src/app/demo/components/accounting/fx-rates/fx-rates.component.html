@@ -1,0 +1,277 @@
+<p-toast></p-toast>
+<p-confirmdialog [style]="{ width: '28rem' }"></p-confirmdialog>
+
+<div class="card">
+    <!-- Header. `flex-1` on the icon-and-title block, not
+         `justify-content-between` — see chart-of-accounts.component.html and
+         src/app/demo/components/page-headings.spec.ts. -->
+    <div class="flex align-items-center mb-4 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3 flex-1">
+            <i class="pi pi-sync text-primary" style="font-size: 2.5rem"></i>
+            <div>
+                <h2 class="m-0 text-primary">{{ 'ACCOUNTING.FX_TITLE' | translate }}</h2>
+                <p class="text-600 mt-1 mb-0">{{ 'ACCOUNTING.FX_SUBTITLE' | translate }}</p>
+            </div>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+            <button pButton pRipple type="button" icon="pi pi-plus" *hasPermission="'COA.EDIT'"
+                    [label]="'ACCOUNTING.NEW_RATE' | translate"
+                    (click)="openNew()"></button>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-4">
+            <div class="filter-bar__field" [class.filter-bar__field--active]="filterFrom">
+                <label for="fxFrom">{{ 'ACCOUNTING.FROM_CURRENCY' | translate }}</label>
+                <p-select inputId="fxFrom" [options]="currencyOptions" [(ngModel)]="filterFrom"
+                          optionLabel="name" optionValue="id" [showClear]="true" [filter]="true" filterBy="name"
+                          [placeholder]="'ACCOUNTING.ALL_CURRENCIES' | translate"
+                          (onChange)="reload()"></p-select>
+            </div>
+            <div class="filter-bar__field" [class.filter-bar__field--active]="filterTo">
+                <label for="fxTo">{{ 'ACCOUNTING.TO_CURRENCY' | translate }}</label>
+                <p-select inputId="fxTo" [options]="currencyOptions" [(ngModel)]="filterTo"
+                          optionLabel="name" optionValue="id" [showClear]="true" [filter]="true" filterBy="name"
+                          [placeholder]="'ACCOUNTING.ALL_CURRENCIES' | translate"
+                          (onChange)="reload()"></p-select>
+            </div>
+        </div>
+        <div class="filter-bar__actions">
+            <span class="filter-bar__hint filter-bar__actions-spacer">
+                {{ 'COMMON.TOTAL' | translate }}: {{ rows.length }}
+            </span>
+        </div>
+    </div>
+
+    <p-progressSpinner *ngIf="loading" styleClass="w-2rem h-2rem"></p-progressSpinner>
+
+    <p-table *ngIf="!loading" [value]="rows" [scrollable]="true" dataKey="id"
+             [customSort]="true" (sortFunction)="sortTable($event)">
+        <ng-template pTemplate="header">
+            <tr>
+                <th pSortableColumn="rateDate">{{ 'ACCOUNTING.RATE_DATE' | translate }} <p-sortIcon field="rateDate"></p-sortIcon></th>
+                <th pSortableColumn="fromCurrency">{{ 'ACCOUNTING.FROM_CURRENCY' | translate }} <p-sortIcon field="fromCurrency"></p-sortIcon></th>
+                <th pSortableColumn="toCurrency">{{ 'ACCOUNTING.TO_CURRENCY' | translate }} <p-sortIcon field="toCurrency"></p-sortIcon></th>
+                <th class="text-right" pSortableColumn="rate">{{ 'ACCOUNTING.RATE' | translate }} <p-sortIcon field="rate"></p-sortIcon></th>
+                <th pSortableColumn="rateSource">{{ 'ACCOUNTING.RATE_SOURCE' | translate }} <p-sortIcon field="rateSource"></p-sortIcon></th>
+                <th pSortableColumn="createdBy">{{ 'ACCOUNTING.CREATED_BY' | translate }} <p-sortIcon field="createdBy"></p-sortIcon></th>
+                <th style="width: 8rem">{{ 'COMMON.ACTIONS' | translate }}</th>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-row>
+            <tr>
+                <td class="font-mono">{{ row.rateDate }}</td>
+                <td>{{ currencyName(row.fromCurrencyId) }}</td>
+                <td>{{ currencyName(row.toCurrencyId) }}</td>
+                <!-- Eight places, as stored: rounding the rate before applying it
+                     pushes the error into every translated amount. -->
+                <td class="text-right font-mono font-medium">{{ row.rate | number:'1.2-8' }}</td>
+                <td>
+                    {{ row.rateSource || '—' }}
+                    <!-- The note qualifies the source it was written against; a
+                         column of its own left the source and the date columns
+                         narrower than the words in their own headings. -->
+                    <div class="cell-note" *ngIf="row.notes">{{ row.notes }}</div>
+                </td>
+                <td class="text-sm">
+                    <span *ngIf="row.createdBy != null">#{{ row.createdBy }}</span>
+                    <small class="block text-color-secondary">{{ row.createdAt | date:'yyyy-MM-dd HH:mm' }}</small>
+                </td>
+                <td>
+                    <button pButton pRipple type="button" icon="pi pi-eye" class="p-button-text p-button-sm"
+                            [pTooltip]="'COMMON.VIEW' | translate"
+                            (click)="openView(row)"></button>
+                    <button pButton pRipple type="button" icon="pi pi-trash" *hasPermission="'COA.EDIT'"
+                            class="p-button-text p-button-sm p-button-danger"
+                            [pTooltip]="'ACCOUNTING.DELETE_RATE' | translate"
+                            (click)="remove(row)"></button>
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+            <tr>
+                <td colspan="7" class="text-center text-color-secondary py-4">
+                    {{ 'ACCOUNTING.NO_RATES' | translate }}
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+    <small class="block mt-3 text-color-secondary">{{ 'ACCOUNTING.FX_NOTE' | translate }}</small>
+</div>
+
+<!-- Add. Shared vocabulary: assets/layout/styles/_detail-dialog.scss. -->
+<p-dialog [(visible)]="dialogVisible" [modal]="true" [draggable]="false"
+          [style]="{ width: '640px', maxWidth: '96vw' }" styleClass="dv-dialog"
+          (onHide)="submitted = false"
+          [header]="'ACCOUNTING.NEW_RATE' | translate">
+    <ng-template pTemplate="content">
+        <div class="dv-hero dv-hero--new">
+            <div class="dv-hero__badge"><i class="pi pi-plus"></i></div>
+            <div class="dv-hero__body">
+                <div class="dv-hero__eyebrow">{{ 'ACCOUNTING.NEW_RATE' | translate }}</div>
+                <div class="dv-hero__title"
+                     [class.dv-hero__title--placeholder]="draft.fromCurrencyId == null || draft.toCurrencyId == null">
+                    {{ currencyName(draft.fromCurrencyId) }} → {{ currencyName(draft.toCurrencyId) }}
+                </div>
+                <div class="dv-hero__meta">
+                    <span class="dv-chip" *ngIf="draft.rateDate">{{ draft.rateDate | date:'yyyy-MM-dd' }}</span>
+                </div>
+            </div>
+            <div class="dv-hero__amount" *ngIf="draft.rate">{{ draft.rate | number:'1.2-8' }}</div>
+        </div>
+
+        <section class="dv-section">
+            <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-sync"></i></span>
+                <div>
+                    <div class="dv-section__title">{{ 'ACCOUNTING.SECTION_IDENTITY' | translate }}</div>
+                    <div class="dv-section__hint">{{ 'ACCOUNTING.RATE_HINT' | translate }}</div>
+                </div>
+            </header>
+            <div class="dv-fields">
+                <div class="dv-field">
+                    <label for="fxDraftFrom" class="dv-label">
+                        {{ 'ACCOUNTING.FROM_CURRENCY' | translate }} <span class="dv-required">*</span>
+                    </label>
+                    <p-select inputId="fxDraftFrom" [options]="currencyOptions" [(ngModel)]="draft.fromCurrencyId"
+                              optionLabel="name" optionValue="id" [filter]="true" filterBy="name" appendTo="body"
+                              styleClass="w-full" [placeholder]="'ACCOUNTING.CURRENCY' | translate"></p-select>
+                    <small class="dv-error" *ngIf="submitted && draft.fromCurrencyId == null">
+                        <i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                </div>
+                <div class="dv-field">
+                    <label for="fxDraftTo" class="dv-label">
+                        {{ 'ACCOUNTING.TO_CURRENCY' | translate }} <span class="dv-required">*</span>
+                    </label>
+                    <p-select inputId="fxDraftTo" [options]="currencyOptions" [(ngModel)]="draft.toCurrencyId"
+                              optionLabel="name" optionValue="id" [filter]="true" filterBy="name" appendTo="body"
+                              styleClass="w-full" [placeholder]="'ACCOUNTING.CURRENCY' | translate"></p-select>
+                    <!-- A pair of the same currency is a rate of one and means
+                         nothing; the server rejects it, so the dialog says so first. -->
+                    <small class="dv-error"
+                           *ngIf="submitted && (draft.toCurrencyId == null || draft.toCurrencyId === draft.fromCurrencyId)">
+                        <i class="pi pi-exclamation-circle"></i> {{ 'ACCOUNTING.RATE_REQUIRED' | translate }}
+                    </small>
+                </div>
+                <div class="dv-field">
+                    <label for="fxDraftDate" class="dv-label">
+                        {{ 'ACCOUNTING.RATE_DATE' | translate }} <span class="dv-required">*</span>
+                    </label>
+                    <p-datepicker inputId="fxDraftDate" [(ngModel)]="draft.rateDate" dateFormat="yy-mm-dd"
+                                  [showIcon]="true" appendTo="body" styleClass="w-full"></p-datepicker>
+                    <small class="dv-error" *ngIf="submitted && !draft.rateDate">
+                        <i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                </div>
+                <div class="dv-field">
+                    <label for="fxDraftRate" class="dv-label">
+                        {{ 'ACCOUNTING.RATE' | translate }} <span class="dv-required">*</span>
+                    </label>
+                    <p-inputnumber inputId="fxDraftRate" [(ngModel)]="draft.rate" mode="decimal"
+                                   [minFractionDigits]="2" [maxFractionDigits]="8" [min]="0"
+                                   styleClass="w-full" inputStyleClass="w-full"></p-inputnumber>
+                    <small class="dv-error" *ngIf="submitted && !(draft.rate && draft.rate > 0)">
+                        <i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                    </small>
+                </div>
+            </div>
+        </section>
+
+        <section class="dv-section">
+            <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-book"></i></span>
+                <div><div class="dv-section__title">{{ 'ACCOUNTING.RATE_SOURCE' | translate }}</div></div>
+            </header>
+            <div class="dv-fields">
+                <div class="dv-field dv-field--full">
+                    <label for="fxDraftSource" class="dv-label">{{ 'ACCOUNTING.RATE_SOURCE' | translate }}</label>
+                    <input pInputText id="fxDraftSource" [(ngModel)]="draft.rateSource" class="w-full"
+                           [placeholder]="'ACCOUNTING.RATE_SOURCE_HINT' | translate" />
+                </div>
+                <div class="dv-field dv-field--full">
+                    <label for="fxDraftNotes" class="dv-label">{{ 'ACCOUNTING.NOTES' | translate }}</label>
+                    <textarea pTextarea id="fxDraftNotes" rows="2" [(ngModel)]="draft.notes" class="w-full"></textarea>
+                </div>
+            </div>
+        </section>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+        <div class="dv-footer">
+            <small class="dv-footer__hint">
+                <span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+            </small>
+            <div class="dv-footer__actions">
+                <button pButton type="button" class="p-button-text p-button-secondary" icon="pi pi-times"
+                        [label]="'COMMON.CANCEL' | translate" [disabled]="saving"
+                        (click)="dialogVisible = false"></button>
+                <button pButton type="button" icon="pi pi-check" [label]="'COMMON.SAVE' | translate"
+                        [loading]="saving" (click)="save()"></button>
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>
+
+<!-- View. A rate is deleted rather than corrected, so what it was entered
+     against — the source, the note, who filed it and when — is the whole of the
+     record and belongs somewhere it can be read in full. -->
+<p-dialog [(visible)]="viewVisible" [modal]="true" [draggable]="false"
+          [style]="{ width: '560px', maxWidth: '96vw' }" styleClass="dv-dialog"
+          [header]="'ACCOUNTING.VIEW_RATE' | translate">
+    <ng-template pTemplate="content">
+        <div class="dv-view" *ngIf="viewing as v">
+            <div class="dv-hero">
+                <div class="dv-hero__badge"><i class="pi pi-sync"></i></div>
+                <div class="dv-hero__body">
+                    <div class="dv-hero__eyebrow">{{ v.rateDate }}</div>
+                    <div class="dv-hero__title">
+                        {{ currencyName(v.fromCurrencyId) }} → {{ currencyName(v.toCurrencyId) }}
+                    </div>
+                    <div class="dv-hero__meta">
+                        <span class="dv-chip" *ngIf="v.rateSource">{{ v.rateSource }}</span>
+                    </div>
+                </div>
+                <div class="dv-hero__amount">{{ v.rate | number:'1.2-8' }}</div>
+            </div>
+
+            <section class="dv-section">
+                <header class="dv-section__head">
+                    <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-history"></i></span>
+                    <div><div class="dv-section__title">{{ 'ACCOUNTING.SECTION_AUDIT' | translate }}</div></div>
+                </header>
+                <dl class="dv-dl">
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.RATE_SOURCE' | translate }}</dt>
+                        <dd>{{ v.rateSource || ('COMMON.NOT_AVAILABLE' | translate) }}</dd>
+                    </div>
+                    <div class="dv-dl__row">
+                        <dt>{{ 'ACCOUNTING.CREATED_BY' | translate }}</dt>
+                        <dd>
+                            <span *ngIf="v.createdBy != null">#{{ v.createdBy }}</span>
+                            <span *ngIf="v.createdBy == null">{{ 'COMMON.NOT_AVAILABLE' | translate }}</span>
+                            <span class="text-color-secondary">{{ v.createdAt | date:'yyyy-MM-dd HH:mm' }}</span>
+                        </dd>
+                    </div>
+                </dl>
+            </section>
+
+            <div class="dv-notes" [class.dv-notes--empty]="!v.notes">
+                {{ v.notes || ('COMMON.NOT_AVAILABLE' | translate) }}
+            </div>
+        </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+        <div class="dv-footer">
+            <div class="dv-footer__actions">
+                <button pButton type="button" class="p-button-text p-button-secondary" icon="pi pi-times"
+                        [label]="'COMMON.CLOSE' | translate" (click)="viewVisible = false"></button>
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>

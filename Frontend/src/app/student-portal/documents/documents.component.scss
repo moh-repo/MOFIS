@@ -1,0 +1,129 @@
+:host {
+  --doc-ink:    var(--p-ink, #10243b);
+  --doc-muted:  var(--p-muted, #64748b);
+  --doc-line:   var(--p-line, #e3e9f0);
+  --doc-accent: var(--p-accent, #2f7fd8);
+  --doc-ok:     #1f8a53;
+  --doc-danger: #c0392b;
+}
+
+/* The icon beside a card title. It used to be an inline style carrying its own
+   hex — a different one per card — which is how a page ends up with a palette
+   nobody chose. */
+.doc-card-icon {
+  margin-inline-end: 8px;
+  color: var(--doc-accent);
+}
+
+.doc-count {
+  margin-inline-start: 8px;
+}
+
+/* ── Drop zone ─────────────────────────────────────────────── */
+.doc-dropzone {
+  padding: 26px 24px;
+  margin-bottom: 18px;
+  text-align: center;
+  cursor: pointer;
+  background: #f8fafc;
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  transition: border-color 0.15s, background 0.15s;
+
+  &:hover {
+    border-color: var(--doc-accent);
+    background: #eef4fb;
+  }
+
+  /* A file is chosen: the zone confirms it rather than still inviting one. */
+  &--has-file {
+    border-style: solid;
+    border-color: var(--doc-ok);
+    background: #f2f9f5;
+  }
+}
+
+.dz-icon {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 34px;
+  color: #b9c4d2;
+
+  &--ok { color: var(--doc-ok); }
+}
+
+.dz-text {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--doc-ink);
+  word-break: break-all;
+
+  &--ok { color: var(--doc-ok); }
+}
+
+.dz-hint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--doc-muted);
+
+  a {
+    color: var(--doc-danger);
+    cursor: pointer;
+    &:hover { text-decoration: underline; }
+  }
+}
+
+.doc-fields { margin-bottom: 4px; }
+
+/* ── Document list ─────────────────────────────────────────── */
+.doc-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid #eef2f7;
+
+  &:last-child { border-bottom: none; }
+}
+
+.doc-item-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.doc-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-item-name {
+  margin: 0 0 3px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--doc-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doc-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--doc-muted);
+}
+
+.doc-item-action {
+  flex-shrink: 0;
+}
+
+/* No RTL block: under the shell's dir="rtl" the row already starts at the right
+   with the file icon. A `row-reverse` on top moved the icon to the far left. */

@@ -1,0 +1,55 @@
+# Repository-level ignores. Backend/ and Frontend/ carry their own for build output
+# (target/, dist/, node_modules/, uploads/); this file covers what either half — or
+# the root — could otherwise pick up by accident.
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.local.properties
+
+# Logs and dumps
+*.log
+logs/
+*.hprof
+*.dmp
+
+# Archives and backups — none belong in source control
+*.rar
+*.zip
+*.7z
+*.bak
+*.tmp
+*.orig
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE and editor state
+.idea/
+*.iml
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Agent and tool directories (local only)
+.claude/
+.gemini/
+.zap/
+
+# QA evidence and test artifacts
+qa-evidence/
+Qa Test.pdf
+QA-Round6-*.md
+
+# Retention job output
+Backend/archive/retention/*.json
+
+# msys crash dumps
+*.stackdump

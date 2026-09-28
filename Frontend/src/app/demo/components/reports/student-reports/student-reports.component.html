@@ -1,0 +1,83 @@
+<div class="student-reports-page" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="grid">
+    <div class="col-12">
+      <div class="card">
+        <!-- Header -->
+        <!-- Header Section. Nothing shares this row, so there is nothing to
+             separate: `justify-content-between` only brought the heading under the
+             global `[dir="rtl"] .flex.justify-content-between` rule, which reversed
+             the row and put it on the left in Arabic. See page-headings.spec.ts. -->
+        <div class="flex align-items-center mb-4">
+          <div class="flex align-items-center gap-3">
+            <i class="pi pi-users text-primary" style="font-size: 2rem"></i>
+            <div>
+              <h3 class="m-0 text-primary">{{ 'REPORTS.STUDENT_REPORTS.TITLE' | translate }}</h3>
+              <p class="text-600 mt-1 mb-0">{{ 'REPORTS.STUDENT_REPORTS.SUBTITLE' | translate }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Report Types Grid -->
+        <div class="grid">
+          @for (report of reportTypes; track report) {
+            <div class="col-12 md:col-6 lg:col-4">
+              <div class="surface-card border-round p-4 shadow-2 h-full hover:shadow-4 transition-duration-300 cursor-pointer"
+                [routerLink]="report.route" [queryParams]="report.queryParams || null">
+                <div class="flex align-items-center gap-3 mb-3">
+                  <div class="flex align-items-center justify-content-center border-circle"
+                    [ngClass]="'bg-' + report.color + '-100'"
+                    style="width: 3.5rem; height: 3.5rem;">
+                    <i [class]="'pi ' + report.icon + ' text-' + report.color + '-600'"
+                    style="font-size: 1.5rem"></i>
+                  </div>
+                  <div class="flex-1">
+                    <h5 class="m-0 text-900">{{ report.title }}</h5>
+                    <p class="text-500 text-sm m-0 mt-1">{{ report.titleAr }}</p>
+                  </div>
+                </div>
+                <p class="text-600 line-height-3 m-0 mt-3">
+                  {{ report.description }}
+                </p>
+                <div class="mt-3 pt-3 border-top-1 surface-border">
+                  @if (report.available) {
+                    <span class="text-primary font-semibold text-sm">
+                      <i class="pi pi-arrow-right mr-2"></i>{{ 'REPORTS.REPORT_SUBPAGES.VIEW_REPORT' | translate }}
+                    </span>
+                  }
+                  @if (!report.available) {
+                    <span class="text-500 text-sm">
+                      <i class="pi pi-clock mr-2"></i>{{ 'REPORTS.REPORT_SUBPAGES.COMING_SOON' | translate }}
+                    </span>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Quick Actions Section -->
+        <div class="mt-5">
+          <div class="surface-ground border-round p-4">
+            <!-- Heading leads this row too; see the comment on the page header above. -->
+            <div class="flex align-items-center">
+              <div class="flex-1">
+                <h5 class="text-900 m-0 mb-2">
+                  <i class="pi pi-info-circle text-blue-600 mr-2"></i>
+                  {{ 'REPORTS.STUDENT_REPORTS.ADDITIONAL_REPORTS' | translate }}
+                </h5>
+                <p class="text-600 m-0">
+                  {{ 'REPORTS.STUDENT_REPORTS.ADDITIONAL_REPORTS_DESC' | translate }}
+                </p>
+              </div>
+              <button pButton type="button" [label]="'REPORTS.REPORT_SUBPAGES.BACK_TO_REPORTS' | translate"
+                [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+                class="p-button-outlined"
+              routerLink="/reports/list"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,136 @@
+<div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="card-header">
+    <!-- Header Section. `flex-1` on the leading block, not
+         `justify-content-between`: under `direction: rtl` a flex row already
+         runs right to left, and the global rule in styles.scss reverses every
+         `.flex.justify-content-between` again, which put the heading back on
+         the left and the actions on the right in Arabic. See
+         src/app/demo/components/page-headings.spec.ts. -->
+    <div class="flex align-items-center">
+      <div class="flex-1">
+        <h3 class="m-0">{{ 'REPORTS.ACCOUNTING_POSITION.TITLE' | translate }}</h3>
+        <p class="text-color-secondary mt-2">{{ 'REPORTS.ACCOUNTING_POSITION.DESCRIPTION' | translate }}</p>
+      </div>
+      <div class="flex gap-2">
+        <p-button
+          [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+          [label]="'REPORTS.REPORT_SUBPAGES.BACK_TO_FINANCIAL_REPORTS' | translate"
+          [outlined]="true"
+          routerLink="/reports/financial" />
+        <app-report-actions
+          [pdfApiPath]="pdfApiPath"
+          [excelApiPath]="excelApiPath"
+          [query]="reportQuery()"
+          [disabled]="selectedFiscalYearId === null"
+          baseFilename="accounting-position">
+        </app-report-actions>
+      </div>
+    </div>
+  </div>
+
+  <p-divider />
+
+  <div class="grid p-3">
+    <div class="col-12 md:col-4">
+      <label for="fiscalYear" class="block mb-2 font-semibold">{{ 'REPORTS.ACCOUNTING_POSITION.FISCAL_YEAR' | translate }} *</label>
+      <p-select
+        id="fiscalYear"
+        [options]="fiscalYears"
+        [(ngModel)]="selectedFiscalYearId"
+        optionValue="id"
+        optionLabel="name"
+        [placeholder]="'REPORTS.ACCOUNTING_POSITION.CHOOSE_YEAR' | translate"
+        (onChange)="onFilterChange()"
+        styleClass="w-full"
+        appendTo="body" />
+    </div>
+
+    @if (hasMultiCountry) {
+      <div class="col-12 md:col-5">
+        <label class="block mb-2 font-semibold">{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</label>
+        <p-multiselect
+          [options]="allowedCountries"
+          [(ngModel)]="selectedCountryIds"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_COUNTRIES' | translate"
+          (onChange)="onFilterChange()"
+          styleClass="w-full"
+          appendTo="body">
+        </p-multiselect>
+      </div>
+    }
+
+    <div class="col-12 md:col-3 flex align-items-end">
+      <p-button
+        icon="pi pi-filter-slash"
+        [label]="'COMMON.CLEAR' | translate"
+        (onClick)="clearFilters()"
+        [outlined]="true"
+        styleClass="w-full" />
+    </div>
+  </div>
+
+  <!-- Available per currency. Never one total: adding USD to SAR means nothing. -->
+  @if (totalsByCurrency.length) {
+    <div class="grid p-3 summary-row">
+      @for (t of totalsByCurrency; track t.currency) {
+        <div class="col-6 md:col-3">
+          <div class="summary-tile">
+            <span class="summary-label">{{ 'REPORTS.ACCOUNTING_POSITION.AVAILABLE' | translate }} — {{ t.currency }}</span>
+            <span class="summary-value">{{ t.total | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <p-divider />
+
+  <div class="p-3">
+    <p-table
+      [value]="rows"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="20"
+      [tableStyle]="{'min-width': '70rem'}"
+      styleClass="p-datatable-gridlines p-datatable-sm">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th>{{ 'REPORTS.ACCOUNTING_POSITION.ATTACHE' | translate }}</th>
+          <th>{{ 'REPORTS.ACCOUNTING_POSITION.CURRENCY' | translate }}</th>
+          <th class="text-right">{{ 'REPORTS.ACCOUNTING_POSITION.OPENING' | translate }}</th>
+          <th class="text-right">{{ 'REPORTS.ACCOUNTING_POSITION.TRANSFERRED' | translate }}</th>
+          <th class="text-right">{{ 'REPORTS.ACCOUNTING_POSITION.DISBURSED' | translate }}</th>
+          <th class="text-right">{{ 'REPORTS.ACCOUNTING_POSITION.RETURNED' | translate }}</th>
+          <th class="text-right">{{ 'REPORTS.ACCOUNTING_POSITION.WAFAR_BALANCE' | translate }}</th>
+          <th class="text-right">{{ 'REPORTS.ACCOUNTING_POSITION.AVAILABLE' | translate }}</th>
+          <th class="text-right">{{ 'REPORTS.ACCOUNTING_POSITION.ALLOC_COUNT' | translate }}</th>
+          <th class="text-right">{{ 'REPORTS.ACCOUNTING_POSITION.ALLOCATED' | translate }}</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-row>
+        <tr>
+          <td class="font-semibold">{{ row.studyCountryName }}</td>
+          <td>{{ row.currencyName }}</td>
+          <td class="text-right">{{ row.openingBalance | number:'1.2-2' }}</td>
+          <td class="text-right">{{ row.transferred | number:'1.2-2' }}</td>
+          <td class="text-right">{{ row.disbursed | number:'1.2-2' }}</td>
+          <td class="text-right">{{ row.returned | number:'1.2-2' }}</td>
+          <td class="text-right">{{ row.wafarBalance | number:'1.2-2' }}</td>
+          <td class="text-right font-semibold">{{ row.available | number:'1.2-2' }}</td>
+          <td class="text-right">{{ row.allocationCount }}</td>
+          <td class="text-right">{{ row.allocatedAmount | number:'1.2-2' }}</td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="10" class="text-center">{{ 'REPORTS.REPORT_SUBPAGES.NO_DATA_FOUND' | translate }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>

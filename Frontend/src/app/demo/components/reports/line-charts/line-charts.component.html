@@ -1,0 +1,231 @@
+<p-toast></p-toast>
+
+<div class="page-wrapper" id="line-charts-print-area" [ngClass]="{ 'rtl-layout': isRTL(), 'ltr-layout': !isRTL() }">
+  <div class="page-hero card surface-0 border-none shadow-none">
+    <div class="page-hero__content">
+      <span class="page-hero__icon surface-100 border-round-xl">
+        <i class="pi pi-chart-line"></i>
+      </span>
+      <div>
+        <h2 class="page-hero__title">{{ 'LINE_CHARTS.TITLE' | translate }}</h2>
+        <p class="page-hero__subtitle">{{ 'LINE_CHARTS.SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+    <div class="page-hero__actions">
+      <button pButton pRipple type="button"
+        [icon]="isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+        class="p-button-text"
+        [label]="'COMMON.BACK' | translate"
+      (click)="goBack()"></button>
+      <button pButton pRipple type="button"
+        icon="pi pi-refresh"
+        class="p-button-primary"
+        [label]="'COMMON.REFRESH' | translate"
+        (click)="refreshCharts()"
+      [loading]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-eye" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.PREVIEW_CHARTS_PDF' | translate"
+      (click)="previewChartsPdf()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-print" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.PRINT' | translate"
+      (click)="printCharts()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-file-pdf" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.EXPORT_PDF' | translate"
+      (click)="downloadChartsPdf()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-images" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_IMAGES' | translate"
+      (click)="downloadChartImages()" [disabled]="loading"></button>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card primary">
+      <div class="stat-card__label">{{ 'LINE_CHARTS.SUMMARY.ENROLLMENT_TOTAL' | translate }}</div>
+      <div class="stat-card__value">{{ enrollmentSummary.totalStudents | number:'1.0-0' }}</div>
+      <div class="stat-card__hint">
+        {{ 'LINE_CHARTS.SUMMARY.ENROLLMENT_SPAN' | translate }}:
+        <strong>{{ enrollmentSummary.yearSpan }}</strong>
+      </div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-card__label">{{ 'LINE_CHARTS.SUMMARY.PAYMENT_TOTAL' | translate }}</div>
+      <div class="stat-card__value">{{ paymentSummary.totalDisbursed | number:'1.0-0' }}</div>
+      <div class="stat-card__hint">
+        {{ 'LINE_CHARTS.SUMMARY.PAYMENT_TRANSACTIONS' | translate }}:
+        <strong>{{ paymentSummary.paymentCount | number:'1.0-0' }}</strong>
+      </div>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-card__label">{{ 'LINE_CHARTS.SUMMARY.ACADEMIC_LEVEL' | translate }}</div>
+      <div class="stat-card__value">{{ academicSummary.averageLevel | number:'1.1-1' }}</div>
+      <div class="stat-card__hint">
+        {{ 'LINE_CHARTS.SUMMARY.ACADEMIC_ACTIVE' | translate }}:
+        <strong>{{ academicSummary.activeStudents | number:'1.0-0' }}</strong>
+      </div>
+    </div>
+    <div class="stat-card neutral">
+      <div class="stat-card__label">{{ 'LINE_CHARTS.SUMMARY.QUARTERLY_TOTAL' | translate }}</div>
+      <div class="stat-card__value">{{ quarterlySummary.totalDisbursed | number:'1.0-0' }}</div>
+      <div class="stat-card__hint">
+        {{ 'LINE_CHARTS.SUMMARY.QUARTERLY_TRANSACTIONS' | translate }}:
+        <strong>{{ quarterlySummary.paymentCount | number:'1.0-0' }}</strong>
+      </div>
+    </div>
+    <div class="stat-card retention">
+      <div class="stat-card__label">{{ 'LINE_CHARTS.SUMMARY.RETENTION_ACTIVE' | translate }}</div>
+      <div class="stat-card__value">{{ retentionSummary.activeStudents | number:'1.0-0' }}</div>
+      <div class="stat-card__hint">
+        {{ 'LINE_CHARTS.SUMMARY.RETENTION_OTHER' | translate }}:
+        <strong>{{ (retentionSummary.suspendedStudents + retentionSummary.withdrawnStudents) | number:'1.0-0' }}</strong>
+      </div>
+    </div>
+  </div>
+
+  @if (enrollmentTrendData) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'LINE_CHARTS.CHARTS.ENROLLMENT_TITLE' | translate }}</h3>
+          <p>{{ 'LINE_CHARTS.CHARTS.ENROLLMENT_DESCRIPTION' | translate }}</p>
+        </div>
+        <div class="flex align-items-center gap-2">
+          <p-tag [severity]="enrollmentSummary.growthRate >= 0 ? 'success' : 'danger'"
+            [value]="(enrollmentSummary.growthRate >= 0 ? '+' : '') + (enrollmentSummary.growthRate | number:'1.1-1') + '%'">
+          </p-tag>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(enrollmentChart, 'enrollment-trend')"></button>
+        </div>
+      </div>
+      <div class="chart-card__body">
+        <p-chart #enrollmentChart type="line"
+          [data]="enrollmentTrendData"
+          [options]="lineChartOptions"
+        height="380px"></p-chart>
+      </div>
+    </div>
+  }
+
+  @if (paymentTrendData) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'LINE_CHARTS.CHARTS.PAYMENT_TITLE' | translate }}</h3>
+          <p>{{ 'LINE_CHARTS.CHARTS.PAYMENT_DESCRIPTION' | translate }}</p>
+        </div>
+        <div class="flex align-items-center gap-2">
+          <div class="chart-card__badges">
+            <p-tag severity="info"
+              [value]="(paymentSummary.averageDisbursement | number:'1.0-0') + ' ' + ( 'LINE_CHARTS.SUMMARY.PAYMENT_AVG' | translate )">
+            </p-tag>
+          </div>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(paymentChart, 'payment-trend')"></button>
+        </div>
+      </div>
+      <div class="chart-card__body">
+        <p-chart #paymentChart type="line"
+          [data]="paymentTrendData"
+          [options]="lineChartOptions"
+        height="380px"></p-chart>
+      </div>
+    </div>
+  }
+
+  @if (academicProgressData) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'LINE_CHARTS.CHARTS.ACADEMIC_TITLE' | translate }}</h3>
+          <p>{{ 'LINE_CHARTS.CHARTS.ACADEMIC_DESCRIPTION' | translate }}</p>
+        </div>
+        <div class="flex align-items-center gap-2">
+          <div class="chart-card__badges">
+            <p-tag severity="success"
+              [value]="( 'LINE_CHARTS.SUMMARY.ACADEMIC_NEW' | translate ) + ': ' + (academicSummary.newStudents | number:'1.0-0')">
+            </p-tag>
+          </div>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(academicChart, 'academic-progress')"></button>
+        </div>
+      </div>
+      <div class="chart-card__body">
+        <p-chart #academicChart type="line"
+          [data]="academicProgressData"
+          [options]="lineChartOptions"
+        height="380px"></p-chart>
+      </div>
+    </div>
+  }
+
+  @if (quarterlyDisbursementData) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'LINE_CHARTS.CHARTS.QUARTERLY_TITLE' | translate }}</h3>
+          <p>{{ 'LINE_CHARTS.CHARTS.QUARTERLY_DESCRIPTION' | translate }}</p>
+        </div>
+        <div class="flex align-items-center gap-2">
+          <div class="chart-card__badges">
+            <p-tag severity="info"
+              [value]="( 'LINE_CHARTS.SUMMARY.QUARTERLY_AVG' | translate ) + ': ' + (quarterlySummary.averageDisbursement | number:'1.0-0')">
+            </p-tag>
+          </div>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(quarterlyChart, 'quarterly-disbursement')"></button>
+        </div>
+      </div>
+      <div class="chart-card__body">
+        <p-chart #quarterlyChart type="line"
+          [data]="quarterlyDisbursementData"
+          [options]="lineChartOptions"
+        height="380px"></p-chart>
+      </div>
+    </div>
+  }
+
+  @if (retentionTrendData) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'LINE_CHARTS.CHARTS.RETENTION_TITLE' | translate }}</h3>
+          <p>{{ 'LINE_CHARTS.CHARTS.RETENTION_DESCRIPTION' | translate }}</p>
+        </div>
+        <div class="flex align-items-center gap-2">
+          <div class="chart-card__badges">
+            <p-tag severity="warn"
+              [value]="( 'LINE_CHARTS.SUMMARY.RETENTION_SUSPENDED' | translate ) + ': ' + (retentionSummary.suspendedStudents | number:'1.0-0')">
+            </p-tag>
+            <p-tag severity="danger"
+              [value]="( 'LINE_CHARTS.SUMMARY.RETENTION_WITHDRAWN' | translate ) + ': ' + (retentionSummary.withdrawnStudents | number:'1.0-0')">
+            </p-tag>
+          </div>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(retentionChart, 'retention-trend')"></button>
+        </div>
+      </div>
+      <div class="chart-card__body">
+        <p-chart #retentionChart type="line"
+          [data]="retentionTrendData"
+          [options]="lineChartOptions"
+        height="380px"></p-chart>
+      </div>
+    </div>
+  }
+</div>
+
+@if (loading) {
+  <div class="loading-overlay">
+    <p-progressSpinner></p-progressSpinner>
+  </div>
+}
+

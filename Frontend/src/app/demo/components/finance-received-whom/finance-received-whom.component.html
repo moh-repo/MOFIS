@@ -1,0 +1,1032 @@
+<p-toast></p-toast>
+<!-- Delete asks first — one dialog, labelled and translated. There were briefly
+     two: PrimeNG's selector is 'p-confirmDialog, p-confirmdialog,
+     p-confirm-dialog', so the bare lowercase tag that used to sit below this was
+     a second live dialog, not inert markup. -->
+<p-confirmDialog [style]="{ width: '32rem', maxWidth: '94vw' }"
+                 [acceptLabel]="'COMMON.YES' | translate"
+                 [rejectLabel]="'COMMON.NO' | translate"
+                 acceptButtonStyleClass="p-button-danger"
+                 rejectButtonStyleClass="p-button-text p-button-secondary"></p-confirmDialog>
+
+<div class="page-root" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'" [class.rtl]="translationService.isRTL()">
+
+  <!-- ==================== LIST PAGE ==================== -->
+  <div class="card page-hero mb-3">
+    <div class="flex flex-column lg:flex-row align-items-start justify-content-between gap-4">
+      <div>
+        <span class="inline-flex align-items-center gap-2 text-primary font-semibold text-sm mb-2">
+          <i class="pi pi-users"></i>
+          {{ 'FIN_RECEIVED_WHOM.HERO_BADGE' | translate }}
+        </span>
+        <h1 class="text-900 font-bold text-3xl m-0 mb-1">{{ 'FIN_RECEIVED_WHOM.TITLE' | translate }}</h1>
+        <p class="text-600 m-0">{{ 'FIN_RECEIVED_WHOM.SUBTITLE' | translate }}</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button pButton pRipple type="button" icon="pi pi-plus"
+          class="p-button-success"
+          [label]="'FIN_RECEIVED_WHOM.NEW' | translate"
+        (click)="openNew()"></button>
+        <button pButton pRipple type="button" icon="pi pi-refresh"
+          class="p-button-action-outlined"
+          [label]="'COMMON.REFRESH' | translate"
+        (click)="loadAll()"></button>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+    The page had none: the only way to find a recipient in the list was to page
+    through it. Both filters run against the records already in memory, so
+    neither costs a request.
+  -->
+  <div class="card">
+    <div class="filter-bar">
+      <div class="filter-bar__grid filter-bar__grid--cols-3">
+        <div class="filter-bar__field filter-bar__field--wide"
+          [class.filter-bar__field--active]="filterText">
+          <label for="frwSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+          <span class="p-input-icon-left">
+            <i class="pi pi-search"></i>
+            <input id="frwSearch" pInputText type="text" [(ngModel)]="filterText"
+              (input)="applyTextFilter($any($event.target).value)"
+              [placeholder]="'FIN_RECEIVED_WHOM.NAME' | translate" />
+          </span>
+        </div>
+        <div class="filter-bar__field" [class.filter-bar__field--active]="filterStatus !== null">
+          <label for="frwStatus">{{ 'FIN_RECEIVED_WHOM.STATUS' | translate }}</label>
+          <p-select inputId="frwStatus" [options]="statusFilterOptions"
+            [(ngModel)]="filterStatus"
+            optionLabel="label" optionValue="value"
+            [showClear]="true"
+            [placeholder]="'COMMON.ALL' | translate"
+            (onChange)="applyStatusFilter()"
+            (onClear)="applyStatusFilter()">
+          </p-select>
+        </div>
+      </div>
+
+      <div class="filter-bar__actions">
+        <button pButton pRipple type="button" icon="pi pi-filter-slash"
+          class="p-button-action-outlined p-button-sm"
+          [label]="'COMMON.CLEAR' | translate"
+          [disabled]="!filterText && filterStatus === null"
+          (click)="clearFilters()">
+        </button>
+      </div>
+    </div>
+
+    <p-table #dt [value]="records" [loading]="loading"
+      [paginator]="true" [rows]="10" [rowsPerPageOptions]="[5,10,25,50]"
+      responsiveLayout="scroll" [rowHover]="true" styleClass="p-datatable-sm"
+      [globalFilterFields]="['finReceivedName','finReceivedPassportNumber','finReceivedRelationship','finRecievedYearMonth']">
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="id" style="width:4rem"># <p-sortIcon field="id"></p-sortIcon></th>
+          <th pSortableColumn="studentForDelegationId">{{ 'FIN_RECEIVED_WHOM.STUDENT' | translate }} <p-sortIcon field="studentForDelegationId"></p-sortIcon></th>
+          <th pSortableColumn="finReceivedName">{{ 'FIN_RECEIVED_WHOM.NAME' | translate }} <p-sortIcon field="finReceivedName"></p-sortIcon></th>
+          <th pSortableColumn="finReceivedPassportNumber">{{ 'FIN_RECEIVED_WHOM.PASSPORT_NUMBER' | translate }} <p-sortIcon field="finReceivedPassportNumber"></p-sortIcon></th>
+          <th pSortableColumn="finReceivedRelationship">{{ 'FIN_RECEIVED_WHOM.RELATIONSHIP' | translate }} <p-sortIcon field="finReceivedRelationship"></p-sortIcon></th>
+          <th pSortableColumn="finRecievedYearMonth">{{ 'FIN_RECEIVED_WHOM.YEAR_MONTH' | translate }} <p-sortIcon field="finRecievedYearMonth"></p-sortIcon></th>
+          <th pSortableColumn="finRecievedAmount">{{ 'FIN_RECEIVED_WHOM.AMOUNT' | translate }} <p-sortIcon field="finRecievedAmount"></p-sortIcon></th>
+          <th pSortableColumn="finRecievedStatus">{{ 'FIN_RECEIVED_WHOM.STATUS' | translate }} <p-sortIcon field="finRecievedStatus"></p-sortIcon></th>
+          <th style="width:9rem" class="text-center">{{ 'COMMON.ACTIONS' | translate }}</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-record>
+        <tr>
+          <td class="text-500 text-sm">{{ record.id }}</td>
+          <td>
+            @if (record.studentForDelegationId > 0) {
+              <span class="font-medium text-900">
+                {{ getStudentName(record.studentForDelegationId) }}
+              </span>
+            }
+            @if (!record.studentForDelegationId || record.studentForDelegationId === 0) {
+              <span class="text-400">—</span>
+            }
+          </td>
+          <td class="font-medium">{{ record.finReceivedName || '—' }}</td>
+          <td class="text-500 text-sm">{{ record.finReceivedPassportNumber || '—' }}</td>
+          <td>{{ getRelationshipLabel(record.finReceivedRelationship) }}</td>
+          <td>{{ record.finRecievedYearMonth || '—' }}</td>
+          <td class="font-semibold">{{ record.finRecievedAmount | number }}</td>
+          <td>
+            <p-tag [value]="getStatusLabel(record.finRecievedStatus)"
+            [severity]="getStatusSeverity(record.finRecievedStatus)"></p-tag>
+          </td>
+          <td class="text-center">
+            <div class="flex justify-content-center gap-1">
+              <button pButton pRipple type="button" icon="pi pi-eye"
+                class="p-button-rounded p-button-text p-button-info p-button-sm"
+                [pTooltip]="'FIN_RECEIVED_WHOM.VIEW' | translate" tooltipPosition="top"
+              (click)="openView(record)"></button>
+              <button pButton pRipple type="button" icon="pi pi-pencil"
+                class="p-button-rounded p-button-text p-button-warning p-button-sm"
+                [pTooltip]="'FIN_RECEIVED_WHOM.EDIT' | translate" tooltipPosition="top"
+              (click)="openEdit(record)"></button>
+              <button pButton pRipple type="button" icon="pi pi-trash"
+                class="p-button-rounded p-button-text p-button-danger p-button-sm"
+                [pTooltip]="'COMMON.DELETE' | translate" tooltipPosition="top"
+              (click)="confirmDelete(record)"></button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td [attr.colspan]="9" class="text-center py-8">
+            <i class="pi pi-inbox text-400 block" style="font-size:3rem"></i>
+            <div class="text-600 font-semibold mt-3">{{ 'FIN_RECEIVED_WHOM.NO_DATA' | translate }}</div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+
+  <!-- ═══════════════════════ ADD / EDIT DIALOG ═══════════════════════ -->
+  <p-dialog [(visible)]="formVisible"
+    [modal]="true" [maximizable]="true" [closable]="true"
+    [style]="{ width: '900px', maxWidth: '96vw' }"
+    styleClass="whom-form-dialog"
+    (onHide)="resetForm()">
+
+    <ng-template pTemplate="header">
+      <div class="whom-dialog-header-inner">
+        <div class="dialog-icon" [class.edit-mode]="formMode === 'edit'">
+          <i [class]="formMode === 'create' ? 'pi pi-plus' : 'pi pi-pencil'"></i>
+        </div>
+        <div>
+          <div class="dialog-title">
+            {{ formMode === 'create' ? ('FIN_RECEIVED_WHOM.NEW' | translate) : ('FIN_RECEIVED_WHOM.EDIT' | translate) }}
+          </div>
+          @if (formMode === 'edit' && form.id) {
+            <div class="dialog-subtitle">
+              <i class="pi pi-hashtag"></i>{{ form.id }}
+              @if (form.finReceivedName) {
+                <span class="mx-1">&bull;</span>
+              }
+              {{ form.finReceivedName }}
+            </div>
+          }
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="content">
+      @if (formVisible) {
+        <div class="whom-form-content">
+          <!-- A request is already awaiting a decision; a second one would be refused. -->
+          @if (pendingApproval) {
+            <div class="flex align-items-start gap-2 p-3 mb-3 border-round surface-100">
+              <i class="pi pi-clock text-orange-500 mt-1"></i>
+              <div class="flex flex-column gap-1">
+                <strong class="text-900">{{ 'FINANCE.PENDING_APPROVAL_TITLE' | translate }}</strong>
+                <span class="text-600 text-sm">{{ 'FINANCE.PENDING_APPROVAL_MESSAGE' | translate }}</span>
+                @if (pendingApproval.requestedAt) {
+                  <small class="text-500">
+                    {{ 'FINANCE.PENDING_APPROVAL_REQUESTED' | translate }}:
+                    {{ pendingApproval.requestedAt | date:'dd/MM/yyyy' }}
+                    @if (pendingApproval.requesterFullName) {
+                      &mdash; {{ pendingApproval.requesterFullName }}
+                    }
+                  </small>
+                }
+              </div>
+            </div>
+          }
+          <!-- Live Summary Strip -->
+          <div class="whom-summary-strip">
+            <div class="summary-chip student">
+              <i class="pi pi-user"></i>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'FIN_RECEIVED_WHOM.STUDENT' | translate }}</span>
+                <span class="chip-value">{{ getStudentName(form.studentForDelegationId) }}</span>
+              </div>
+            </div>
+            <div class="summary-chip amount">
+              <i class="pi pi-dollar"></i>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'FIN_RECEIVED_WHOM.AMOUNT' | translate }}</span>
+                <span class="chip-value">{{ (form.finRecievedAmount || 0) | number:'1.0-0' }}</span>
+              </div>
+            </div>
+            <div class="summary-chip status">
+              <i class="pi pi-info-circle"></i>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'FIN_RECEIVED_WHOM.STATUS' | translate }}</span>
+                <span class="chip-value">{{ getStatusLabel(form.finRecievedStatus) }}</span>
+              </div>
+            </div>
+          </div>
+          <!-- ── Recipient ── -->
+          <div class="whom-section-card">
+            <div class="whom-section-header recipient">
+              <i class="pi pi-id-card"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_RECIPIENT' | translate }}</span>
+            </div>
+            <div class="whom-section-body">
+              <div class="formgrid grid">
+                <div class="field col-12">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.STUDENT' | translate }}</label>
+                  <p-select [options]="studentsForDropdown"
+                    [(ngModel)]="form.studentForDelegationId"
+                    optionLabel="label" optionValue="id"
+                    [filter]="true" filterBy="label"
+                    [showClear]="true" appendTo="body"
+                    [placeholder]="'FIN_RECEIVED_WHOM.SEARCH_STUDENT' | translate"
+                    class="w-full"
+                    [resetFilterOnHide]="false"
+                    (onFilter)="onStudentFilter($event)"
+                    (onChange)="onStudentChange()" (onClear)="onStudentChange()">
+                  </p-select>
+                  @if (loadingStudentFinance) {
+                    <small class="block mt-1 text-500">
+                      <i class="pi pi-spin pi-spinner mr-1"></i>{{ 'COMMON.LOADING' | translate }}
+                    </small>
+                  }
+                  @if (noFinanceRecord && !loadingStudentFinance) {
+                    <small class="block mt-1 text-500">{{ 'FIN_RECEIVED_WHOM.NO_FINANCE_RECORD' | translate }}</small>
+                  }
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">
+                    {{ 'FIN_RECEIVED_WHOM.NAME' | translate }}
+                    <span class="text-red-500 ml-1">*</span>
+                  </label>
+                  <input pInputText [(ngModel)]="form.finReceivedName" class="w-full"
+                    [placeholder]="'FIN_RECEIVED_WHOM.NAME' | translate" />
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.RELATIONSHIP' | translate }}</label>
+                  <!-- LU_FAMILY_RELATIONSHIP. Editable because the rows written
+                       before the lookup existed hold free text that matches no
+                       code, and opening one to edit must not blank it. -->
+                  <p-select [options]="relationshipOptions"
+                    [(ngModel)]="form.finReceivedRelationship"
+                    optionLabel="label" optionValue="value"
+                    [editable]="true" [showClear]="true" appendTo="body"
+                    [placeholder]="'FIN_RECEIVED_WHOM.RELATIONSHIP' | translate"
+                    class="w-full">
+                  </p-select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- ── Passport ── -->
+          <div class="whom-section-card">
+            <div class="whom-section-header passport">
+              <i class="pi pi-file"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_PASSPORT' | translate }}</span>
+            </div>
+            <div class="whom-section-body">
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.PASSPORT_NUMBER' | translate }}</label>
+                  <input pInputText [(ngModel)]="form.finReceivedPassportNumber" class="w-full" />
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.ISSUE_COUNTRY' | translate }}</label>
+                  <p-select [options]="allStudyCountries"
+                    [(ngModel)]="form.finReceivedIssueCountry"
+                    optionLabel="studyCountryInName" optionValue="id"
+                    [filter]="true" [showClear]="true" appendTo="body"
+                    [placeholder]="'FIN_RECEIVED_WHOM.SELECT_COUNTRY' | translate"
+                    class="w-full">
+                  </p-select>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.PASSPORT_ISSUE_DATE' | translate }}</label>
+                  <p-datepicker [(ngModel)]="form.finReceivedPassportIssueDate"
+                    dateFormat="yy-mm-dd" [showIcon]="true" appendTo="body" class="w-full">
+                  </p-datepicker>
+                </div>
+                <div class="field col-12 md:col-6 mb-0">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.PASSPORT_EXPIRE_DATE' | translate }}</label>
+                  <p-datepicker [(ngModel)]="form.finReceivedPassportExpireDate"
+                    dateFormat="yy-mm-dd" [showIcon]="true" appendTo="body" class="w-full">
+                  </p-datepicker>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- ── Finance ── -->
+          <div class="whom-section-card">
+            <div class="whom-section-header finance">
+              <i class="pi pi-wallet"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_FINANCE' | translate }}</span>
+            </div>
+            <div class="whom-section-body">
+              <!-- The selected student's own finance record: what they are owed,
+                   what wafar holds back, and what may actually be handed over.
+                   Read-only — the amount below is prefilled from it. -->
+              @if (studentFinance) {
+                <div class="formgrid grid">
+                  <div class="field col-12 md:col-3">
+                    <label class="field-label">{{ 'FIN_RECEIVED_WHOM.ENTITLEMENT' | translate }}</label>
+                    <div class="detail-value detail-amount">{{ entitlementAmount | number:'1.0-0' }}</div>
+                  </div>
+                  <div class="field col-12 md:col-3">
+                    <label class="field-label">
+                      {{ 'FIN_RECEIVED_WHOM.WAFAR_HELD' | translate }}
+                      @if (wafarTypeName) { <span class="text-500">— {{ wafarTypeName }}</span> }
+                    </label>
+                    <div class="detail-value detail-amount">
+                      @if (hasWafar) { −{{ wafarAmount | number:'1.0-0' }} } @else { — }
+                    </div>
+                  </div>
+                  <div class="field col-12 md:col-3">
+                    <label class="field-label">{{ 'FIN_RECEIVED_WHOM.PAYABLE' | translate }}</label>
+                    <div class="detail-value detail-amount font-semibold">{{ payableAmount | number:'1.0-0' }}</div>
+                  </div>
+                  <div class="field col-12 md:col-3">
+                    <label class="field-label">{{ 'FIN_RECEIVED_WHOM.FINANCE_QUARTER' | translate }}</label>
+                    <div class="detail-value">{{ financeQuarterLabel || '—' }}</div>
+                  </div>
+                </div>
+              }
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-4">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.RECEIVED_YEAR' | translate }}</label>
+                  <p-inputnumber [(ngModel)]="form.finRecievedYear"
+                    [min]="1900" [max]="2100" [useGrouping]="false" class="w-full"
+                    (ngModelChange)="syncYearMonth()">
+                  </p-inputnumber>
+                </div>
+                <div class="field col-12 md:col-4">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.RECEIVED_MONTH' | translate }}</label>
+                  <p-inputnumber [(ngModel)]="form.finRecievedMonth"
+                    [min]="1" [max]="12" [useGrouping]="false" class="w-full"
+                    (ngModelChange)="syncYearMonth()">
+                  </p-inputnumber>
+                </div>
+                <div class="field col-12 md:col-4">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.YEAR_MONTH' | translate }}</label>
+                  <!-- Derived: YEAR*100 + MONTH — YYYYMM, which is what every row
+                       in this table holds. Typed by nobody. (STUDENT_FINANCE uses
+                       YEAR*10 + QUARTER for its own column; different rule.) -->
+                  <p-inputnumber [(ngModel)]="form.finRecievedYearMonth"
+                    [useGrouping]="false" class="w-full" [readonly]="true">
+                  </p-inputnumber>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.AMOUNT' | translate }}</label>
+                  <p-inputnumber [(ngModel)]="form.finRecievedAmount"
+                    [min]="0" mode="decimal" class="w-full">
+                  </p-inputnumber>
+                  @if (studentFinance && form.finRecievedAmount > payableAmount) {
+                    <small class="block mt-1 text-red-500">
+                      {{ 'FIN_RECEIVED_WHOM.PAYABLE' | translate }}: {{ payableAmount | number:'1.0-0' }}
+                    </small>
+                  }
+                </div>
+                <div class="field col-12 md:col-6 mb-0">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.STATUS' | translate }}</label>
+                  <p-select [options]="studyFinReceivedStatuses"
+                    [(ngModel)]="form.finRecievedStatus"
+                    optionLabel="studyFinReceivedStatusName" optionValue="id"
+                    [filter]="true" filterBy="studyFinReceivedStatusName"
+                    [showClear]="true" appendTo="body" class="w-full"
+                    [placeholder]="'FIN_RECEIVED_WHOM.STATUS' | translate">
+                  </p-select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- ── Location & Bank ── -->
+          <div class="whom-section-card">
+            <div class="whom-section-header location">
+              <i class="pi pi-map-marker"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_LOCATION' | translate }}</span>
+            </div>
+            <div class="whom-section-body">
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FINANCE.STUDY_COUNTRY' | translate }}</label>
+                  <p-select [options]="studyCountries"
+                    [(ngModel)]="form.financeCountryId"
+                    optionLabel="studyCountryInName" optionValue="id"
+                    [filter]="true" [showClear]="true" appendTo="body"
+                    (onChange)="onCountryChange()" class="w-full">
+                  </p-select>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FINANCE.STUDY_GOVERNMENT' | translate }}</label>
+                  <p-select [options]="studyGovernments"
+                    [(ngModel)]="form.financeGovId"
+                    optionLabel="studyGovInName" optionValue="id"
+                    [filter]="true" [showClear]="true" appendTo="body"
+                    [disabled]="!form.financeCountryId" class="w-full">
+                  </p-select>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FINANCE.FINANCE_BANK' | translate }}</label>
+                  <p-select [options]="studyFinanceBanks"
+                    [(ngModel)]="form.financeBankeId"
+                    optionLabel="studyFinanceBankeName" optionValue="id"
+                    [filter]="true" [showClear]="true" appendTo="body"
+                    (onChange)="onBankChange()"
+                    [disabled]="!form.financeCountryId" class="w-full">
+                  </p-select>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'STUDENT_FINANCE_ARCH.BANK_BRANCH' | translate }}</label>
+                  <p-select [options]="studyFinanceBankBranches"
+                    [(ngModel)]="form.financeBankBranchId"
+                    optionLabel="studyFinanceBankBranchName" optionValue="id"
+                    [filter]="true" [showClear]="true" appendTo="body"
+                    [disabled]="!form.financeBankeId" class="w-full">
+                  </p-select>
+                </div>
+                <div class="field col-12 md:col-6 mb-0">
+                  <label class="field-label">{{ 'STUDENT_FINANCE_ARCH.DOF_ID' | translate }}</label>
+                  <p-select [options]="studyFinanceDofs"
+                    [(ngModel)]="form.financeDofId"
+                    optionLabel="studyFinanceDofName" optionValue="id"
+                    [filter]="true" [showClear]="true" appendTo="body"
+                    class="w-full">
+                  </p-select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- ── Check & References ── -->
+          <div class="whom-section-card">
+            <div class="whom-section-header check">
+              <i class="pi pi-receipt"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_CHECK' | translate }}</span>
+            </div>
+            <div class="whom-section-body">
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.CHECK_ID' | translate }}</label>
+                  <input pInputText [(ngModel)]="form.checkId" class="w-full" />
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.CHECK_DATE' | translate }}</label>
+                  <p-datepicker [(ngModel)]="form.checkDate"
+                    dateFormat="yy-mm-dd" [showIcon]="true" appendTo="body" class="w-full">
+                  </p-datepicker>
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.CHECK_FORM_NUMBER' | translate }}</label>
+                  <input pInputText [(ngModel)]="form.checkFormNumber" class="w-full" />
+                </div>
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.MANUAL_FORM_NUMBER' | translate }}</label>
+                  <input pInputText [(ngModel)]="form.finManualFormNumber" class="w-full" />
+                </div>
+                <div class="field col-12 mb-0">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.CHECK_DETAILS' | translate }}</label>
+                  <textarea pTextarea [(ngModel)]="form.checkDetails" [rows]="2" class="w-full"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- ── Notes ── -->
+          <div class="whom-section-card">
+            <div class="whom-section-header notes">
+              <i class="pi pi-align-left"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_NOTES' | translate }}</span>
+            </div>
+            <div class="whom-section-body">
+              <div class="formgrid grid">
+                <div class="field col-12 md:col-6">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.FIN_RECEIVED_REASON' | translate }}</label>
+                  <!-- FIN_RECEIVED_REASON, editable for the same reason as above. -->
+                  <p-select [options]="reasonOptions"
+                    [(ngModel)]="form.finReceivedReason"
+                    optionLabel="label" optionValue="value"
+                    [editable]="true" [showClear]="true" appendTo="body"
+                    [placeholder]="'FIN_RECEIVED_WHOM.FIN_RECEIVED_REASON' | translate"
+                    class="w-full">
+                  </p-select>
+                </div>
+                <div class="field col-12">
+                  <label class="field-label">{{ 'FIN_RECEIVED_WHOM.NOTES' | translate }}</label>
+                  <textarea pTextarea [(ngModel)]="form.note1" [rows]="2" class="w-full"></textarea>
+                </div>
+                <div class="field col-12 mb-0">
+                  <p-divider></p-divider>
+                  <label class="field-label">
+                    {{ 'FIN_RECEIVED_WHOM.LINK_FINANCE_ID' | translate }}
+                    <span class="text-500 font-normal ml-1">({{ 'COMMON.OPTIONAL' | translate }})</span>
+                  </label>
+                  <p-inputnumber [(ngModel)]="linkedStudentFinanceId"
+                    [min]="0" [useGrouping]="false"
+                    [placeholder]="'FIN_RECEIVED_WHOM.LINK_FINANCE_ID_PLACEHOLDER' | translate"
+                    class="w-full">
+                  </p-inputnumber>
+                  <small class="text-500 mt-1 block">{{ 'FIN_RECEIVED_WHOM.LINK_FINANCE_HINT' | translate }}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- ── Documents ── -->
+          <div class="whom-section-card">
+            <div class="whom-section-header documents">
+              <i class="pi pi-paperclip"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_DOCUMENTS' | translate }}</span>
+              <div class="ml-auto">
+                <input #formDocInput type="file" class="hidden" multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx"
+                  (change)="onFormDocumentsSelected($event)" />
+                <button pButton pRipple type="button" icon="pi pi-plus"
+                  class="p-button-sm p-button-success"
+                  [label]="'FIN_RECEIVED_WHOM.ADD_DOCUMENTS' | translate"
+                (click)="formDocInput.click()"></button>
+              </div>
+            </div>
+            <div class="whom-section-body">
+              <!-- Existing documents (edit mode) -->
+              @if (formMode === 'edit') {
+                @if (loadingDocuments) {
+                  <div class="flex justify-content-center py-3">
+                    <p-progressSpinner strokeWidth="4" styleClass="w-2rem h-2rem"></p-progressSpinner>
+                  </div>
+                }
+                @if (!loadingDocuments && documents.length > 0) {
+                  <div class="doc-list mb-3">
+                    @for (doc of documents; track doc) {
+                      <div class="doc-row">
+                        <i [class]="getDocumentIcon(doc)" class="doc-row-icon"></i>
+                        <div class="doc-row-info">
+                          <span class="doc-row-name">{{ doc.documentName || doc.originalFilename }}</span>
+                          <span class="doc-row-meta">
+                            @if (doc.documentType) {
+                              <span class="doc-type-chip">{{ doc.documentType }}</span>
+                            }
+                            {{ doc.originalFilename }} &bull; {{ formatFileSize(doc.fileSize) }}
+                          </span>
+                        </div>
+                        <div class="doc-row-actions">
+                          <button pButton pRipple type="button" icon="pi pi-eye"
+                            class="p-button-rounded p-button-text p-button-info p-button-sm"
+                            [pTooltip]="'COMMON.VIEW' | translate" tooltipPosition="top"
+                          (click)="viewDocument(doc)"></button>
+                          <button pButton pRipple type="button" icon="pi pi-download"
+                            class="p-button-rounded p-button-text p-button-secondary p-button-sm"
+                            [pTooltip]="'COMMON.DOWNLOAD' | translate" tooltipPosition="top"
+                          (click)="downloadDocument(doc)"></button>
+                          <button pButton pRipple type="button" icon="pi pi-trash"
+                            class="p-button-rounded p-button-text p-button-danger p-button-sm"
+                            [pTooltip]="'COMMON.DELETE' | translate" tooltipPosition="top"
+                          (click)="confirmDeleteDocument(doc)"></button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              }
+              <!-- Staged files awaiting save (type is chosen per file) -->
+              @if (pendingUploads.length > 0) {
+                <div class="doc-list">
+                  @for (p of pendingUploads; track p; let i = $index) {
+                    <div class="doc-row staged">
+                      <i class="pi pi-file-arrow-up doc-row-icon text-orange-500"></i>
+                      <div class="doc-row-info">
+                        <span class="doc-row-name">{{ p.file.name }}</span>
+                        <span class="doc-row-meta">{{ formatFileSize(p.file.size) }} &bull; {{ 'FIN_RECEIVED_WHOM.PENDING_UPLOAD' | translate }}</span>
+                      </div>
+                      <div class="staged-type">
+                        <p-select [options]="documentTypes" [(ngModel)]="p.documentType"
+                          optionLabel="documentTypeName" optionValue="documentTypeName"
+                          [filter]="true" filterBy="documentTypeName" [showClear]="true"
+                          appendTo="body"
+                          [placeholder]="'STUDENT_ADD.SELECT_DOCUMENT_TYPE' | translate"
+                          styleClass="w-full">
+                        </p-select>
+                      </div>
+                      <div class="doc-row-actions">
+                        <button pButton pRipple type="button" icon="pi pi-times"
+                          class="p-button-rounded p-button-text p-button-danger p-button-sm"
+                          [pTooltip]="'COMMON.DELETE' | translate" tooltipPosition="top"
+                        (click)="removePendingUpload(i)"></button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+              <!-- Empty state -->
+              @if (pendingUploads.length === 0 && (formMode === 'create' || (!loadingDocuments && documents.length === 0))) {
+                <div class="doc-empty"
+                  >
+                  <i class="pi pi-paperclip"></i>
+                  <span>{{ 'FIN_RECEIVED_WHOM.NO_DOCUMENTS_HINT' | translate }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="whom-dialog-footer">
+        <button pButton pRipple type="button"
+          class="p-button-outlined p-button-secondary"
+          icon="pi pi-times"
+          [label]="'COMMON.CANCEL' | translate"
+        (click)="formVisible = false"></button>
+        <button pButton pRipple type="button"
+          class="p-button-primary"
+          icon="pi pi-check"
+          [label]="'COMMON.SAVE' | translate"
+          [loading]="saving"
+          [disabled]="!!pendingApproval"
+          [pTooltip]="pendingApproval ? ('FINANCE.PENDING_APPROVAL_MESSAGE' | translate) : ''"
+          tooltipPosition="top"
+        (click)="save()"></button>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+
+  <!-- ═══════════════════════ VIEW DIALOG ═══════════════════════ -->
+  <p-dialog [(visible)]="viewVisible"
+    [modal]="true" [maximizable]="true" [closable]="true"
+    [style]="{ width: '820px', maxWidth: '96vw' }"
+    styleClass="whom-view-dialog"
+    (onHide)="viewRecord = null; viewStudentData = null; documents = []">
+
+    <ng-template pTemplate="header">
+      <div class="whom-dialog-header-inner">
+        <div class="dialog-icon view-mode">
+          <i class="pi pi-eye"></i>
+        </div>
+        <div>
+          <div class="dialog-title">{{ 'FIN_RECEIVED_WHOM.VIEW' | translate }}</div>
+          @if (viewRecord) {
+            <div class="dialog-subtitle">
+              <i class="pi pi-hashtag"></i>{{ viewRecord.id }}
+            </div>
+          }
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="content">
+      @if (viewRecord; as r) {
+        <div class="whom-view-content">
+          <!-- Header Card -->
+          <div class="whom-view-header-card">
+            <div class="view-header-badge">
+              <i class="pi pi-users"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.HERO_BADGE' | translate }}</span>
+            </div>
+            <h2 class="view-recipient-name">{{ r.finReceivedName || '—' }}</h2>
+            <div class="view-header-meta">
+              <span class="record-id-pill"># {{ r.id }}</span>
+              <p-tag [value]="getStatusLabel(r.finRecievedStatus)"
+              [severity]="getStatusSeverity(r.finRecievedStatus)"></p-tag>
+              @if (r.finReceivedRelationship) {
+                <span class="relation-pill">
+                  {{ getRelationshipLabel(r.finReceivedRelationship) }}
+                </span>
+              }
+            </div>
+          </div>
+          <!-- Key Chips -->
+          <div class="whom-view-chips">
+            <div class="view-chip amount">
+              <div class="chip-icon"><i class="pi pi-dollar"></i></div>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'FIN_RECEIVED_WHOM.AMOUNT' | translate }}</span>
+                <span class="chip-value">{{ r.finRecievedAmount | number:'1.0-0' }}</span>
+              </div>
+            </div>
+            <div class="view-chip year">
+              <div class="chip-icon"><i class="pi pi-calendar"></i></div>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'FIN_RECEIVED_WHOM.YEAR_MONTH' | translate }}</span>
+                <span class="chip-value">{{ r.finRecievedYearMonth || '—' }}</span>
+              </div>
+            </div>
+            <div class="view-chip country">
+              <div class="chip-icon"><i class="pi pi-globe"></i></div>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'FINANCE.STUDY_COUNTRY' | translate }}</span>
+                <span class="chip-value">{{ getCountryName(r.financeCountryId) }}</span>
+              </div>
+            </div>
+            <div class="view-chip student">
+              <div class="chip-icon"><i class="pi pi-user"></i></div>
+              <div class="chip-body">
+                <span class="chip-label">{{ 'FIN_RECEIVED_WHOM.STUDENT' | translate }}</span>
+                <span class="chip-value">{{ getStudentName(r.studentForDelegationId) }}</span>
+              </div>
+            </div>
+          </div>
+          <!-- Linked Student card (when full student data is loaded) -->
+          @if (r.studentForDelegationId > 0) {
+            <div class="whom-section-card">
+              <div class="whom-section-header recipient">
+                <i class="pi pi-user"></i>
+                <span>{{ 'FIN_RECEIVED_WHOM.STUDENT_INFO' | translate }}</span>
+                @if (loadingViewStudent) {
+                  <p-progressSpinner strokeWidth="4"
+                  styleClass="w-1rem h-1rem ml-2"></p-progressSpinner>
+                }
+              </div>
+              <div class="whom-section-body">
+                @if (viewStudentData && !loadingViewStudent) {
+                  <div class="detail-grid">
+                    <div class="detail-item">
+                      <span class="detail-label">{{ 'STUDENTS.ID' | translate }}</span>
+                      <span class="detail-value">{{ viewStudentData.studentId }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">{{ 'REPORTS.COMMON_FIELDS.STUDENT_NAME' | translate }}</span>
+                      <span class="detail-value font-semibold">{{ viewStudentData.studentName }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">{{ 'STUDENTS.PASSPORT_NUMBER' | translate }}</span>
+                      <span class="detail-value">{{ viewStudentData.studentPassportNumber || '—' }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <span class="detail-label">{{ 'STUDENTS.AMOUNT' | translate }}</span>
+                      <span class="detail-value">{{ viewStudentData.studentAmount | number }}</span>
+                    </div>
+                  </div>
+                }
+                @if (!viewStudentData && !loadingViewStudent) {
+                  <!-- The full record is behind the student permissions, which the
+                       finance roles do not hold. The id and the name come from the
+                       picker, so this says who it is rather than only a number. -->
+                  <div class="text-500 text-sm">
+                    {{ 'STUDENTS.ID' | translate }}: {{ r.studentForDelegationId }}
+                    — {{ getStudentName(r.studentForDelegationId) }}
+                  </div>
+                }
+              </div>
+            </div>
+          }
+          <!-- Personal Info -->
+          <div class="whom-section-card">
+            <div class="whom-section-header recipient">
+              <i class="pi pi-id-card"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_RECIPIENT' | translate }}</span>
+            </div>
+            <div class="whom-section-body">
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.NAME' | translate }}</span>
+                  <span class="detail-value font-semibold">{{ r.finReceivedName || '—' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.RELATIONSHIP' | translate }}</span>
+                  <span class="detail-value">{{ getRelationshipLabel(r.finReceivedRelationship) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Passport -->
+          <div class="whom-section-card">
+            <div class="whom-section-header passport">
+              <i class="pi pi-file"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_PASSPORT' | translate }}</span>
+            </div>
+            <div class="whom-section-body">
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.PASSPORT_NUMBER' | translate }}</span>
+                  <span class="detail-value">{{ r.finReceivedPassportNumber || '—' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.ISSUE_COUNTRY' | translate }}</span>
+                  <span class="detail-value">{{ getCountryName(r.finReceivedIssueCountry) }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.PASSPORT_ISSUE_DATE' | translate }}</span>
+                  <span class="detail-value">{{ formatDate(r.finReceivedPassportIssueDate) }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.PASSPORT_EXPIRE_DATE' | translate }}</span>
+                  <span class="detail-value">{{ formatDate(r.finReceivedPassportExpireDate) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Finance -->
+          <div class="whom-section-card">
+            <div class="whom-section-header finance">
+              <i class="pi pi-wallet"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_FINANCE' | translate }}</span>
+            </div>
+            <div class="whom-section-body">
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.AMOUNT' | translate }}</span>
+                  <span class="detail-value detail-amount">{{ r.finRecievedAmount | number:'1.0-0' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.STATUS' | translate }}</span>
+                  <span class="detail-value">
+                    <p-tag [value]="getStatusLabel(r.finRecievedStatus)"
+                    [severity]="getStatusSeverity(r.finRecievedStatus)"></p-tag>
+                  </span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.RECEIVED_YEAR' | translate }}</span>
+                  <span class="detail-value">{{ r.finRecievedYear || '—' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.RECEIVED_MONTH' | translate }}</span>
+                  <span class="detail-value">{{ r.finRecievedMonth || '—' }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.YEAR_MONTH' | translate }}</span>
+                  <span class="detail-value">{{ r.finRecievedYearMonth || '—' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Location & Bank -->
+          <div class="whom-section-card">
+            <div class="whom-section-header location">
+              <i class="pi pi-map-marker"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_LOCATION' | translate }}</span>
+            </div>
+            <div class="whom-section-body">
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FINANCE.STUDY_COUNTRY' | translate }}</span>
+                  <span class="detail-value">{{ getCountryName(r.financeCountryId) }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FINANCE.STUDY_GOVERNMENT' | translate }}</span>
+                  <span class="detail-value">{{ getGovernmentName(r.financeGovId) }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'FINANCE.FINANCE_BANK' | translate }}</span>
+                  <span class="detail-value">{{ getBankName(r.financeBankeId) }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'STUDENT_FINANCE_ARCH.BANK_BRANCH' | translate }}</span>
+                  <span class="detail-value">{{ getBranchName(r.financeBankBranchId) }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">{{ 'STUDENT_FINANCE_ARCH.DOF_ID' | translate }}</span>
+                  <span class="detail-value">{{ getDofName(r.financeDofId) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Check & References -->
+          @if (r.checkId || r.checkDate || r.checkDetails || r.checkFormNumber || r.finManualFormNumber) {
+            <div class="whom-section-card">
+              <div class="whom-section-header check">
+                <i class="pi pi-receipt"></i>
+                <span>{{ 'FIN_RECEIVED_WHOM.SECTION_CHECK' | translate }}</span>
+              </div>
+              <div class="whom-section-body">
+                <div class="detail-grid">
+                  @if (r.checkId) {
+                    <div class="detail-item">
+                      <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.CHECK_ID' | translate }}</span>
+                      <span class="detail-value">{{ r.checkId }}</span>
+                    </div>
+                  }
+                  @if (r.checkDate) {
+                    <div class="detail-item">
+                      <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.CHECK_DATE' | translate }}</span>
+                      <span class="detail-value">{{ formatDate(r.checkDate) }}</span>
+                    </div>
+                  }
+                  @if (r.checkFormNumber) {
+                    <div class="detail-item">
+                      <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.CHECK_FORM_NUMBER' | translate }}</span>
+                      <span class="detail-value">{{ r.checkFormNumber }}</span>
+                    </div>
+                  }
+                  @if (r.finManualFormNumber) {
+                    <div class="detail-item">
+                      <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.MANUAL_FORM_NUMBER' | translate }}</span>
+                      <span class="detail-value">{{ r.finManualFormNumber }}</span>
+                    </div>
+                  }
+                  @if (r.checkDetails) {
+                    <div class="detail-item col-span-2">
+                      <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.CHECK_DETAILS' | translate }}</span>
+                      <span class="detail-value">{{ r.checkDetails }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+          <!-- Notes -->
+          @if (r.note1 || r.finReceivedReason) {
+            <div class="whom-section-card">
+              <div class="whom-section-header notes">
+                <i class="pi pi-align-left"></i>
+                <span>{{ 'FIN_RECEIVED_WHOM.SECTION_NOTES' | translate }}</span>
+              </div>
+              <div class="whom-section-body">
+                <div class="detail-grid">
+                  @if (r.finReceivedReason) {
+                    <div class="detail-item">
+                      <span class="detail-label">{{ 'FIN_RECEIVED_WHOM.FIN_RECEIVED_REASON' | translate }}</span>
+                      <span class="detail-value">{{ getReasonLabel(r.finReceivedReason) }}</span>
+                    </div>
+                  }
+                </div>
+                @if (r.note1) {
+                  <p class="notes-text mt-3">{{ r.note1 }}</p>
+                }
+              </div>
+            </div>
+          }
+          <!-- ── Documents ── -->
+          <div class="whom-section-card">
+            <div class="whom-section-header documents">
+              <i class="pi pi-paperclip"></i>
+              <span>{{ 'FIN_RECEIVED_WHOM.SECTION_DOCUMENTS' | translate }}</span>
+              @if (documents.length) {
+                <span class="doc-count-badge">{{ documents.length }}</span>
+              }
+              <div class="ml-auto">
+                <input #docFileInput type="file" class="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx"
+                  (change)="onDocumentSelected($event)" />
+                <button pButton pRipple type="button" icon="pi pi-upload"
+                  class="p-button-sm p-button-success"
+                  [label]="'FIN_RECEIVED_WHOM.UPLOAD_DOCUMENT' | translate"
+                  [loading]="uploadingDocument"
+                (click)="docFileInput.click()"></button>
+              </div>
+            </div>
+            <div class="whom-section-body">
+              @if (loadingDocuments) {
+                <div class="flex justify-content-center py-4">
+                  <p-progressSpinner strokeWidth="4" styleClass="w-2rem h-2rem"></p-progressSpinner>
+                </div>
+              }
+              @if (!loadingDocuments && documents.length === 0) {
+                <div class="doc-empty">
+                  <i class="pi pi-inbox"></i>
+                  <span>{{ 'FIN_RECEIVED_WHOM.NO_DOCUMENTS' | translate }}</span>
+                </div>
+              }
+              @if (!loadingDocuments && documents.length > 0) {
+                <div class="doc-list">
+                  @for (doc of documents; track doc) {
+                    <div class="doc-row">
+                      <i [class]="getDocumentIcon(doc)" class="doc-row-icon"></i>
+                      <div class="doc-row-info">
+                        <span class="doc-row-name">{{ doc.documentName || doc.originalFilename }}</span>
+                        <span class="doc-row-meta">
+                          @if (doc.documentType) {
+                            <span class="doc-type-chip">{{ doc.documentType }}</span>
+                          }
+                          {{ doc.originalFilename }} &bull; {{ formatFileSize(doc.fileSize) }}
+                          @if (doc.uploadDate) {
+                            <span> &bull; {{ formatDate(doc.uploadDate) }}</span>
+                          }
+                        </span>
+                      </div>
+                      <div class="doc-row-actions">
+                        <button pButton pRipple type="button" icon="pi pi-eye"
+                          class="p-button-rounded p-button-text p-button-info p-button-sm"
+                          [pTooltip]="'COMMON.VIEW' | translate" tooltipPosition="top"
+                        (click)="viewDocument(doc)"></button>
+                        <button pButton pRipple type="button" icon="pi pi-download"
+                          class="p-button-rounded p-button-text p-button-secondary p-button-sm"
+                          [pTooltip]="'COMMON.DOWNLOAD' | translate" tooltipPosition="top"
+                        (click)="downloadDocument(doc)"></button>
+                        <button pButton pRipple type="button" icon="pi pi-trash"
+                          class="p-button-rounded p-button-text p-button-danger p-button-sm"
+                          [pTooltip]="'COMMON.DELETE' | translate" tooltipPosition="top"
+                        (click)="confirmDeleteDocument(doc)"></button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="whom-dialog-footer">
+        @if (viewRecord) {
+          <button pButton pRipple type="button"
+            class="p-button-warning p-button-outlined"
+            icon="pi pi-pencil"
+            [label]="'FIN_RECEIVED_WHOM.EDIT' | translate"
+          (click)="viewVisible = false; openEdit(viewRecord!)"></button>
+        }
+        <button pButton pRipple type="button"
+          class="p-button-text"
+          icon="pi pi-times"
+          [label]="'COMMON.CLOSE' | translate"
+        (click)="viewVisible = false"></button>
+      </div>
+    </ng-template>
+  </p-dialog>
+</div>

@@ -1,0 +1,380 @@
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>
+
+<div class="grid">
+  <div class="col-12">
+    <div class="card">
+      <!-- Header Section. `flex-1` on the icon-and-title block, not
+           `justify-content-between`: under `direction: rtl` a flex row already
+           runs right to left, and the global rule in styles.scss reverses every
+           `.flex.justify-content-between` again, which put the heading back on
+           the left and the buttons on the right in Arabic. See
+           src/app/demo/components/page-headings.spec.ts. -->
+      <div class="flex align-items-center mb-4">
+        <div class="flex align-items-center gap-3 flex-1">
+          <i class="pi pi-sitemap text-primary" style="font-size: 2.5rem"></i>
+          <div>
+            <h2 class="m-0 text-primary">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <!-- R5-07: Add, Edit and Delete follow the server's rule (the attaché
+               writes its own branches, the ministry reads them); see canAddBranch. -->
+          @if (canAddBranch) {
+            <button pButton pRipple type="button"
+              icon="pi pi-plus"
+              class="p-button-success"
+              [attr.aria-label]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.ADD' | translate"
+              [label]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.ADD' | translate"
+            (click)="openCreateDialog()"></button>
+          }
+          <button pButton pRipple type="button"
+            icon="pi pi-refresh"
+            class="p-button-outlined"
+            [attr.aria-label]="'COMMON.REFRESH' | translate"
+            [label]="'COMMON.REFRESH' | translate"
+            (click)="loadBranches()"
+          [loading]="loading"></button>
+        </div>
+      </div>
+
+      <!-- Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+           The list is held whole, so the table narrows itself. -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-4">
+          <div class="filter-bar__field filter-bar__field--wide" [class.filter-bar__field--active]="filterSearch">
+            <label for="bbSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="bbSearch" pInputText type="text" [(ngModel)]="filterSearch"
+                (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+                [placeholder]="'COMMON.SEARCH' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterBank !== null">
+            <label for="bbBank">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.BANK' | translate }}</label>
+            <p-select appendTo="body" inputId="bbBank" [options]="bankOptions" [(ngModel)]="filterBank"
+              optionLabel="label" optionValue="id" [filter]="bankOptions.length > 8"
+              [showClear]="true" [placeholder]="'COMMON.ALL' | translate"
+              (onChange)="dt.filter(filterBank, 'studyFinanceBankeId', 'equals')"></p-select>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterCountry !== null">
+            <label for="bbCountry">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.COUNTRY' | translate }}</label>
+            <p-select appendTo="body" inputId="bbCountry" [options]="studyCountries" [(ngModel)]="filterCountry"
+              optionLabel="studyCountryInName" optionValue="id" [filter]="studyCountries.length > 8"
+              [showClear]="true" [placeholder]="'COMMON.ALL' | translate"
+              (onChange)="dt.filter(filterCountry, 'studyCountryInId', 'equals')"></p-select>
+          </div>
+        </div>
+        <div class="filter-bar__actions">
+          <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+            [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters(dt)"></button>
+          <span class="filter-bar__hint filter-bar__actions-spacer">{{ 'COMMON.TOTAL' | translate }}: {{ (dt.filteredValue || branches).length }}</span>
+        </div>
+      </div>
+
+      <!-- Data Table -->
+      <p-table #dt
+        [value]="branches"
+        [loading]="loading"
+        [paginator]="true"
+        [rows]="10"
+        [rowsPerPageOptions]="[10, 20, 50]"
+        [showCurrentPageReport]="true"
+        currentPageReportTemplate="{{ 'COMMON.TABLE.SHOWING' | translate }} {first} {{ 'COMMON.TABLE.TO' | translate }} {last} {{ 'COMMON.TABLE.OF' | translate }} {totalRecords} {{ 'COMMON.TABLE.ENTRIES' | translate }}"
+        styleClass="p-datatable-gridlines p-datatable-striped"
+        responsiveLayout="scroll"
+        dataKey="id"
+        [globalFilterFields]="['id', 'studyFinanceBankBranchName', 'studyFinanceBankBranchNameEn']">
+
+
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="id">
+              {{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.TABLE.ID' | translate }}
+              <p-sortIcon field="id"></p-sortIcon>
+            </th>
+            <th pSortableColumn="displayName">
+              {{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.TABLE.NAME' | translate }}
+              <p-sortIcon field="displayName"></p-sortIcon>
+            </th>
+            <th>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.TABLE.BANK' | translate }}</th>
+            <th>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.TABLE.COUNTRY' | translate }}</th>
+            <th>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.TABLE.GOVERNMENT' | translate }}</th>
+            <th pSortableColumn="studyFinanceBankBranchMidate">
+              {{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.TABLE.MIDATE' | translate }}
+              <p-sortIcon field="studyFinanceBankBranchMidate"></p-sortIcon>
+            </th>
+            <th class="text-center">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.TABLE.ACTIONS' | translate }}</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-branch>
+          <tr>
+            <td>
+              <span class="text-primary font-bold">{{ branch.id }}</span>
+            </td>
+            <td>
+              <div class="flex align-items-center gap-2">
+                <i class="pi pi-map-marker text-500"></i>
+                <span class="font-medium">{{ branch.displayName }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="text-700">{{ getBankName(branch.studyFinanceBankeId) }}</span>
+            </td>
+            <td>
+              <span class="text-700">{{ getCountryName(branch.studyCountryInId) }}</span>
+            </td>
+            <td>
+              <span class="text-700">{{ getGovernmentName(branch.studyGovInId) }}</span>
+            </td>
+            <td>
+              <span class="text-700">{{ branch.studyFinanceBankBranchMidate | date:'dd/MM/yyyy' }}</span>
+            </td>
+            <td class="text-center">
+              <div class="flex justify-content-center gap-2">
+                <button pButton pRipple type="button"
+                  icon="pi pi-eye"
+                  class="p-button-rounded p-button-text p-button-info"
+                  [pTooltip]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.VIEW' | translate"
+                  tooltipPosition="top"
+                (click)="openViewDialog(branch)" *hasPermission="'SETTINGS.VIEW'"></button>
+                @if (canEditBranch(branch)) {
+                  <button pButton pRipple type="button"
+                    icon="pi pi-pencil"
+                    class="p-button-rounded p-button-text p-button-warning"
+                    [pTooltip]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.EDIT' | translate"
+                    tooltipPosition="top"
+                  (click)="openEditDialog(branch)"></button>
+                }
+                @if (canDeleteBranch(branch)) {
+                  <button pButton pRipple type="button"
+                    icon="pi pi-trash"
+                    class="p-button-rounded p-button-text p-button-danger"
+                    [pTooltip]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.DELETE' | translate"
+                    tooltipPosition="top"
+                  (click)="confirmDelete(branch)"></button>
+                }
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="7" class="text-center py-6">
+              <div class="flex flex-column align-items-center gap-3">
+                <i class="pi pi-inbox text-400" style="font-size: 3rem"></i>
+                <h5 class="m-0 text-600">{{ (hasFilters ? 'COMMON.NO_MATCH' : 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.EMPTY.TITLE') | translate }}</h5>
+                <p class="m-0 text-500">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.EMPTY.DESCRIPTION' | translate }}</p>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit Dialog -->
+<p-dialog
+  [(visible)]="formDialogVisible"
+  [modal]="true"
+  [style]="{ width: '700px', maxWidth: '95vw' }"
+  [header]="dialogTitle"
+  [draggable]="false"
+  [dismissableMask]="false"
+  styleClass="dv-dialog"
+  (onHide)="hideFormDialog()">
+
+  <ng-template pTemplate="content">
+    <form [formGroup]="branchForm" class="dv-form" autocomplete="off">
+      <div class="dv-hero" [class.dv-hero--new]="dialogMode !== 'edit'">
+        <div class="dv-hero__badge">
+          @if (dialogMode === 'edit') { {{ branchForm.get('id')?.value }} } @else { <i class="pi pi-plus"></i> }
+        </div>
+        <div class="dv-hero__body">
+          <div class="dv-hero__eyebrow">{{ dialogTitle }}</div>
+          <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!branchForm.get('studyFinanceBankBranchName')?.value">
+            {{ branchForm.get('studyFinanceBankBranchName')?.value || ('SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.NAME' | translate) }}
+          </div>
+        </div>
+      </div>
+
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+          <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+        </header>
+        <div class="dv-fields">
+          <div class="dv-field dv-field--full">
+            <label for="studyFinanceBankBranchName" class="dv-label">
+              {{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.NAME' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <input id="studyFinanceBankBranchName" pInputText formControlName="studyFinanceBankBranchName" class="w-full" />
+            @if (branchForm.get('studyFinanceBankBranchName')?.invalid && branchForm.get('studyFinanceBankBranchName')?.touched) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'COMMON.REQUIRED_FIELD' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="dv-field">
+            <label for="studyFinanceBankeId" class="dv-label">
+              {{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.BANK' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <p-select appendTo="body" id="studyFinanceBankeId"
+              formControlName="studyFinanceBankeId"
+              [options]="formBankOptions"
+              optionLabel="label"
+              optionValue="id"
+              [filter]="true"
+              filterBy="label"
+              [placeholder]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.SELECT_BANK' | translate"
+              [showClear]="true"
+              (onChange)="onBankChange($event)"
+            class="w-full"></p-select>
+            @if (branchForm.get('studyFinanceBankeId')?.invalid && branchForm.get('studyFinanceBankeId')?.touched) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'COMMON.REQUIRED_FIELD' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="dv-field">
+            <label for="studyCountryInId" class="dv-label">
+              {{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.COUNTRY' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <p-select appendTo="body" id="studyCountryInId"
+              formControlName="studyCountryInId"
+              [options]="formCountries"
+              optionLabel="studyCountryInName"
+              optionValue="id"
+              [filter]="true"
+              filterBy="studyCountryInName"
+              [placeholder]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.SELECT_COUNTRY' | translate"
+              [showClear]="true"
+              (onChange)="onCountryChange($event)"
+            class="w-full"></p-select>
+            @if (branchForm.get('studyCountryInId')?.invalid && branchForm.get('studyCountryInId')?.touched) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'COMMON.REQUIRED_FIELD' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="dv-field">
+            <label for="studyGovInId" class="dv-label">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.GOVERNMENT' | translate }}</label>
+            <p-select appendTo="body" id="studyGovInId"
+              formControlName="studyGovInId"
+              [options]="studyGovernments"
+              optionLabel="studyGovInName"
+              optionValue="id"
+              [filter]="true"
+              filterBy="studyGovInName"
+              [placeholder]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.SELECT_GOVERNMENT' | translate"
+              [showClear]="true"
+            class="w-full"></p-select>
+          </div>
+
+          <div class="dv-field">
+            <label for="studyFinanceBankBranchNameEn" class="dv-label">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.NAME_EN' | translate }}</label>
+            <input id="studyFinanceBankBranchNameEn" pInputText formControlName="studyFinanceBankBranchNameEn" class="w-full" dir="ltr" />
+          </div>
+        </div>
+      </section>
+    </form>
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <small class="dv-footer__hint"><span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+      <div class="dv-footer__actions">
+      <button pButton pRipple type="button"
+        class="p-button-text p-button-secondary"
+        [label]="'COMMON.CANCEL' | translate"
+        icon="pi pi-times"
+      (click)="hideFormDialog()"></button>
+      <button pButton pRipple type="button"
+        class="p-button-primary"
+        [label]="'COMMON.SAVE' | translate"
+        icon="pi pi-check"
+        (click)="saveBranch()"
+      [loading]="loading"></button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- View Dialog -->
+<p-dialog
+  [(visible)]="viewDialogVisible"
+  [modal]="true"
+  [style]="{ width: '600px', maxWidth: '95vw' }"
+  [header]="'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.VIEW' | translate"
+  [draggable]="false"
+  styleClass="dv-dialog"
+  (onHide)="selectedBranch = null">
+
+  <ng-template pTemplate="content">
+    @if (selectedBranch; as branch) {
+      <div class="dv-view">
+        <div class="dv-hero">
+          <div class="dv-hero__badge">{{ branch.id }}</div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.NAME' | translate }}</div>
+            <div class="dv-hero__title">{{ branchName(branch) }}</div>
+            <div class="dv-hero__meta">
+              <span class="dv-chip"><i class="pi pi-building"></i> {{ getBankName(branch.studyFinanceBankeId) }}</span>
+              <span class="dv-chip"><i class="pi pi-globe"></i> {{ getCountryName(branch.studyCountryInId) }}</span>
+            </div>
+          </div>
+        </div>
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+            <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+          </header>
+          <dl class="dv-dl">
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.ID' | translate }}</dt><dd>{{ branch.id }}</dd></div>
+            <!-- Both names, as the form has them; the heading above is the current language's. -->
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.NAME' | translate }}</dt><dd>{{ branch.studyFinanceBankBranchName }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.NAME_EN' | translate }}</dt><dd>{{ branch.studyFinanceBankBranchNameEn }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.BANK' | translate }}</dt><dd>{{ getBankName(branch.studyFinanceBankeId) }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.COUNTRY' | translate }}</dt><dd>{{ getCountryName(branch.studyCountryInId) }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.GOVERNMENT' | translate }}</dt><dd>{{ getGovernmentName(branch.studyGovInId) }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'SYSTEM_ADMIN.STUDY_FINANCE_BANK_BRANCH.FORM.MIDATE' | translate }}</dt><dd>{{ branch.studyFinanceBankBranchMidate | date:'dd/MM/yyyy' }}</dd></div>
+          </dl>
+        </section>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint"></div>
+      <div class="dv-footer__actions">
+      <button pButton pRipple type="button"
+        class="p-button-text p-button-secondary"
+        [label]="'COMMON.CLOSE' | translate"
+        icon="pi pi-times"
+      (click)="viewDialogVisible = false"></button>
+      @if (canEditBranch(selectedBranch)) {
+        <button pButton pRipple type="button"
+          class="p-button-primary"
+          [label]="'COMMON.EDIT' | translate"
+          icon="pi pi-pencil"
+        (click)="editFromView()"></button>
+      }
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>

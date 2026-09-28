@@ -1,0 +1,139 @@
+<div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="card-header">
+    <!-- Header Section. `flex-1` on the leading block, not
+         `justify-content-between`: under `direction: rtl` a flex row already
+         runs right to left, and the global rule in styles.scss reverses every
+         `.flex.justify-content-between` again, which put the heading back on
+         the left and the actions on the right in Arabic. See
+         src/app/demo/components/page-headings.spec.ts. -->
+    <div class="flex align-items-center">
+      <div class="flex-1">
+        <h3 class="m-0">{{ 'REPORTS.APPROVALS_REPORT.TITLE' | translate }}</h3>
+        <p class="text-color-secondary mt-2">{{ 'REPORTS.APPROVALS_REPORT.DESCRIPTION' | translate }}</p>
+      </div>
+      <div class="flex gap-2">
+        <p-button
+          [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+          [label]="'REPORTS.OPERATIONS_REPORTS.BACK' | translate"
+          [outlined]="true"
+          routerLink="/reports/operations" />
+        <app-report-actions
+          [pdfApiPath]="pdfApiPath"
+          [excelApiPath]="excelApiPath"
+          [query]="reportQuery()"
+          baseFilename="approvals-requests">
+        </app-report-actions>
+      </div>
+    </div>
+  </div>
+
+  <p-divider />
+
+  @if (rows.length) {
+    <div class="grid p-3 summary-row">
+      <div class="col-6 md:col-3">
+        <div class="summary-tile">
+          <span class="summary-label">{{ 'REPORTS.APPROVALS_REPORT.PENDING_COUNT' | translate }}</span>
+          <span class="summary-value">{{ pendingCount }}</span>
+        </div>
+      </div>
+      <div class="col-6 md:col-3">
+        <div class="summary-tile">
+          <span class="summary-label">{{ 'REPORTS.APPROVALS_REPORT.OLDEST' | translate }}</span>
+          <span class="summary-value">{{ oldestAgeDays }}</span>
+        </div>
+      </div>
+    </div>
+    <p-divider />
+  }
+
+  <div class="grid p-3">
+    <div class="col-12 md:col-4">
+      <label for="apprState" class="block mb-2 font-semibold">{{ 'REPORTS.APPROVALS_REPORT.STATE' | translate }}</label>
+      <p-select
+        id="apprState"
+        [options]="states"
+        [(ngModel)]="selectedState"
+        optionValue="code"
+        optionLabel="name"
+        [placeholder]="'REPORTS.APPROVALS_REPORT.ALL_STATES' | translate"
+        [showClear]="true"
+        (onChange)="onFilterChange()"
+        styleClass="w-full"
+        appendTo="body" />
+    </div>
+
+    @if (hasMultiCountry) {
+      <div class="col-12 md:col-5">
+        <label class="block mb-2 font-semibold">{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</label>
+        <p-multiselect
+          [options]="allowedCountries"
+          [(ngModel)]="selectedCountryIds"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_COUNTRIES' | translate"
+          (onChange)="onFilterChange()"
+          styleClass="w-full"
+          appendTo="body">
+        </p-multiselect>
+      </div>
+    }
+
+    <div class="col-12 md:col-3 flex align-items-end">
+      <p-button
+        icon="pi pi-filter-slash"
+        [label]="'COMMON.CLEAR' | translate"
+        (onClick)="clearFilters()"
+        [outlined]="true"
+        styleClass="w-full" />
+    </div>
+  </div>
+
+  <p-divider />
+
+  <div class="p-3">
+    <p-table
+      [value]="rows"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="20"
+      [tableStyle]="{'min-width': '65rem'}"
+      styleClass="p-datatable-gridlines p-datatable-sm">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th>{{ 'REPORTS.APPROVALS_REPORT.AGE' | translate }}</th>
+          <th>{{ 'REPORTS.APPROVALS_REPORT.STATUS' | translate }}</th>
+          <th>{{ 'REPORTS.APPROVALS_REPORT.REQ_TYPE' | translate }}</th>
+          <th>{{ 'REPORTS.APPROVALS_REPORT.ENTITY_TYPE' | translate }}</th>
+          <th>{{ 'REPORTS.APPROVALS_REPORT.REQUESTED_BY' | translate }}</th>
+          <th>{{ 'REPORTS.APPROVALS_REPORT.REQUESTED_AT' | translate }}</th>
+          <th>{{ 'REPORTS.APPROVALS_REPORT.ATTACHE' | translate }}</th>
+          <th>{{ 'REPORTS.APPROVALS_REPORT.LEVEL' | translate }}</th>
+          <th>{{ 'REPORTS.APPROVALS_REPORT.ENTITY_ID' | translate }}</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-row>
+        <tr>
+          <td><p-tag [value]="row.ageDays + ''" [severity]="ageSeverity(row.ageDays)" /></td>
+          <td><p-tag [value]="row.status | codeLabel:'approval-status':currentLanguage" [severity]="row.status | codeSeverity:'approval-status'" /></td>
+          <!-- By name, not code (W3-07): the operation and the kind of record come from their code lists. -->
+          <td>{{ row.requestType | codeLabel:'request-type':currentLanguage }}</td>
+          <td>{{ row.entityType | codeLabel:'approval-entity-type':currentLanguage }}</td>
+          <td class="font-semibold">{{ row.requestedBy }}</td>
+          <td class="text-sm">{{ row.requestedAt | date:'yyyy-MM-dd HH:mm' }}</td>
+          <td>{{ row.countryName }}</td>
+          <td>{{ row.currentLevel }}</td>
+          <td>{{ row.entityId }}</td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="9" class="text-center">{{ 'REPORTS.REPORT_SUBPAGES.NO_DATA_FOUND' | translate }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>

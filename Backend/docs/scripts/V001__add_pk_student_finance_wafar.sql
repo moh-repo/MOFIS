@@ -1,0 +1,11 @@
+-- Add primary key to MOHECORE.STUDENT_FINANCE_WAFAR (one row per student).
+-- STUDENT_ID is unique in current data and is the JPA @Id column.
+IF NOT EXISTS (
+    SELECT 1 FROM sys.key_constraints
+    WHERE parent_object_id = OBJECT_ID('MOHECORE.STUDENT_FINANCE_WAFAR') AND type = 'PK'
+)
+BEGIN
+    ALTER TABLE MOHECORE.STUDENT_FINANCE_WAFAR
+        ADD CONSTRAINT PK_STUDENT_FINANCE_WAFAR PRIMARY KEY CLUSTERED (STUDENT_ID);
+END
+GO

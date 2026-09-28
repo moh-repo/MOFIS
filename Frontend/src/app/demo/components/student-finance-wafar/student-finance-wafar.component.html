@@ -1,0 +1,881 @@
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>
+
+<div class="student-finance-wafar-page">
+  <div class="card page-hero">
+    <!-- `flex-1` on the hero text, not `justify-content-between`: under
+         `direction: rtl` a flex row already runs right to left, and the global
+         rule in styles.scss reverses every `.flex.justify-content-between`
+         again, which put the heading on the left and the buttons on the right in
+         Arabic. See src/app/demo/components/page-headings.spec.ts. -->
+    <div class="hero-content flex flex-column lg:flex-row align-items-start gap-4">
+      <div class="hero-text flex-1">
+        <span class="hero-badge">{{ 'STUDENT_FINANCE_WAFAR.HERO.BADGE' | translate }}</span>
+        <h1 class="hero-title">
+          <i class="pi pi-wallet"></i>
+          {{ 'STUDENT_FINANCE_WAFAR.TITLE' | translate }}
+        </h1>
+        <p class="hero-subtitle">{{ 'STUDENT_FINANCE_WAFAR.SUBTITLE' | translate }}</p>
+      </div>
+      <div class="hero-actions flex gap-2 flex-wrap">
+        <button pButton pRipple type="button"
+          icon="pi pi-plus"
+          class="p-button-success"
+          [label]="'STUDENT_FINANCE_WAFAR.ADD' | translate"
+        (click)="openCreateDialog()" *hasPermission="'WAFAR.ADD'"></button>
+        <button pButton pRipple type="button"
+          icon="pi pi-refresh"
+          class="p-button-action-outlined"
+          [label]="'COMMON.REFRESH' | translate"
+        (click)="loadRecords()"></button>
+      </div>
+    </div>
+    <!-- Statistics summary, always open: the collapse button is gone (review F10).
+
+         Cards use the shared band (assets/layout/styles/_summary-cards.scss),
+         so this page's figures read the same as the ones on student-extension
+         and student-travel-tickets. The primeflex col-12/md:col-6/xl:col-3
+         wrappers are gone with it: the column count is declared on the grid. -->
+    <p-panel styleClass="hero-stats-panel mt-3">
+      <ng-template pTemplate="header">
+        <div class="flex align-items-center gap-2">
+          <i class="pi pi-chart-bar text-primary"></i>
+          <span class="font-semibold">{{ 'STUDENT_FINANCE_WAFAR.SUMMARY.TITLE' | translate }}</span>
+          <p-tag [value]="stats.totalRecords?.toString()" severity="info" styleClass="ml-2"></p-tag>
+        </div>
+      </ng-template>
+      <div class="summary-cards summary-cards--cols-4">
+        <div class="summary-card records">
+          <div class="summary-icon">
+            <i class="pi pi-database"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'STUDENT_FINANCE_WAFAR.SUMMARY.TOTAL_RECORDS' | translate }}</span>
+            <span class="summary-value">{{ stats.totalRecords | number:'1.0-0' }}</span>
+            <span class="summary-meta">{{ 'STUDENT_FINANCE_WAFAR.SUMMARY.RECORDS_HINT' | translate }}</span>
+          </div>
+        </div>
+        <div class="summary-card amount">
+          <div class="summary-icon">
+            <i class="pi pi-chart-line"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'STUDENT_FINANCE_WAFAR.SUMMARY.TOTAL_AMOUNT' | translate }}</span>
+            <span class="summary-value">{{ stats.totalAmount | number:'1.0-0' }}</span>
+            <span class="summary-meta">{{ currencyLabel }}</span>
+          </div>
+        </div>
+        <div class="summary-card average">
+          <div class="summary-icon">
+            <i class="pi pi-sliders-h"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'STUDENT_FINANCE_WAFAR.SUMMARY.AVERAGE_AMOUNT' | translate }}</span>
+            <span class="summary-value">{{ stats.averageAmount | number:'1.0-0' }}</span>
+            <span class="summary-meta">{{ currencyLabel }}</span>
+          </div>
+        </div>
+        <div class="summary-card countries">
+          <div class="summary-icon">
+            <i class="pi pi-globe"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'STUDENT_FINANCE_WAFAR.SUMMARY.UNIQUE_COUNTRIES' | translate }}</span>
+            <span class="summary-value">{{ stats.uniqueCountries | number:'1.0-0' }}</span>
+            <span class="summary-meta">{{ 'STUDENT_FINANCE_WAFAR.SUMMARY.LAST_UPDATED' | translate }}:
+              <strong>{{ stats.lastUpdated ? (stats.lastUpdated | date:'dd/MM/yyyy') : ('STUDENT_FINANCE_WAFAR.SUMMARY.NO_DATE' | translate) }}</strong></span>
+          </div>
+        </div>
+      </div>
+    </p-panel>
+  </div>
+
+  <div class="card filters-card">
+    <div class="filters-header">
+      <div class="filters-title">
+        <i class="pi pi-sliders-h"></i>
+        <span>{{ 'STUDENT_FINANCE_WAFAR.FILTERS.TITLE' | translate }}</span>
+        @if (hasActiveFilters) {
+          <p-tag
+            [value]="'STUDENT_FINANCE_WAFAR.TABLE.ACTIVE_FILTERS' | translate"
+            severity="warn"
+          styleClass="text-xs ml-1"></p-tag>
+        }
+      </div>
+      <div class="filters-header-end">
+        <span class="filters-meta">{{ filterResultsLabel }}</span>
+        <button pButton pRipple type="button"
+          class="p-button-action-outlined p-button-sm"
+          icon="pi pi-filter-slash"
+          [label]="'STUDENT_FINANCE_WAFAR.FILTERS.CLEAR' | translate"
+          (click)="clearFilters()"
+        [disabled]="!hasActiveFilters"></button>
+      </div>
+    </div>
+
+    <div class="filters-row">
+      <div class="filter-field">
+        <label class="filter-label">{{ 'COMMON.SEARCH' | translate }}</label>
+        <span class="p-input-icon-left">
+          <i class="pi pi-search"></i>
+          <input pInputText type="text"
+            [(ngModel)]="filters.search"
+            (ngModelChange)="onFiltersChanged()"
+            [placeholder]="'STUDENT_FINANCE_WAFAR.FILTERS.SEARCH_PLACEHOLDER' | translate" />
+        </span>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">{{ 'STUDENT_FINANCE_WAFAR.TABLE.RECEIVED_STATUS' | translate }}</label>
+        <p-select [options]="studyFinReceivedStatuses"
+          optionLabel="studyFinReceivedStatusName"
+          optionValue="id"
+          [showClear]="true"
+          [filter]="true"
+          appendTo="body"
+          [(ngModel)]="filters.status"
+          (onChange)="onFiltersChanged()"
+          [placeholder]="'STUDENT_FINANCE_WAFAR.FILTERS.STATUS_PLACEHOLDER' | translate">
+        </p-select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.COUNTRY' | translate }}</label>
+        <p-select [options]="studyCountries"
+          optionLabel="studyCountryInName"
+          optionValue="id"
+          [showClear]="true"
+          [filter]="true"
+          appendTo="body"
+          [(ngModel)]="filters.country"
+          (onChange)="onFiltersChanged()"
+          [placeholder]="'STUDENT_FINANCE_WAFAR.FILTERS.COUNTRY_PLACEHOLDER' | translate">
+        </p-select>
+      </div>
+      <div class="filter-field">
+        <label class="filter-label">{{ 'STUDENT_FINANCE_WAFAR.TABLE.WAFAR_TYPE' | translate }}</label>
+        <p-select [options]="studyWafarTypes"
+          optionLabel="wafarName"
+          optionValue="id"
+          [showClear]="true"
+          [filter]="true"
+          appendTo="body"
+          [(ngModel)]="filters.wafarType"
+          (onChange)="onFiltersChanged()"
+          [placeholder]="'STUDENT_FINANCE_WAFAR.FILTERS.WAFAR_TYPE_PLACEHOLDER' | translate">
+        </p-select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card table-card">
+    <p-table
+      [value]="filteredRecords"
+      [loading]="loading"
+      dataKey="id"
+      [paginator]="true"
+      [rows]="tableRows"
+      [(first)]="first"
+      [rowsPerPageOptions]="rowsPerPageOptions"
+      responsiveLayout="scroll"
+      [showCurrentPageReport]="true"
+      [currentPageReportTemplate]="tableReportTemplate"
+      [rowHover]="true"
+      styleClass="wafar-table p-datatable-sm">
+      <ng-template pTemplate="caption">
+        <!-- `flex-1` on the count, not `justify-content-between`: the global rule in
+             styles.scss reverses that row again under `direction: rtl`, which laid
+             the caption out as in English (round-6 QA R6-09). As the hero above. -->
+        <div class="table-caption flex align-items-center gap-2">
+          <span class="flex-1">{{ tableCaptionLabel }}</span>
+          <!-- An add is written on approval, so it has no row yet (review F9). -->
+          @if (pendingNewCount > 0) {
+            <span class="table-caption-active">
+              <i class="pi pi-clock"></i>
+              {{ ('STUDENT_FINANCE_WAFAR.PENDING_NEW_HINT' | translate).replace('{count}', pendingNewCount.toString()) }}
+            </span>
+          }
+          @if (hasActiveFilters) {
+            <span class="table-caption-active">
+              <i class="pi pi-filter"></i>
+              {{ 'STUDENT_FINANCE_WAFAR.TABLE.ACTIVE_FILTERS' | translate }}
+            </span>
+          }
+        </div>
+      </ng-template>
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="id" style="width: 6rem">{{ 'STUDENT_FINANCE_WAFAR.TABLE.ID' | translate }} <p-sortIcon field="id"></p-sortIcon></th>
+          <th pSortableColumn="studentFinId">{{ 'STUDENT_FINANCE_WAFAR.TABLE.STUDENT_FIN_ID' | translate }} <p-sortIcon field="studentFinId"></p-sortIcon></th>
+          <th pSortableColumn="studentFinName">{{ 'STUDENT_FINANCE_WAFAR.TABLE.STUDENT_FIN_NAME' | translate }} <p-sortIcon field="studentFinName"></p-sortIcon></th>
+          <th pSortableColumn="wafarTypeId">{{ 'STUDENT_FINANCE_WAFAR.TABLE.WAFAR_TYPE' | translate }} <p-sortIcon field="wafarTypeId"></p-sortIcon></th>
+          <th pSortableColumn="studentFinRecievedAmount">{{ 'STUDENT_FINANCE_WAFAR.TABLE.WAFAR_AMOUNT' | translate }} <p-sortIcon field="studentFinRecievedAmount"></p-sortIcon></th>
+          <th pSortableColumn="studyCountryInId">{{ 'STUDENT_FINANCE_WAFAR.TABLE.COUNTRY' | translate }} <p-sortIcon field="studyCountryInId"></p-sortIcon></th>
+          <th pSortableColumn="studyFinRecievedStatus">{{ 'STUDENT_FINANCE_WAFAR.TABLE.RECEIVED_STATUS' | translate }} <p-sortIcon field="studyFinRecievedStatus"></p-sortIcon></th>
+          <th pSortableColumn="studyFinanceMidate">{{ 'STUDENT_FINANCE_WAFAR.TABLE.MIDATE' | translate }} <p-sortIcon field="studyFinanceMidate"></p-sortIcon></th>
+          <th style="width: 10rem" class="text-center actions-col-header">{{ 'STUDENT_FINANCE_WAFAR.TABLE.ACTIONS' | translate }}</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-record>
+        <tr>
+          <td><span class="text-900 font-semibold">{{ record.id }}</span></td>
+          <td>{{ record.studentFinId }}</td>
+          <td>
+            {{ record.studentFinName }}
+            @if (isPending(record)) {
+              <p-tag styleClass="ml-2" severity="warn" icon="pi pi-clock"
+                [value]="'STUDENT_FINANCE_WAFAR.PENDING_BADGE' | translate"
+                [pTooltip]="'STUDENT_FINANCE_WAFAR.PENDING_BADGE_HINT' | translate" tooltipPosition="top">
+              </p-tag>
+            }
+          </td>
+          <td>
+            <p-tag [value]="getWafarTypeName(record.wafarTypeId)" severity="info"></p-tag>
+          </td>
+          <td>
+            <div class="amount-chip">
+              <i class="pi pi-coins"></i>
+              <span>{{ record.studentFinRecievedAmount | number:'1.0-0' }}</span>
+              <small>{{ currencyLabel }}</small>
+            </div>
+          </td>
+          <td>{{ getCountryName(record.studyCountryInId) }}</td>
+          <td>
+            <p-tag class="status-tag"
+              [value]="getStatusName(record.studyFinRecievedStatus)"
+              [severity]="getStatusSeverity(record.studyFinRecievedStatus)">
+            </p-tag>
+          </td>
+          <td>{{ record.studyFinanceMidate | date:'dd/MM/yyyy' }}</td>
+          <td class="text-center actions-cell-ltr">
+            <div class="flex justify-content-center gap-2">
+              <button pButton pRipple type="button"
+                icon="pi pi-eye"
+                class="p-button-rounded p-button-text p-button-info"
+                [pTooltip]="'STUDENT_FINANCE_WAFAR.VIEW' | translate"
+                tooltipPosition="top"
+              (click)="openViewDialog(record)" *hasPermission="'WAFAR.VIEW'"></button>
+              <button pButton pRipple type="button"
+                icon="pi pi-pencil"
+                class="p-button-rounded p-button-text p-button-warning"
+                [pTooltip]="'STUDENT_FINANCE_WAFAR.EDIT' | translate"
+                tooltipPosition="top"
+              (click)="openEditDialog(record)" *hasPermission="'WAFAR.EDIT'"></button>
+              <button pButton pRipple type="button"
+                icon="pi pi-trash"
+                class="p-button-rounded p-button-text p-button-danger"
+                [pTooltip]="'STUDENT_FINANCE_WAFAR.DELETE' | translate"
+                tooltipPosition="top"
+              (click)="confirmDelete(record)" *hasPermission="'WAFAR.DELETE'"></button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td [attr.colspan]="9" class="text-center py-6">
+            <div class="empty-state flex flex-column align-items-center gap-2">
+              <i class="pi pi-inbox text-400 text-5xl"></i>
+              <h5 class="m-0 text-600">{{ 'STUDENT_FINANCE_WAFAR.EMPTY.TITLE' | translate }}</h5>
+              <p class="m-0 text-500">
+                {{ hasActiveFilters ? ('STUDENT_FINANCE_WAFAR.EMPTY.FILTERED' | translate) : ('STUDENT_FINANCE_WAFAR.EMPTY.DESCRIPTION' | translate) }}
+              </p>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ FORM DIALOG ═══════════════════════════ -->
+<p-dialog [(visible)]="formDialogVisible"
+  [modal]="true"
+  [maximizable]="true"
+  [style]="{ width: '1000px', maxWidth: '95vw' }"
+  [header]="dialogTitle"
+  [styleClass]="dialogFormStyleClass"
+  (onHide)="hideFormDialog()">
+  <ng-template pTemplate="content">
+    <div class="finance-dialog__content" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'" [class.wafar-dialog-rtl]="translationService.isRTL()">
+
+      <!-- A request is already awaiting a decision; a second one would be rejected. -->
+      @if (pendingApproval) {
+        <div class="wafar-pending">
+          <i class="pi pi-clock"></i>
+          <div class="wafar-pending__text">
+            <strong>{{ 'FINANCE.PENDING_APPROVAL_TITLE' | translate }}</strong>
+            <span>{{ 'FINANCE.PENDING_APPROVAL_MESSAGE' | translate }}</span>
+            @if (pendingApproval.requestedAt) {
+              <small>
+                {{ 'FINANCE.PENDING_APPROVAL_REQUESTED' | translate }}:
+                {{ pendingApproval.requestedAt | localeDate:'medium' }}
+                @if (pendingApproval.requesterFullName) {
+                  &mdash; {{ pendingApproval.requesterFullName }}
+                }
+              </small>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Summary Strip -->
+      <div class="finance-dialog__summary-strip">
+        <div class="summary-chip primary">
+          <i class="pi pi-id-card"></i>
+          <div class="chip-content">
+            <span class="chip-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.STUDENT_FIN_ID' | translate }}</span>
+            <span class="chip-value">{{ form.get('studentFinId')?.value || '---' }}</span>
+          </div>
+        </div>
+        <div class="summary-chip success">
+          <i class="pi pi-wallet"></i>
+          <div class="chip-content">
+            <span class="chip-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.WAFAR_AMOUNT' | translate }}</span>
+            <span class="chip-value">
+              {{ (form.get('studentFinRecievedAmount')?.value || 0) | number:'1.0-0' }}
+              <small>{{ currencyLabel }}</small>
+            </span>
+          </div>
+        </div>
+        @if (form.get('wafarTypeId')?.value) {
+          <div class="summary-chip info">
+            <i class="pi pi-tag"></i>
+            <div class="chip-content">
+              <span class="chip-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.WAFAR_TYPE' | translate }}</span>
+              <span class="chip-value">{{ getWafarTypeName(form.get('wafarTypeId')?.value) }}</span>
+            </div>
+          </div>
+        }
+        @if (form.get('studyCountryInId')?.value) {
+          <div class="summary-chip accent">
+            <i class="pi pi-globe"></i>
+            <div class="chip-content">
+              <span class="chip-label">{{ 'STUDENT_FINANCE_WAFAR.CHIPS.COUNTRY' | translate }}</span>
+              <span class="chip-value">{{ getCountryName(form.get('studyCountryInId')?.value) }}</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <form [formGroup]="form" class="finance-dialog__form">
+
+        <!-- ── OVERVIEW ── -->
+        <div class="section-card">
+          <div class="section-card__header">
+            <i class="pi pi-id-card"></i>
+            <span>{{ 'STUDENT_FINANCE_WAFAR.SECTIONS.OVERVIEW' | translate }}</span>
+          </div>
+          <div class="section-card__grid formgrid grid">
+
+            <!-- Wafar Type (first — determines student data source) -->
+            <div class="field col-12 md:col-6">
+              <label for="wafarTypeId" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.WAFAR_TYPE' | translate }} <span class="text-red-500">*</span>
+              </label>
+              <p-select id="wafarTypeId"
+                formControlName="wafarTypeId"
+                [options]="studyWafarTypes"
+                optionLabel="wafarName"
+                optionValue="id"
+                [filter]="true"
+                filterBy="wafarName"
+                [showClear]="true"
+                appendTo="body"
+                [placeholder]="'STUDENT_FINANCE_WAFAR.FORM.SELECT_WAFAR_TYPE' | translate"
+                class="w-full"
+              (onChange)="onWafarTypeChange($event.value)"></p-select>
+              @if (form.get('wafarTypeId')?.invalid && form.get('wafarTypeId')?.touched) {
+                <small class="p-error">
+                  {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              }
+            </div>
+
+            <!-- Student record selector (source depends on wafar type) -->
+            <div class="field col-12 md:col-6">
+              <label for="financeLookupId" class="block text-600 font-medium mb-2">
+                {{ isUniversityFeeType
+                ? ('STUDENT_FINANCE_WAFAR.FORM.SELECT_UNIVERSITY_FEE' | translate)
+                : ('STUDENT_FINANCE_WAFAR.FORM.SELECT_STUDENT_FINANCE' | translate) }}
+              </label>
+              <p-select id="financeLookupId"
+                formControlName="financeLookupId"
+                [options]="activeStudentDropdownOptions"
+                optionLabel="label"
+                optionValue="id"
+                [filter]="true"
+                filterBy="label"
+                [showClear]="true"
+                appendTo="body"
+                          [placeholder]="isUniversityFeeType
+                            ? ('STUDENT_FINANCE_WAFAR.FORM.SELECT_UNIVERSITY_FEE' | translate)
+                            : ('STUDENT_FINANCE_WAFAR.FORM.SELECT_STUDENT_FINANCE' | translate)"
+                class="w-full"
+              (onChange)="onStudentRecordSelected($event.value)"></p-select>
+              <!--
+              The chosen record is what supplies the student id, and STUDENT_ID is the
+              wafar row's primary key — without a selection there is nothing to save
+              against, so this is required rather than optional.
+              -->
+              @if (form.get('financeLookupId')?.invalid && form.get('financeLookupId')?.touched) {
+                <small class="p-error">
+                  {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              }
+              @if (!isUniversityFeeType) {
+                <small class="text-500">
+                  {{ 'STUDENT_FINANCE_WAFAR.FORM.STUDENT_FINANCE_HINT' | translate }}
+                </small>
+              }
+              @if (isUniversityFeeType) {
+                <small class="text-500">
+                  {{ 'STUDENT_FINANCE_WAFAR.FORM.UNIVERSITY_FEE_HINT' | translate }}
+                </small>
+              }
+            </div>
+
+            <!-- Student Finance ID (auto-filled, editable) -->
+            <div class="field col-12 md:col-6">
+              <label for="studentFinId" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.STUDENT_FIN_ID' | translate }} <span class="text-red-500">*</span>
+              </label>
+              <input id="studentFinId" pInputText formControlName="studentFinId" class="w-full" />
+              @if (form.get('studentFinId')?.invalid && form.get('studentFinId')?.touched) {
+                <small class="p-error">
+                  {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              }
+            </div>
+
+            <!-- Student Name (auto-filled, editable) -->
+            <div class="field col-12 md:col-6">
+              <label for="studentFinName" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.STUDENT_FIN_NAME' | translate }} <span class="text-red-500">*</span>
+              </label>
+              <input id="studentFinName" pInputText formControlName="studentFinName" class="w-full" />
+              @if (form.get('studentFinName')?.invalid && form.get('studentFinName')?.touched) {
+                <small class="p-error">
+                  {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              }
+            </div>
+
+            <!-- Received Status -->
+            <div class="field col-12 md:col-6">
+              <label for="studyFinRecievedStatus" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.RECEIVED_STATUS' | translate }}
+              </label>
+              <p-select id="studyFinRecievedStatus"
+                formControlName="studyFinRecievedStatus"
+                [options]="studyFinReceivedStatuses"
+                optionLabel="studyFinReceivedStatusName"
+                optionValue="id"
+                [filter]="true"
+                filterBy="studyFinReceivedStatusName"
+                [showClear]="true"
+                appendTo="body"
+                [placeholder]="'STUDENT_FINANCE_WAFAR.FORM.SELECT_RECEIVED_STATUS' | translate"
+              class="w-full"></p-select>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── FINANCE ── -->
+        <div class="section-card">
+          <div class="section-card__header">
+            <i class="pi pi-wallet"></i>
+            <span>{{ 'STUDENT_FINANCE_WAFAR.SECTIONS.FINANCE' | translate }}</span>
+          </div>
+          <div class="section-card__grid formgrid grid">
+
+            <div class="field col-12 md:col-4">
+              <label for="studentFinRecievedYear" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.RECEIVED_YEAR' | translate }} <span class="text-red-500">*</span>
+              </label>
+              <p-inputnumber id="studentFinRecievedYear"
+                formControlName="studentFinRecievedYear"
+                [useGrouping]="false"
+                [min]="1900"
+                [max]="2100"
+              class="w-full"></p-inputnumber>
+              @if (form.get('studentFinRecievedYear')?.invalid && form.get('studentFinRecievedYear')?.touched) {
+                <small class="p-error">
+                  {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              }
+            </div>
+
+            <div class="field col-12 md:col-4">
+              <label for="studentFinRecievedMonth" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.RECEIVED_MONTH' | translate }} <span class="text-red-500">*</span>
+              </label>
+              <p-inputnumber id="studentFinRecievedMonth"
+                formControlName="studentFinRecievedMonth"
+                [useGrouping]="false"
+                [min]="1"
+                [max]="12"
+              class="w-full"></p-inputnumber>
+              @if (form.get('studentFinRecievedMonth')?.invalid && form.get('studentFinRecievedMonth')?.touched) {
+                <small class="p-error">
+                  {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              }
+            </div>
+
+            <div class="field col-12 md:col-4">
+              <label for="studentFinRecievedYearMonth" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.RECEIVED_YEAR_MONTH' | translate }}
+              </label>
+              <!-- Derived: YEAR*10 + MONTH (the V038 rule); kept in step by the form's valueChanges. -->
+              <p-inputnumber id="studentFinRecievedYearMonth"
+                formControlName="studentFinRecievedYearMonth"
+                [useGrouping]="false"
+                [readonly]="true"
+              class="w-full"></p-inputnumber>
+            </div>
+
+            <!-- Wafar Amount -->
+            <div class="field col-12 md:col-6">
+              <label for="studentFinRecievedAmount" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.WAFAR_AMOUNT' | translate }} <span class="text-red-500">*</span>
+              </label>
+              <p-inputnumber id="studentFinRecievedAmount"
+                formControlName="studentFinRecievedAmount"
+                mode="currency"
+                [currency]="currencyCode"
+                [min]="0"
+              class="w-full"></p-inputnumber>
+              @if (form.get('studentFinRecievedAmount')?.invalid && form.get('studentFinRecievedAmount')?.touched) {
+                <small class="p-error">
+                  {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              }
+            </div>
+
+            <div class="field col-12 md:col-6">
+              <label for="studyFinanceMidate" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.MIDATE' | translate }}
+              </label>
+              <p-datepicker id="studyFinanceMidate"
+                formControlName="studyFinanceMidate"
+                dateFormat="dd/mm/yy"
+                [showIcon]="true"
+              class="w-full"></p-datepicker>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── LOCATION & BANK ── -->
+        <div class="section-card">
+          <div class="section-card__header">
+            <i class="pi pi-map-marker"></i>
+            <span>{{ 'STUDENT_FINANCE_WAFAR.SECTIONS.LOCATION' | translate }}</span>
+          </div>
+          <div class="section-card__grid formgrid grid">
+
+            <div class="field col-12 md:col-6">
+              <label for="studyCountryInId" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.COUNTRY' | translate }} <span class="text-red-500">*</span>
+              </label>
+              <p-select id="studyCountryInId"
+                formControlName="studyCountryInId"
+                [options]="studyCountries"
+                optionLabel="studyCountryInName"
+                optionValue="id"
+                [filter]="true"
+                filterBy="studyCountryInName"
+                appendTo="body"
+                [placeholder]="'STUDENT_FINANCE_WAFAR.FORM.SELECT_COUNTRY' | translate"
+                class="w-full"
+              (onChange)="onCountryChange($event.value)"></p-select>
+              @if (form.get('studyCountryInId')?.invalid && form.get('studyCountryInId')?.touched) {
+                <small class="p-error">
+                  {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              }
+            </div>
+
+            <div class="field col-12 md:col-6">
+              <label for="studyGovInId" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.GOVERNMENT' | translate }}
+              </label>
+              <p-select id="studyGovInId"
+                formControlName="studyGovInId"
+                [options]="studyGovernments"
+                optionLabel="studyGovInName"
+                optionValue="id"
+                [filter]="true"
+                filterBy="studyGovInName"
+                [showClear]="true"
+                appendTo="body"
+                [placeholder]="'STUDENT_FINANCE_WAFAR.FORM.SELECT_GOVERNMENT' | translate"
+              class="w-full"></p-select>
+            </div>
+
+            <div class="field col-12 md:col-6">
+              <label for="studyFinanceBankeId" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.BANK' | translate }}
+              </label>
+              <p-select id="studyFinanceBankeId"
+                formControlName="studyFinanceBankeId"
+                [options]="studyFinanceBanks"
+                optionLabel="studyFinanceBankeName"
+                optionValue="id"
+                [filter]="true"
+                filterBy="studyFinanceBankeName"
+                [showClear]="true"
+                appendTo="body"
+                [placeholder]="'STUDENT_FINANCE_WAFAR.FORM.SELECT_BANK' | translate"
+                class="w-full"
+              (onChange)="onBankChange($event.value)"></p-select>
+            </div>
+
+            <div class="field col-12 md:col-6">
+              <label for="studyFinanceBankBranchId" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.BRANCH' | translate }}
+              </label>
+              <p-select id="studyFinanceBankBranchId"
+                formControlName="studyFinanceBankBranchId"
+                [options]="studyFinanceBankBranches"
+                optionLabel="studyFinanceBankBranchName"
+                optionValue="id"
+                [filter]="true"
+                filterBy="studyFinanceBankBranchName"
+                [showClear]="true"
+                appendTo="body"
+                [placeholder]="'STUDENT_FINANCE_WAFAR.FORM.SELECT_BRANCH' | translate"
+              class="w-full"></p-select>
+            </div>
+
+            <div class="field col-12 md:col-6">
+              <label for="studyFinanceDofId" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.DOF' | translate }}
+              </label>
+              <p-select id="studyFinanceDofId"
+                formControlName="studyFinanceDofId"
+                [options]="studyFinanceDofs"
+                optionLabel="studyFinanceDofName"
+                optionValue="id"
+                [filter]="true"
+                filterBy="studyFinanceDofName"
+                [showClear]="true"
+                appendTo="body"
+                [placeholder]="'STUDENT_FINANCE_WAFAR.FORM.SELECT_DOF' | translate"
+              class="w-full"></p-select>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── NOTES ── -->
+        <div class="section-card">
+          <div class="section-card__header">
+            <i class="pi pi-align-left"></i>
+            <span>{{ 'STUDENT_FINANCE_WAFAR.SECTIONS.NOTES' | translate }}</span>
+          </div>
+          <div class="section-card__grid formgrid grid">
+            <div class="field col-12">
+              <label for="studyNote1" class="block text-600 font-medium mb-2">
+                {{ 'STUDENT_FINANCE_WAFAR.FORM.NOTES' | translate }}
+              </label>
+              <textarea id="studyNote1" pTextarea formControlName="studyNote1" rows="3" class="w-full"></textarea>
+            </div>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <!-- No `justify-content-end`: the dialog footer already packs this group at the
+         reading end (flex-end, the left in Arabic), and the global rule in styles.scss
+         reverses every `.flex.justify-content-end` under `direction: rtl`, which left
+         Cancel on the left of Save in Arabic, as in English (round-6 QA R6-09). -->
+    <div class="form-footer flex gap-2">
+      <button pButton pRipple type="button" class="p-button-text"
+        [label]="'COMMON.CANCEL' | translate"
+      (click)="hideFormDialog()"></button>
+      <button pButton pRipple type="button" class="p-button-primary"
+        [label]="'COMMON.SAVE' | translate"
+        [disabled]="!!pendingApproval"
+        [pTooltip]="pendingApproval ? ('FINANCE.PENDING_APPROVAL_MESSAGE' | translate) : ''"
+        tooltipPosition="top"
+      (click)="saveRecord()"></button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ═══════════════════════════ VIEW DIALOG ═══════════════════════════ -->
+<p-dialog [(visible)]="viewDialogVisible"
+  [modal]="true"
+  [maximizable]="true"
+  [style]="{ width: '900px', maxWidth: '95vw' }"
+  [header]="'STUDENT_FINANCE_WAFAR.VIEW' | translate"
+  [styleClass]="dialogViewStyleClass"
+  (onHide)="selectedRecord = null">
+  <ng-template pTemplate="content">
+    @if (selectedRecord; as record) {
+      <div class="finance-view"
+        [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"
+        [class.wafar-dialog-rtl]="translationService.isRTL()">
+        <!-- Header Card -->
+        <div class="finance-view__header-card">
+          <div class="header-card__badge">
+            <i class="pi pi-wallet"></i>
+            <span>{{ 'STUDENT_FINANCE_WAFAR.VIEW_DIALOG.SUMMARY' | translate }}</span>
+          </div>
+          <h2 class="header-card__title">{{ record.studentFinName || '---' }}</h2>
+          <p class="header-card__subtitle">
+            <i class="pi pi-hashtag"></i>
+            {{ record.studentFinId || '---' }}
+          </p>
+        </div>
+        <!-- Chips Strip -->
+        <div class="finance-view__chips-strip">
+          <div class="view-chip amount">
+            <i class="pi pi-coins"></i>
+            <div class="chip-content">
+              <span class="chip-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.WAFAR_AMOUNT' | translate }}</span>
+              <span class="chip-value">{{ record.studentFinRecievedAmount | number:'1.0-0' }} {{ currencyLabel }}</span>
+            </div>
+          </div>
+          <div class="view-chip status">
+            <i class="pi pi-tag"></i>
+            <div class="chip-content">
+              <span class="chip-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.WAFAR_TYPE' | translate }}</span>
+              <span class="chip-value">
+                <p-tag [value]="getWafarTypeName(record.wafarTypeId)" severity="info"></p-tag>
+              </span>
+            </div>
+          </div>
+          <div class="view-chip country">
+            <i class="pi pi-check-circle"></i>
+            <div class="chip-content">
+              <span class="chip-label">{{ 'STUDENT_FINANCE_WAFAR.CHIPS.STATUS' | translate }}</span>
+              <span class="chip-value">
+                <p-tag [value]="getStatusName(record.studyFinRecievedStatus)"
+                [severity]="getStatusSeverity(record.studyFinRecievedStatus)"></p-tag>
+              </span>
+            </div>
+          </div>
+          <div class="view-chip date">
+            <i class="pi pi-globe"></i>
+            <div class="chip-content">
+              <span class="chip-label">{{ 'STUDENT_FINANCE_WAFAR.CHIPS.COUNTRY' | translate }}</span>
+              <span class="chip-value">{{ getCountryName(record.studyCountryInId) }}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Overview -->
+        <div class="section-card">
+          <div class="section-card__header">
+            <i class="pi pi-id-card"></i>
+            <span>{{ 'STUDENT_FINANCE_WAFAR.SECTIONS.OVERVIEW' | translate }}</span>
+          </div>
+          <div class="section-card__grid detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.STUDENT_FIN_ID' | translate }}</span>
+              <span class="detail-value">{{ record.studentFinId || '---' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.STUDENT_FIN_NAME' | translate }}</span>
+              <span class="detail-value">{{ record.studentFinName || '---' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.WAFAR_TYPE' | translate }}</span>
+              <span class="detail-value">
+                <p-tag [value]="getWafarTypeName(record.wafarTypeId)" severity="info"></p-tag>
+              </span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.RECEIVED_STATUS' | translate }}</span>
+              <span class="detail-value">
+                <p-tag [value]="getStatusName(record.studyFinRecievedStatus)"
+                [severity]="getStatusSeverity(record.studyFinRecievedStatus)"></p-tag>
+              </span>
+            </div>
+          </div>
+        </div>
+        <!-- Finance -->
+        <div class="section-card">
+          <div class="section-card__header">
+            <i class="pi pi-wallet"></i>
+            <span>{{ 'STUDENT_FINANCE_WAFAR.SECTIONS.FINANCE' | translate }}</span>
+          </div>
+          <div class="section-card__grid detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.WAFAR_AMOUNT' | translate }}</span>
+              <span class="detail-value font-semibold">
+                {{ record.studentFinRecievedAmount | number:'1.0-0' }} {{ currencyLabel }}
+              </span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.RECEIVED_YEAR' | translate }}</span>
+              <span class="detail-value">{{ record.studentFinRecievedYear || '---' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.RECEIVED_MONTH' | translate }}</span>
+              <span class="detail-value">{{ record.studentFinRecievedMonth || '---' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.RECEIVED_YEAR_MONTH' | translate }}</span>
+              <span class="detail-value">{{ record.studentFinRecievedYearMonth || '---' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.MIDATE' | translate }}</span>
+              <span class="detail-value">{{ record.studyFinanceMidate ? (record.studyFinanceMidate | date:'dd/MM/yyyy') : ('STUDENT_FINANCE_WAFAR.SUMMARY.NO_DATE' | translate) }}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Location -->
+        <div class="section-card">
+          <div class="section-card__header">
+            <i class="pi pi-map-marker"></i>
+            <span>{{ 'STUDENT_FINANCE_WAFAR.SECTIONS.LOCATION' | translate }}</span>
+          </div>
+          <div class="section-card__grid detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.COUNTRY' | translate }}</span>
+              <span class="detail-value">{{ getCountryName(record.studyCountryInId) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.GOVERNMENT' | translate }}</span>
+              <span class="detail-value">{{ getGovernmentName(record.studyGovInId) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.BANK' | translate }}</span>
+              <span class="detail-value">{{ getBankName(record.studyFinanceBankeId) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.BRANCH' | translate }}</span>
+              <span class="detail-value">{{ getBranchName(record.studyFinanceBankBranchId) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.DOF' | translate }}</span>
+              <span class="detail-value">{{ getDofName(record.studyFinanceDofId) }}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Notes -->
+        <div class="section-card">
+          <div class="section-card__header">
+            <i class="pi pi-align-left"></i>
+            <span>{{ 'STUDENT_FINANCE_WAFAR.SECTIONS.NOTES' | translate }}</span>
+          </div>
+          <div class="section-card__grid detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">{{ 'STUDENT_FINANCE_WAFAR.FORM.NOTES' | translate }}</span>
+              <span class="detail-value">{{ record.studyNote1 || ('COMMON.NOT_AVAILABLE' | translate) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <button pButton pRipple type="button" class="p-button-text"
+      [label]="'COMMON.CLOSE' | translate"
+    (click)="viewDialogVisible = false"></button>
+  </ng-template>
+</p-dialog>

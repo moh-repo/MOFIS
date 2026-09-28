@@ -1,0 +1,64 @@
+:host ::ng-deep {
+    .p-datatable {
+        /*
+         * Each of the seven columns used to carry an inline min-width (8, 20,
+         * 15, 12, 12, 12 and 12rem). Their sum is the table's minimum — 91rem,
+         * or 1147px at this app's 12.6px root size, the widest floor in the app
+         * — so the table could not shrink with the page and the Actions column
+         * sat behind the card's horizontal scrollbar on anything short of a
+         * 1500px window.
+         *
+         * PrimeNG stretches the table to 100% of the card, so with the floors
+         * gone it is exactly as wide as the page. The four text columns wrap;
+         * the id, the date and the three action buttons keep their line. When
+         * there is genuinely no room left, .p-datatable-table-container
+         * (overflow-x: auto) scrolls rather than clipping.
+         */
+        th,
+        td {
+            white-space: nowrap;
+        }
+
+        // Branch name (2nd) is the primary label; Bank, Country and Government
+        // (3rd–5th) are resolved lookup names.
+        th:nth-child(2), td:nth-child(2) {
+            white-space: normal;
+            min-width: 9rem;
+            word-break: break-word;
+        }
+
+        th:nth-child(3), td:nth-child(3),
+        th:nth-child(4), td:nth-child(4),
+        th:nth-child(5), td:nth-child(5) {
+            white-space: normal;
+            min-width: 8rem;
+            word-break: break-word;
+        }
+
+        .p-datatable-thead > tr > th {
+            background-color: var(--surface-50);
+            font-weight: 600;
+            border-bottom: 2px solid var(--surface-border);
+        }
+
+        .p-datatable-tbody > tr {
+            transition: all 0.2s;
+            
+            &:hover {
+                background-color: var(--surface-hover) !important;
+            }
+        }
+    }
+
+    /* The dialogs are dv-dialog now; their header comes from
+       assets/layout/styles/_detail-dialog.scss. */
+
+    .p-button-rounded {
+        width: 2.5rem;
+        height: 2.5rem;
+        
+        &:hover {
+            transform: scale(1.1);
+        }
+    }
+}

@@ -1,0 +1,153 @@
+/* ── Summary cards ────────────────────────────────────────────────────────
+   The band of figures that sits above a list page's table.
+
+   Structure only. Each page keeps its own palette, because the colours are
+   tied to what the cards mean there — approved/rejected on one page, alone/
+   with-family on another — and a shared block has no business deciding that.
+   A page sets `--summary-accent` per card; this stylesheet reads it for the
+   edge bar and the hover border, and the page paints its own icon tile.
+
+   Columns are declared through `--cols-N`, never `auto-fit`. Four figures and
+   five figures are known quantities; auto-fit picks a count from the available
+   width instead and strands whatever does not divide into it — with five cards
+   it emits six tracks, the last of them empty, which is the orphan itself.
+
+   The two-column step spans the last card across the row when there is an odd
+   number of them. `:last-child:nth-child(odd)` is true exactly in that case, so
+   the rule needs no help from the page to know how many cards it has. */
+
+/* A band whose figures could not be read says so. It used to keep its row of
+   zeros, which reads as "there are none" (QA B9, N7). */
+.summary-failed {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1.25rem 0 0;
+    padding: 0.85rem 1rem;
+    border: 1px dashed var(--surface-border);
+    border-radius: 8px;
+    color: var(--text-color-secondary);
+
+    > .pi-exclamation-triangle {
+        color: var(--orange-500);
+    }
+}
+
+.summary-cards {
+    --summary-cards-cols: 4;
+
+    display: grid;
+    gap: 0.85rem;
+    margin: 1.25rem 0 0;
+    grid-template-columns: 1fr;
+
+    @media (min-width: 560px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+        .summary-card:last-child:nth-child(odd) {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media (min-width: 1200px) {
+        grid-template-columns: repeat(var(--summary-cards-cols), minmax(0, 1fr));
+
+        .summary-card:last-child:nth-child(odd) {
+            grid-column: auto;
+        }
+    }
+
+    &--cols-3 { --summary-cards-cols: 3; }
+    &--cols-4 { --summary-cards-cols: 4; }
+    &--cols-5 { --summary-cards-cols: 5; }
+    &--cols-6 { --summary-cards-cols: 6; }
+}
+
+.summary-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 1rem 1.1rem;
+    border-radius: 14px;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    overflow: hidden;
+    min-width: 0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+
+    /* A colour bar down the leading edge, so the cards are distinguishable at a
+       glance without repainting the whole card. Logical inset, so it moves to
+       the right in Arabic on its own. */
+    &::before {
+        content: '';
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 0;
+        width: 4px;
+        background: var(--summary-accent, var(--primary-color));
+    }
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+        border-color: color-mix(in srgb, var(--summary-accent, var(--primary-color)) 40%, var(--surface-border));
+    }
+
+    .summary-icon {
+        flex: 0 0 auto;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        color: white;
+        /* The page usually paints a two-tone gradient over this; the accent on
+           its own is the fallback so a card is never a white square. */
+        background: var(--summary-accent, var(--primary-color));
+    }
+
+    .summary-content {
+        flex: 1;
+        min-width: 0;
+
+        .summary-label {
+            display: block;
+            font-size: 0.75rem;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: var(--text-color-secondary);
+            margin-bottom: 0.15rem;
+            font-weight: 600;
+        }
+
+        .summary-value {
+            display: block;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text-color);
+            line-height: 1.05;
+            /* These sit in a row and are read against each other, so the digits
+               need to be the same width in every card. */
+            font-variant-numeric: tabular-nums;
+        }
+
+        .summary-meta {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-color-secondary);
+        }
+    }
+}
+
+/* Figures describe the filtered view; on paper the view is whatever was
+   printed, and the table below carries the same numbers. */
+@media print {
+    .summary-cards {
+        display: none !important;
+    }
+}

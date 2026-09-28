@@ -1,0 +1,275 @@
+<!-- [dir], not [attr.dir], as on the portal shell (QA SP-003): the Dir directive is
+     what ng-zorro's widgets read their direction from. With the bare attribute a
+     switch to Arabic on this page left the form, inputs and buttons laid out
+     left-to-right until the page was reloaded. -->
+<div class="lp-root" [dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+  <!-- Left branding panel -->
+  <div class="lp-brand">
+    <div class="lp-brand-inner">
+      <div class="lp-brand-logo">
+        <span nz-icon nzType="read" nzTheme="outline"></span>
+      </div>
+      <h1 class="lp-brand-title">{{ 'STUDENT_PORTAL.PORTAL_TITLE' | translate }}</h1>
+      <p class="lp-brand-sub">{{ 'LAYOUT.SYSTEM_NAME' | translate }}</p>
+      <nz-divider class="lp-divider"></nz-divider>
+      <ul class="lp-features">
+        <li><span nz-icon nzType="user" nzTheme="outline"></span> {{ 'STUDENT_PORTAL.MY_DATA' | translate }}</li>
+        <li><span nz-icon nzType="file-text" nzTheme="outline"></span> {{ 'STUDENT_PORTAL.DOCUMENTS' | translate }}</li>
+        <li><span nz-icon nzType="message" nzTheme="outline"></span> {{ 'STUDENT_PORTAL.INQUIRIES' | translate }}</li>
+        <li><span nz-icon nzType="car" nzTheme="outline"></span> {{ 'STUDENT_PORTAL.TRAVEL_TICKETS' | translate }}</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Right form panel -->
+  <div class="lp-form-panel">
+    <div class="lp-form-wrap">
+
+      <!-- Language toggle -->
+      <div class="lp-lang-row">
+        <div class="lp-lang-toggle">
+          <button nz-button nzType="link" nzSize="small" [class.lp-lang-active]="currentLang === 'en'" (click)="switchLang('en')">EN</button>
+          <button nz-button nzType="link" nzSize="small" [class.lp-lang-active]="currentLang === 'ar'" (click)="switchLang('ar')">ع</button>
+        </div>
+      </div>
+
+      <div class="lp-form-header">
+        <h2>{{ 'STUDENT_PORTAL.SIGN_IN' | translate }}</h2>
+        <p>{{ 'STUDENT_PORTAL.LOGIN_SUBTITLE' | translate }}</p>
+      </div>
+
+      <form (ngSubmit)="onSubmit()" nz-form nzLayout="vertical" class="lp-form">
+
+        <nz-form-item>
+          <nz-form-label nzRequired>{{ 'STUDENT_PORTAL.USERNAME_LABEL' | translate }}</nz-form-label>
+          <nz-form-control>
+            <nz-input-group [nzPrefix]="prefixKey">
+              <input nz-input id="username" [(ngModel)]="username" name="username"
+                type="email" autocomplete="username"
+                [placeholder]="'STUDENT_PORTAL.USERNAME_PLACEHOLDER' | translate" />
+            </nz-input-group>
+            <ng-template #prefixKey><span nz-icon nzType="mail" nzTheme="outline"></span></ng-template>
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired>{{ 'STUDENT_PORTAL.PASSWORD' | translate }}</nz-form-label>
+          <nz-form-control>
+            <nz-input-group [nzPrefix]="prefixPwd" [nzSuffix]="pwdToggle">
+              <input nz-input [type]="showPwd ? 'text' : 'password'" id="password"
+                [(ngModel)]="password" name="password"
+                [placeholder]="'STUDENT_PORTAL.PASSWORD_PLACEHOLDER' | translate" />
+            </nz-input-group>
+            <ng-template #prefixPwd><span nz-icon nzType="lock" nzTheme="outline"></span></ng-template>
+            <ng-template #pwdToggle>
+              <span nz-icon [nzType]="showPwd ? 'eye-invisible' : 'eye'" nzTheme="outline"
+              class="lp-pwd-toggle" (click)="showPwd = !showPwd"></span>
+            </ng-template>
+          </nz-form-control>
+        </nz-form-item>
+
+        <!-- Country. Required, and verified server-side against the student's own
+             record — STUDENTCORE holds no country, so it is checked through
+             student_id against STUDENT_DATA.STUDY_COUNTRY_IN. nzShowSearch keeps
+             it usable once the list is longer than one country. -->
+        <nz-form-item>
+          <nz-form-label nzRequired>{{ 'STUDENT_PORTAL.COUNTRY_LABEL' | translate }}</nz-form-label>
+          <nz-form-control>
+            <nz-select id="studyCountry" name="studyCountry"
+              [(ngModel)]="studyCountryInId"
+              [nzLoading]="countriesLoading"
+              [nzDisabled]="countriesLoading || !countries.length"
+              nzShowSearch nzAllowClear
+              [nzPlaceHolder]="'STUDENT_PORTAL.COUNTRY_PLACEHOLDER' | translate"
+              class="lp-country-select">
+              @for (c of countries; track c.id) {
+                <nz-option [nzValue]="c.id" [nzLabel]="countryLabel(c)"></nz-option>
+              }
+            </nz-select>
+            <!-- An empty list disables the selector, and the field is required, so
+                 without this the page is one no student can sign in from and the
+                 only way out is knowing to reload it. -->
+            @if (!countriesLoading && countriesUnavailable) {
+              <a class="lp-retry-link" (click)="loadCountries()">
+                <span nz-icon nzType="reload" nzTheme="outline"></span>
+                {{ 'STUDENT_PORTAL.COUNTRY_RETRY' | translate }}
+              </a>
+            }
+          </nz-form-control>
+        </nz-form-item>
+
+        @if (challenge) {
+          <nz-alert nzType="info" nzShowIcon class="lp-error"
+            [nzMessage]="(challenge === 'VERIFY_EMAIL' ? 'STUDENT_PORTAL.CHALLENGE.VERIFY_EMAIL' : 'STUDENT_PORTAL.CHALLENGE.TOTP') | translate"
+            [nzDescription]="challengeMessage"></nz-alert>
+          <nz-form-item>
+            <nz-form-label nzRequired>{{ 'STUDENT_PORTAL.CHALLENGE.CODE_LABEL' | translate }}</nz-form-label>
+            <nz-form-control>
+              <input nz-input id="challengeCode" [(ngModel)]="challengeCode" name="challengeCode" maxlength="6"
+                inputmode="numeric" autocomplete="one-time-code"
+                [placeholder]="'STUDENT_PORTAL.CHALLENGE.CODE_PLACEHOLDER' | translate" />
+            </nz-form-control>
+          </nz-form-item>
+        }
+
+        <!-- Security verification. The image is drawn by the server and the answer is
+             kept there, so nothing on this page knows the expected text and a request
+             posted straight at /auth/login meets the same challenge this form does.
+             Asked on every attempt, including the one carrying an e-mail or
+             authenticator code: the server checks the password before it reads either
+             code, so an exempt call would be a free password oracle. -->
+        <nz-form-item>
+          <nz-form-label nzRequired>{{ 'STUDENT_PORTAL.CAPTCHA.LABEL' | translate }}</nz-form-label>
+          <nz-form-control>
+            <div class="lp-captcha-row">
+              @if (captcha.imageUrl) {
+                <img [src]="captcha.imageUrl" class="lp-captcha-image" width="200" height="80"
+                  [alt]="'STUDENT_PORTAL.CAPTCHA.LABEL' | translate" />
+              } @else {
+                <div class="lp-captcha-image lp-captcha-image--empty">
+                  <span nz-icon nzType="safety" nzTheme="outline"></span>
+                </div>
+              }
+              <button nz-button type="button" class="lp-captcha-refresh"
+                [nzLoading]="captcha.loading"
+                nz-tooltip [nzTooltipTitle]="'STUDENT_PORTAL.CAPTCHA.REFRESH' | translate"
+                [attr.aria-label]="'STUDENT_PORTAL.CAPTCHA.REFRESH' | translate"
+                (click)="refreshCaptcha()">
+                <span nz-icon nzType="reload" nzTheme="outline"></span>
+              </button>
+            </div>
+            <input nz-input id="captchaAnswer" name="captchaAnswer" [(ngModel)]="captcha.answer"
+              maxlength="8" autocomplete="off" spellcheck="false" class="lp-captcha-input"
+              [placeholder]="'STUDENT_PORTAL.CAPTCHA.PLACEHOLDER' | translate" />
+          </nz-form-control>
+        </nz-form-item>
+
+        @if (error) {
+          <nz-alert nzType="error" [nzMessage]="error" nzShowIcon class="lp-error"></nz-alert>
+        }
+
+        @if (challenge) {
+          <a class="lp-forgot-link" (click)="cancelChallenge()">{{ 'STUDENT_PORTAL.CHALLENGE.START_OVER' | translate }}</a>
+        }
+
+        <button nz-button nzType="primary" nzBlock nzSize="large" type="submit" [nzLoading]="loading" class="lp-submit-btn">
+          <span nz-icon nzType="login" nzTheme="outline"></span>
+          {{ 'STUDENT_PORTAL.SIGN_IN' | translate }}
+        </button>
+
+        <div class="lp-forgot-row">
+          <a class="lp-forgot-link" (click)="openForgot()">
+            <span nz-icon nzType="question-circle" nzTheme="outline"></span>
+            {{ 'STUDENT_PORTAL.FORGOT_PASSWORD' | translate }}
+          </a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+</div>
+
+<!-- Forgot Password Dialog -->
+<nz-modal [(nzVisible)]="showForgotDialog"
+  [nzTitle]="'STUDENT_PORTAL.FORGOT_PASSWORD' | translate"
+  [nzFooter]="null"
+  nzWidth="420px"
+  (nzOnCancel)="showForgotDialog = false">
+
+  <ng-container *nzModalContent>
+
+    <!-- Step 1: request OTP -->
+    @if (forgotStep === 'request') {
+      <p class="lp-modal-hint">{{ 'STUDENT_PORTAL.FORGOT_INSTRUCTIONS' | translate }}</p>
+      <nz-form-item>
+        <nz-form-label nzRequired>{{ 'STUDENT_PORTAL.USERNAME_LABEL' | translate }}</nz-form-label>
+        <nz-form-control>
+          <nz-input-group [nzPrefix]="prefixKey2">
+            <input nz-input [(ngModel)]="forgotUsername" type="email"
+              [placeholder]="'STUDENT_PORTAL.USERNAME_PLACEHOLDER' | translate" />
+          </nz-input-group>
+          <ng-template #prefixKey2><span nz-icon nzType="mail" nzTheme="outline"></span></ng-template>
+        </nz-form-control>
+      </nz-form-item>
+      <!-- Challenged like the sign-in: this is the one anonymous call that makes the
+           server send mail, so unattended it is a way to flood an address and to burn
+           the reset budget of an account the caller does not own. Its own challenge,
+           not the sign-in one behind it — an id is spent the moment it is checked. -->
+      <nz-form-item>
+        <nz-form-label nzRequired>{{ 'STUDENT_PORTAL.CAPTCHA.LABEL' | translate }}</nz-form-label>
+        <nz-form-control>
+          <div class="lp-captcha-row">
+            @if (forgotCaptcha.imageUrl) {
+              <img [src]="forgotCaptcha.imageUrl" class="lp-captcha-image" width="200" height="80"
+                [alt]="'STUDENT_PORTAL.CAPTCHA.LABEL' | translate" />
+            } @else {
+              <div class="lp-captcha-image lp-captcha-image--empty">
+                <span nz-icon nzType="safety" nzTheme="outline"></span>
+              </div>
+            }
+            <button nz-button type="button" class="lp-captcha-refresh"
+              [nzLoading]="forgotCaptcha.loading"
+              nz-tooltip [nzTooltipTitle]="'STUDENT_PORTAL.CAPTCHA.REFRESH' | translate"
+              [attr.aria-label]="'STUDENT_PORTAL.CAPTCHA.REFRESH' | translate"
+              (click)="refreshForgotCaptcha()">
+              <span nz-icon nzType="reload" nzTheme="outline"></span>
+            </button>
+          </div>
+          <input nz-input [(ngModel)]="forgotCaptcha.answer" maxlength="8"
+            autocomplete="off" spellcheck="false" class="lp-captcha-input"
+            [placeholder]="'STUDENT_PORTAL.CAPTCHA.PLACEHOLDER' | translate" />
+        </nz-form-control>
+      </nz-form-item>
+      @if (forgotError) {
+        <nz-alert nzType="error" [nzMessage]="forgotError" nzShowIcon class="mb-3"></nz-alert>
+      }
+      <button nz-button nzType="primary" nzBlock [nzLoading]="forgotLoading" (click)="requestOtp()">
+        {{ 'STUDENT_PORTAL.SEND_CODE' | translate }}
+      </button>
+    }
+
+    <!-- Step 2: enter OTP + new password -->
+    @if (forgotStep === 'reset') {
+      <nz-alert nzType="info" [nzMessage]="forgotMessage" nzShowIcon class="mb-3"></nz-alert>
+      <nz-form-item>
+        <nz-form-label nzRequired>{{ 'STUDENT_PORTAL.RESET_CODE' | translate }}</nz-form-label>
+        <nz-form-control>
+          <input nz-input [(ngModel)]="forgotOtp" maxlength="6"
+            [placeholder]="'STUDENT_PORTAL.RESET_CODE_PLACEHOLDER' | translate" />
+        </nz-form-control>
+      </nz-form-item>
+      <nz-form-item>
+        <nz-form-label nzRequired>{{ 'STUDENT_PORTAL.NEW_PASSWORD' | translate }}</nz-form-label>
+        <nz-form-control>
+          <input nz-input type="password" [(ngModel)]="forgotNewPassword" />
+        </nz-form-control>
+      </nz-form-item>
+      <nz-form-item>
+        <nz-form-label nzRequired>{{ 'STUDENT_PORTAL.CONFIRM_PASSWORD' | translate }}</nz-form-label>
+        <nz-form-control>
+          <input nz-input type="password" [(ngModel)]="forgotConfirmPassword" />
+        </nz-form-control>
+      </nz-form-item>
+      @if (forgotError) {
+        <nz-alert nzType="error" [nzMessage]="forgotError" nzShowIcon class="mb-3"></nz-alert>
+      }
+      <button nz-button nzType="primary" nzBlock [nzLoading]="forgotLoading" (click)="submitReset()">
+        {{ 'STUDENT_PORTAL.RESET_PASSWORD' | translate }}
+      </button>
+    }
+
+    <!-- Step 3: success -->
+    @if (forgotStep === 'done') {
+      <nz-result nzStatus="success" [nzTitle]="forgotMessage">
+        <div nz-result-extra>
+          <button nz-button nzType="primary" (click)="showForgotDialog = false">
+            {{ 'COMMON.CLOSE' | translate }}
+          </button>
+        </div>
+      </nz-result>
+    }
+
+  </ng-container>
+</nz-modal>

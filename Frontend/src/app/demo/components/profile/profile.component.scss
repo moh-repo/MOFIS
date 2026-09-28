@@ -1,0 +1,377 @@
+/* Width comes from .layout-main, so this page lines up with every other one.
+   It used to cap itself at 1200px and centre, which left it visibly narrower
+   than the list pages beside it in the menu. */
+.profile-container {
+  padding: 2rem;
+}
+
+.profile-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  color: white;
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.profile-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.profile-avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.profile-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.avatar-text {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: white;
+}
+
+.profile-basic-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profile-name {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.profile-role {
+  font-size: 1.2rem;
+  margin: 0;
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.profile-id {
+  font-size: 1rem;
+  margin: 0;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* The header carries no buttons any more: the account's name and login name
+   are the administrator's to set, and the one action the holder owns is the
+   password, which sits on the security card. */
+
+.profile-content {
+  margin-top: 2rem;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+}
+
+.profile-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid #e2e8f0;
+}
+
+.profile-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.card-header i {
+  color: #667eea;
+  font-size: 1.1rem;
+}
+
+.card-content {
+  padding: 1.5rem;
+}
+
+/* Says who owns these fields, so a reader who cannot edit them knows why. */
+.card-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: #64748b;
+
+  i {
+    color: #667eea;
+  }
+}
+
+/* ── change-password dialog ───────────────────────────────────────────── */
+.password-form {
+  .field {
+    margin-bottom: 1.25rem;
+  }
+
+  label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #2d3748;
+    margin-bottom: 0.4rem;
+  }
+
+  .hint {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    color: #64748b;
+  }
+}
+
+.password-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.875rem;
+}
+
+/* DEC-04: the account must replace a password an administrator set. */
+.password-required {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  color: #92400e;
+  font-size: 0.875rem;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.info-label i {
+  color: #667eea;
+}
+
+.info-value {
+  color: #2d3748;
+  font-weight: 500;
+}
+
+/* Loading Container */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 1rem;
+  
+  p {
+    color: var(--text-color);
+    font-size: 1rem;
+  }
+}
+
+/* RTL Support for Arabic */
+.profile-container.rtl {
+  direction: rtl;
+  text-align: right;
+
+  .profile-header-content {
+    direction: rtl;
+  }
+
+  /* No `flex-direction: row-reverse` on the avatar row either, for the reason
+     given below: `direction: rtl` already lays it out right to left, so the
+     avatar — the first child — sits at the right edge on its own. Reversing on
+     top put it back on the left, which is where it was in Arabic.
+
+     The `margin-right: 1.5rem` that used to sit on .profile-basic-info went
+     with it: the row is spaced by `gap: 1.5rem`, so the margin was added to the
+     gap rather than replacing it and Arabic got twice the space between the
+     avatar and the name. */
+
+  .profile-card {
+    text-align: right;
+  }
+
+  /* No `flex-direction: row-reverse` on either of these. The page inherits
+     `direction: rtl` from the layout wrapper, so a flex row already runs right
+     to left and `justify-content: space-between` puts the label at the right
+     edge on its own; reversing on top of that put it back on the left. The
+     same double mirror the page headings had. */
+  .card-header h3 {
+    i {
+      margin-right: 0;
+      margin-left: 0.5rem;
+    }
+  }
+
+  .info-label {
+    text-align: right;
+
+    i {
+      margin-right: 0;
+      margin-left: 0.5rem;
+    }
+  }
+
+  .info-value {
+    text-align: left;
+  }
+
+  .card-note i {
+    margin-right: 0;
+    margin-left: 0.5rem;
+  }
+
+  .p-button {
+    direction: rtl;
+  }
+
+  p-tag {
+    direction: ltr;
+  }
+}
+
+/* The three buttons that used to live here carried a private `.action-button`
+   skin and no severity class, so the global filled-button rule in styles.scss
+   painted their labels white on a near-white card and they could not be seen
+   at all — the "quick actions invisible" note in the August review. The one
+   that is left is a plain p-button-outlined, which that rule exempts. */
+.action-buttons {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .profile-container {
+    padding: 1rem;
+  }
+  
+  .profile-header {
+    padding: 1.5rem;
+  }
+  
+  .profile-header-content {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .profile-avatar-section {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .profile-name {
+    font-size: 2rem;
+  }
+  
+  .profile-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+}
+
+@media (max-width: 480px) {
+  .profile-header {
+    padding: 1rem;
+  }
+  
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .avatar-text {
+    font-size: 2rem;
+  }
+  
+  .profile-name {
+    font-size: 1.75rem;
+  }
+  
+  .card-content {
+    padding: 1rem;
+  }
+  
+  .info-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* O-16: the second-factor dialog. */
+.mfa-form {
+  .hint { color: var(--text-color-secondary); font-size: .9rem; margin: 0 0 .75rem; }
+  .mfa-qr { display: flex; flex-direction: column; align-items: center; gap: .5rem; margin-bottom: 1rem;
+    img { background: #fff; padding: .25rem; border-radius: .5rem; }
+    code { letter-spacing: .08em; user-select: all; } }
+  .mfa-recovery-codes { list-style: none; margin: 0 0 .75rem; padding: .75rem; display: grid;
+    grid-template-columns: 1fr 1fr; gap: .35rem; background: var(--surface-100, #f3f4f6); border-radius: .5rem;
+    code { letter-spacing: .06em; user-select: all; } }
+}

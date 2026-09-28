@@ -1,0 +1,297 @@
+/* The shell owns the palette; the dashboard restates it so the page still
+   renders sensibly if it is ever mounted outside the portal layout. */
+:host {
+  --d-navy:   #0b2545;
+  --d-accent: #2f7fd8;
+  --d-ink:    #10243b;
+  --d-muted:  #64748b;
+  --d-line:   #e3e9f0;
+  --d-ok:     #1f8a53;
+  --d-warn:   #b7791f;
+  --d-danger: #c0392b;
+  --d-radius: 10px;
+}
+
+.db-root {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.db-loading {
+  display: flex;
+  justify-content: center;
+  padding: 64px 0;
+}
+
+.db-alert {
+  border-radius: var(--d-radius);
+  margin: 0;
+}
+
+/* ── Section headings ──────────────────────────────────────── */
+.db-heading {
+  margin: 6px 0 -4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--d-muted);
+}
+
+/* ── Identity strip ────────────────────────────────────────── */
+.db-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: var(--d-radius);
+  /* One deliberate flash of the ministry navy, on the reading edge. */
+  border-inline-start: 4px solid var(--d-navy);
+
+  &__avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--d-navy);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  &__body { flex: 1; min-width: 0; }
+
+  &__name {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--d-ink);
+    line-height: 1.3;
+  }
+
+  &__hint {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: var(--d-muted);
+  }
+
+  &__facts {
+    display: flex;
+    gap: 28px;
+    margin: 0;
+    flex-shrink: 0;
+
+    dt {
+      margin: 0;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: var(--d-muted);
+    }
+
+    dd {
+      margin: 2px 0 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--d-ink);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  @media (max-width: 767px) {
+    flex-wrap: wrap;
+    &__facts { width: 100%; gap: 20px; }
+  }
+}
+
+/* ── Key figures ───────────────────────────────────────────── */
+.db-stat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  height: 100%;
+  padding: 16px 16px 16px 18px;
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: var(--d-radius);
+  overflow: hidden;
+
+  /* The colour is an edge marker, not a fill: the number stays the loudest
+     thing in the tile. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--d-muted);
+  }
+
+  &--accent::before { background: var(--d-accent); }
+  &--ok::before     { background: var(--d-ok); }
+  &--warn::before   { background: var(--d-warn); }
+  &--muted::before  { background: #c7d2de; }
+
+  &__icon {
+    font-size: 16px;
+    color: var(--d-muted);
+  }
+
+  &__label {
+    font-size: 12px;
+    color: var(--d-muted);
+    line-height: 1.35;
+  }
+
+  &__value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--d-ink);
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: var(--d-muted);
+  }
+
+  /* An action card is a link to where the count can be dealt with. */
+  &--link {
+    text-decoration: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+
+    &:hover,
+    &:focus-visible {
+      border-color: var(--d-accent);
+      box-shadow: 0 4px 14px rgba(11, 37, 69, 0.08);
+    }
+  }
+}
+
+/* ── Cards ─────────────────────────────────────────────────── */
+.db-card {
+  background: #fff;
+  border: 1px solid var(--d-line);
+  border-radius: var(--d-radius);
+  padding: 18px 20px 20px;
+
+  &--full { height: 100%; }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--d-line);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--d-ink);
+
+    [nz-icon] { color: var(--d-accent); font-size: 16px; }
+  }
+}
+
+/* ── Progress ──────────────────────────────────────────────── */
+.db-progress {
+  &__figure {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  &__pct {
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--d-ink);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__of {
+    font-size: 12px;
+    color: var(--d-muted);
+    text-align: end;
+  }
+
+  &__track {
+    height: 8px;
+    border-radius: 4px;
+    background: #eef2f7;
+    overflow: hidden;
+  }
+
+  &__fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--d-accent);
+    transition: width 0.4s ease;
+
+    &--done { background: var(--d-ok); }
+  }
+
+  &__meta {
+    margin: 10px 0 0;
+    font-size: 13px;
+    color: var(--d-muted);
+
+    strong { color: var(--d-ink); }
+  }
+}
+
+/* ── Fact list ─────────────────────────────────────────────── */
+.db-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 32px;
+
+  @media (max-width: 575px) { grid-template-columns: 1fr; }
+
+  &__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--d-line);
+
+    dt {
+      margin: 0;
+      font-size: 12.5px;
+      color: var(--d-muted);
+    }
+
+    dd {
+      margin: 0;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--d-ink);
+      text-align: end;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+.db-val--danger { color: var(--d-danger) !important; }
+.db-val--warn   { color: var(--d-warn) !important; }
+
+/* Under the cards when a count could not be read (QA B9): the dash on the card
+   says which, this line says why and offers the retry. */
+.db-stats__failed {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--d-warn);
+}

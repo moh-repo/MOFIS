@@ -1,0 +1,735 @@
+/* ============================================================================
+   V110 — The dashboard aggregates and the last of the legacy views.
+
+   The final sweep of finding 4, over the views the earlier passes did not reach
+   because they are not report views: the VW_* aggregates behind the dashboard
+   charts, and the Access-era views that predate the application.
+
+   The sweep that found them also corrected an earlier claim. A check for "a
+   name column with no _EN sibling" looked for COLUMN + '_EN', which is right
+   for V_Student_List_Detailed but wrong for the views that name their Arabic
+   column X_NAME_AR: there the sibling is X_NAME_EN, not X_NAME_AR_EN. Under the
+   corrected check V_STUDENT_PROFILE_DOC (20 pairs) and
+   V_STUDENT_FINANCIAL_STATEMENT (7 pairs) -- which back the student ID card,
+   the registration form, the enrollment certificate and the financial statement
+   -- are already fully bilingual, and always were.
+
+   WHAT THIS FIXES
+
+   1. VW_FINANCIAL_BY_QUARTER returned no rows at all.
+
+      It joined MOHE_QUARTER mq ON mq.QUARTER = sf.MOHE_QUARTER_ID. That is the
+      same broken join V103 removed from V_Quarterly_Report, still in place here:
+      STUDENT_FINANCE.MOHE_QUARTER_ID is NULL on all 941 rows and, even
+      populated, MOHE_QUARTER.QUARTER holds a YYYYQ composite rather than the
+      surrogate key. An INNER JOIN on it matches nothing, so the quarterly
+      financial chart on the dashboard has always been empty.
+
+      The period now derives from STUDY_FINANCE_MIDATE exactly as V103 derives
+      it, which puts the dev payments in 2025-Q4 and 2026-Q2.
+
+      TotalBudget used to be a second copy of the same SUM as TotalReceived --
+      it asserted that every quarter was budgeted precisely what it paid out. It
+      now reads MOHE_QUARTER.BUDGET_AMOUNT for the quarter, which is NULL for
+      both quarters that have payments, because MOHE_QUARTER covers 2024-Q1 to
+      2025-Q3 and nothing has budgeted the quarters since. NULL is the true
+      answer and the previous number was not.
+
+   2. Three chart labels were Arabic-only. CountryName, DegreeName and
+      StatusName each get an English sibling, and ChartDataService selects on
+      LocaleContextHolder as getStudentsByStudyStatusDistribution already does.
+      QuarterName is left alone deliberately: '2025-Q4' is digits.
+
+   3. The legacy views get the same siblings for completeness:
+      V_STUDENT_SUMMARY (only the district was missing), and the four Access-era
+      views Q_STUD_DATA_ALL, V_STUD_DATA_CALC_ALL_1,
+      VW_STUDENT_FINANCE_PAYMENT_ALL and VW_STUDENT_EXTENSIONS.
+
+      Nothing in the application reads those four. They are translated because
+      the shape is identical and a report that starts reading one should not
+      have to rediscover this, not because anything needs it today. If they are
+      genuinely dead they should be dropped rather than maintained, which is a
+      decision for the owner and a separate change. VW_STUDENT_EXTENSIONS turned
+      out to need nothing: its STUDENT_MAJOR_NAME is STUDENT_DATA's own free-text
+      column, not a lookup.
+
+      TYPE_ALL_IS on VW_STUDENT_FINANCE_PAYMENT_ALL picks university type, else
+      ministry type, else agency type. Its English sibling repeats that order
+      over the _EN columns, so the two can never name different bodies -- the
+      rule V107 applied to ENTITY_NAME.
+
+   WHAT STAYS ARABIC-ONLY, AND WHY
+
+      every STUDENT_NAME, beneficiary_name, auditor_name   a person's own name
+      report_name, template_name, schedule_name            typed by a user
+      V_STUDENT_SUMMARY.STUDENT_MAJOR_NAME_FREE            free text on the student
+      V_Payment_Summary.year_name                          a year number
+      V_Performance_Metrics.metric_name                    a key, not a label
+      V_Query_Builder.table_name, .column_name             database identifiers
+      Q_STUD_DATA_ALL.HEAD_TITLE                           a whole Arabic sentence
+                                                           built in SQL; it belongs
+                                                           in LU_REPORT_LABEL if a
+                                                           report ever prints it
+
+   The N'Unknown' fallbacks become غير محدد / Unspecified, V076's
+   LBL_UNSPECIFIED wording, as in V109. Each GROUP BY keys on the underlying
+   column, so the text changes and the grouping does not.
+
+   Idempotent (CREATE OR ALTER). Apply as the Flyway/admin login and verify
+   afterwards -- under mohe_app these emit a misleading Msg 3701.
+
+   After applying
+       mvn -o test -Dtest=ChartDataLanguageTest
+   ============================================================================ */
+
+SET QUOTED_IDENTIFIER ON;
+GO
+
+/* -- VW_FINANCIAL_BY_QUARTER -------------------------------------------------
+   Period from the payment date, budget from the quarter that was budgeted.   */
+CREATE OR ALTER VIEW MOHECORE.VW_FINANCIAL_BY_QUARTER AS
+SELECT
+    sf.STUDY_COUNTRY_IN_ID AS StudyCountryInId,
+    CAST(YEAR(sf.STUDY_FINANCE_MIDATE) AS NVARCHAR(4)) + '-Q'
+        + CAST(DATEPART(QUARTER, sf.STUDY_FINANCE_MIDATE) AS NVARCHAR(1)) AS QuarterName,
+    SUM(CAST(ISNULL(sf.STUDENT_FIN_RECIEVED_AMOUNT, 0) AS DECIMAL(18,2))) AS TotalReceived,
+    -- One MOHE_QUARTER row per (year, quarter), so MAX picks that row's budget
+    -- without the join multiplying it across the payments. NULL where the
+    -- quarter carries no budget, which is every quarter that has payments.
+    CAST(MAX(mq.BUDGET_AMOUNT) AS DECIMAL(18,2)) AS TotalBudget,
+    COUNT(DISTINCT sf.STUDENT_ID) AS StudentCount
+FROM MOHECORE.STUDENT_FINANCE sf
+LEFT JOIN MOHECORE.MOHE_QUARTER mq
+       ON mq.QUARTER_YEAR = YEAR(sf.STUDY_FINANCE_MIDATE)
+      AND mq.QUARTER_NO   = DATEPART(QUARTER, sf.STUDY_FINANCE_MIDATE)
+WHERE sf.STUDY_FINANCE_MIDATE IS NOT NULL
+GROUP BY sf.STUDY_COUNTRY_IN_ID,
+         YEAR(sf.STUDY_FINANCE_MIDATE),
+         DATEPART(QUARTER, sf.STUDY_FINANCE_MIDATE);
+GO
+
+/* -- VW_STUDENT_ENROLLMENT_BY_COUNTRY ---------------------------- */
+CREATE OR ALTER VIEW MOHECORE.VW_STUDENT_ENROLLMENT_BY_COUNTRY AS
+
+SELECT
+    sd.STUDY_COUNTRY_IN AS StudyCountryInId,
+    sci.STUDY_COUNTRY_IN_NAME AS CountryName,
+    COALESCE(NULLIF(sci.STUDY_COUNTRY_IN_NAME_EN, N''), sci.STUDY_COUNTRY_IN_NAME) AS CountryNameEn,
+    COUNT(*) AS StudentCount,
+    SUM(CASE WHEN sss.CODE = 'ACTIVE' THEN 1 ELSE 0 END) AS ActiveStudents,
+    CAST(AVG(CAST(ISNULL(sf.STUDENT_FIN_RECIEVED_AMOUNT, 0) AS DECIMAL(18,2))) AS DECIMAL(18,2)) AS AvgAmount
+FROM MOHECORE.STUDENT_DATA sd
+LEFT JOIN MOHECORE.STUDY_COUNTRY_IN     sci ON sci.STUDY_COUNTRY_IN_ID     = sd.STUDY_COUNTRY_IN
+LEFT JOIN MOHECORE.STUDENT_STUDY_STATUS sss ON sss.STUDENT_STUDY_STATUS_ID = sd.STUDENT_STUDY_STATUS_ID
+LEFT JOIN MOHECORE.STUDENT_FINANCE      sf  ON sf.STUDENT_ID = sd.STUDENT_ID
+WHERE ISNULL(sd.IS_DELETED, 0) = 0
+GROUP BY sd.STUDY_COUNTRY_IN, sci.STUDY_COUNTRY_IN_NAME, sci.STUDY_COUNTRY_IN_NAME_EN;
+
+GO
+
+/* -- VW_STUDENT_BY_DEGREE ---------------------------------------- */
+CREATE OR ALTER VIEW MOHECORE.VW_STUDENT_BY_DEGREE AS
+
+SELECT
+
+    sd.STUDY_COUNTRY_IN AS StudyCountryInId,
+
+    ISNULL(sdeg.STUDENT_DEGREE_NAME, N'غير محدد') AS DegreeName,
+    ISNULL(COALESCE(NULLIF(sdeg.STUDENT_DEGREE_NAME_EN, N''), sdeg.STUDENT_DEGREE_NAME), N'Unspecified') AS DegreeNameEn,
+
+    COUNT(*) AS StudentCount,
+
+    CAST(SUM(ISNULL(sf.STUDENT_FIN_RECIEVED_AMOUNT, 0)) AS DECIMAL(18,2)) AS TotalAmount,
+
+    CAST(AVG(CAST(ISNULL(sf.STUDENT_FIN_RECIEVED_AMOUNT, 0) AS DECIMAL(18,2))) AS DECIMAL(18,2)) AS AvgAmount
+
+FROM MOHECORE.STUDENT_DATA sd
+
+LEFT JOIN MOHECORE.STUDENT_DEGREE sdeg ON sdeg.STUDENT_DEGREE_ID = sd.STUDENT_DEGREE_ID
+
+LEFT JOIN MOHECORE.STUDENT_FINANCE sf ON sf.STUDENT_ID = sd.STUDENT_ID
+
+WHERE ISNULL(sd.IS_DELETED, 0) = 0
+
+GROUP BY sd.STUDY_COUNTRY_IN, sdeg.STUDENT_DEGREE_NAME, sdeg.STUDENT_DEGREE_NAME_EN;
+
+GO
+
+/* -- VW_STUDENT_STATUS_DISTRIBUTION ------------------------------ */
+CREATE OR ALTER VIEW MOHECORE.VW_STUDENT_STATUS_DISTRIBUTION AS
+
+SELECT
+
+    sd.STUDY_COUNTRY_IN AS StudyCountryInId,
+
+    ISNULL(sss.STUDENT_STUDY_STATUS_NAME, N'غير محدد') AS StatusName,
+    ISNULL(COALESCE(NULLIF(sss.STUDENT_STUDY_STATUS_NAME_EN, N''), sss.STUDENT_STUDY_STATUS_NAME), N'Unspecified') AS StatusNameEn,
+
+    COUNT(*) AS StudentCount,
+
+    CAST(SUM(ISNULL(sf.STUDENT_FIN_RECIEVED_AMOUNT, 0)) AS DECIMAL(18,2)) AS TotalAmount
+
+FROM MOHECORE.STUDENT_DATA sd
+
+LEFT JOIN MOHECORE.STUDENT_STUDY_STATUS sss ON sss.STUDENT_STUDY_STATUS_ID = sd.STUDENT_STUDY_STATUS_ID
+
+LEFT JOIN MOHECORE.STUDENT_FINANCE sf ON sf.STUDENT_ID = sd.STUDENT_ID
+
+WHERE ISNULL(sd.IS_DELETED, 0) = 0
+
+GROUP BY sd.STUDY_COUNTRY_IN, sss.STUDENT_STUDY_STATUS_NAME, sss.STUDENT_STUDY_STATUS_NAME_EN;
+
+GO
+
+/* -- V_STUDENT_SUMMARY ------------------------------------------- */
+CREATE OR ALTER VIEW MOHECORE.V_STUDENT_SUMMARY AS
+
+SELECT
+    -- Core identity
+    sd.STUDENT_ID,
+    sd.STUDENT_NAME,
+    sd.NATIONAL_ID,
+    sd.STUDENT_PASSPORT_NUMBER,
+    sd.STUDENT_BIRTHDATE,
+    sd.STUDENT_AGE,
+    sd.STUDENT_GENDER,
+    sd.PICTURE_PATH,
+
+    -- Origin location
+    sd.STUDENT_COUNTRY_ID,
+    sc.STUDENT_COUNTRY_NAME                     AS COUNTRY_NAME,
+    sc.STUDENT_COUNTRY_NAME_EN                  AS COUNTRY_NAME_EN,
+    sd.STUDENT_GOV_ID,
+    sg.STUDENT_GOV_NAME                         AS GOV_NAME,
+    sg.STUDENT_GOV_NAME_EN                      AS GOV_NAME_EN,
+    sd.STUDENT_MUD_ID,
+    mud.STUDENT_MUD_NAME                        AS MUD_NAME,
+    mud.STUDENT_MUD_NAME_EN                     AS MUD_NAME_EN,
+
+    -- Academic
+    sd.STUDENT_DEGREE_ID,
+    sdeg.STUDENT_DEGREE_NAME                    AS DEGREE_NAME,
+    sdeg.STUDENT_DEGREE_NAME_EN                 AS DEGREE_NAME_EN,
+    sd.STUDENT_MAJOR_ID,
+    smaj.STUDENT_MAJOR_NAME                     AS MAJOR_NAME,
+    smaj.STUDENT_MAJOR_NAME_EN                  AS MAJOR_NAME_EN,
+    sd.STUDENT_MAJOR_NAME                       AS STUDENT_MAJOR_NAME_FREE,
+    sd.STUDENT_DELEGATION_DECISION_YEAR,
+    sd.STUDENT_DELEGATE_DECISION_NO,
+    sd.STUDENT_STUDY_NO_OF_YEARS,
+    sd.STUDENT_CURRENT_LEVEL_ID,
+    scl.STUDENT_CURRENT_LEVEL_NAME              AS CURRENT_LEVEL_NAME,
+    scl.STUDENT_CURRENT_LEVEL_NAME_EN           AS CURRENT_LEVEL_NAME_EN,
+
+    -- Study destination
+    sd.STUDY_COUNTRY_IN                         AS STUDY_COUNTRY_IN_ID,
+    sci.STUDY_COUNTRY_IN_NAME                   AS STUDY_COUNTRY_NAME,
+    sci.STUDY_COUNTRY_IN_NAME_EN                AS STUDY_COUNTRY_NAME_EN,
+    sd.STUDY_UNIVERSITY_IN                      AS STUDY_UNIVERSITY_IN_ID,
+    sui.STUDY_UNIVERSITY_IN_NAME                AS STUDY_UNIVERSITY_NAME,
+    sui.STUDY_UNIVERSITY_IN_NAME_EN             AS STUDY_UNIVERSITY_NAME_EN,
+
+    -- Classification
+    sd.STUDENT_STUDY_TYPE_ID,
+    sst.STUDENT_STUDY_TYPE_NAME                 AS STUDY_TYPE_NAME,
+    sst.STUDENT_STUDY_TYPE_NAME_EN              AS STUDY_TYPE_NAME_EN,
+    sd.STUDENT_UNIVERSITY_TYPE_ID,
+    sut.STUDENT_UNIVERSITY_TYPE_NAME            AS UNIVERSITY_TYPE_NAME,
+    sut.STUDENT_UNIVERSITY_TYPE_NAME_EN         AS UNIVERSITY_TYPE_NAME_EN,
+    sd.STUDENT_AGENCY_TYPE_ID,
+    sat.STUDENT_AGENCY_TYPE_NAME                AS AGENCY_TYPE_NAME,
+    sat.STUDENT_AGENCY_TYPE_NAME_EN             AS AGENCY_TYPE_NAME_EN,
+    sd.STUDENT_MINISTRY_TYPE_ID,
+    smt.STUDENT_MINISTRY_TYPE_NAME              AS MINISTRY_TYPE_NAME,
+    smt.STUDENT_MINISTRY_TYPE_NAME_EN           AS MINISTRY_TYPE_NAME_EN,
+
+    -- Status
+    sd.STUDENT_STUDY_STATUS_ID,
+    sss.STUDENT_STUDY_STATUS_NAME               AS STUDY_STATUS_NAME,
+    sss.STUDENT_STUDY_STATUS_NAME_EN            AS STUDY_STATUS_NAME_EN,
+
+    -- Quarter / financial
+    sd.STUDENT_ADDED_QUARTER,
+    sd.STUDENT_LAST_QUARTER,
+    sd.STUDENT_AMOUNT,
+    sd.AMOUNT_CURRENCY,
+    sd.STUDENT_FIRST_RECEIPT_OF_DUE,
+
+    -- Soft delete
+    ISNULL(sd.IS_DELETED, 0)                    AS IS_DELETED,
+
+    -- Timestamps
+    sd.STUDENT_MIDATE                           AS CREATED_DATE
+
+FROM MOHECORE.STUDENT_DATA sd
+
+-- Country of origin
+LEFT JOIN MOHECORE.STUDENT_COUNTRY sc
+    ON sc.STUDENT_COUNTRY_ID = sd.STUDENT_COUNTRY_ID
+
+-- Governorate
+LEFT JOIN MOHECORE.STUDENT_GOV sg
+    ON sg.STUDENT_GOV_ID = sd.STUDENT_GOV_ID
+
+-- Municipality
+LEFT JOIN MOHECORE.STUDENT_GOV_MUD mud
+    ON mud.STUDENT_MUD_ID = sd.STUDENT_MUD_ID
+
+-- Degree
+LEFT JOIN MOHECORE.STUDENT_DEGREE sdeg
+    ON sdeg.STUDENT_DEGREE_ID = sd.STUDENT_DEGREE_ID
+
+-- Major
+LEFT JOIN MOHECORE.STUDENT_MAJOR smaj
+    ON smaj.STUDENT_MAJOR_ID = sd.STUDENT_MAJOR_ID
+
+-- Current level
+LEFT JOIN MOHECORE.STUDENT_CURRENT_LEVEL scl
+    ON scl.STUDENT_CURRENT_LEVEL_ID = sd.STUDENT_CURRENT_LEVEL_ID
+
+-- Study destination country
+LEFT JOIN MOHECORE.STUDY_COUNTRY_IN sci
+    ON sci.STUDY_COUNTRY_IN_ID = sd.STUDY_COUNTRY_IN
+
+-- Study university
+LEFT JOIN MOHECORE.STUDY_UNIVERSITY_IN sui
+    ON sui.STUDY_UNIVERSITY_IN_ID = sd.STUDY_UNIVERSITY_IN
+
+-- Study type
+LEFT JOIN MOHECORE.STUDENT_STUDY_TYPE sst
+    ON sst.STUDENT_STUDY_TYPE_ID = sd.STUDENT_STUDY_TYPE_ID
+
+-- University type
+LEFT JOIN MOHECORE.STUDENT_UNIVERSITY_TYPE sut
+    ON sut.STUDENT_UNIVERSITY_TYPE_ID = sd.STUDENT_UNIVERSITY_TYPE_ID
+
+-- Agency type
+LEFT JOIN MOHECORE.STUDENT_AGENCY_TYPE sat
+    ON sat.STUDENT_AGENCY_TYPE_ID = sd.STUDENT_AGENCY_TYPE_ID
+
+-- Ministry type
+LEFT JOIN MOHECORE.STUDENT_MINISTRY_TYPE smt
+    ON smt.STUDENT_MINISTRY_TYPE_ID = sd.STUDENT_MINISTRY_TYPE_ID
+
+-- Study status
+LEFT JOIN MOHECORE.STUDENT_STUDY_STATUS sss
+    ON sss.STUDENT_STUDY_STATUS_ID = sd.STUDENT_STUDY_STATUS_ID
+
+WHERE ISNULL(sd.IS_DELETED, 0) = 0;
+
+GO
+
+/* -- VW_STUDENT_FINANCE_PAYMENT_ALL ------------------------------ */
+CREATE OR ALTER VIEW MOHECORE.VW_STUDENT_FINANCE_PAYMENT_ALL AS
+
+SELECT 
+
+    SF.STUDENT_ID,
+
+    SFBB.STUDY_FINANCE_BANK_BRANCH_ID,
+
+    SFBB.STUDY_FINANCE_BANK_BRANCH_NAME,
+    COALESCE(NULLIF(SFBB.STUDY_FINANCE_BANK_BRANCH_NAME_EN, N''), SFBB.STUDY_FINANCE_BANK_BRANCH_NAME) AS STUDY_FINANCE_BANK_BRANCH_NAME_EN,
+
+    SD.STUDENT_AGENCY_TYPE_ID,
+
+    SAT.STUDENT_AGENCY_TYPE_NAME,
+    COALESCE(NULLIF(SAT.STUDENT_AGENCY_TYPE_NAME_EN, N''), SAT.STUDENT_AGENCY_TYPE_NAME) AS STUDENT_AGENCY_TYPE_NAME_EN,
+
+    SMT.STUDENT_MINISTRY_TYPE_ID,
+
+    SMT.STUDENT_MINISTRY_TYPE_NAME,
+    COALESCE(NULLIF(SMT.STUDENT_MINISTRY_TYPE_NAME_EN, N''), SMT.STUDENT_MINISTRY_TYPE_NAME) AS STUDENT_MINISTRY_TYPE_NAME_EN,
+
+    SUT.STUDENT_UNIVERSITY_TYPE_ID,
+
+    SUT.STUDENT_UNIVERSITY_TYPE_NAME,
+    COALESCE(NULLIF(SUT.STUDENT_UNIVERSITY_TYPE_NAME_EN, N''), SUT.STUDENT_UNIVERSITY_TYPE_NAME) AS STUDENT_UNIVERSITY_TYPE_NAME_EN,
+
+    CASE 
+
+        WHEN SUT.STUDENT_UNIVERSITY_TYPE_ID = 99 THEN
+
+            CASE 
+
+                WHEN SMT.STUDENT_MINISTRY_TYPE_ID = 99 THEN SAT.STUDENT_AGENCY_TYPE_NAME
+
+                ELSE SMT.STUDENT_MINISTRY_TYPE_NAME
+
+            END
+
+        ELSE SUT.STUDENT_UNIVERSITY_TYPE_NAME
+
+    END AS TYPE_ALL_IS,
+    CASE
+        WHEN SUT.STUDENT_UNIVERSITY_TYPE_ID = 99 THEN
+            CASE
+                WHEN SMT.STUDENT_MINISTRY_TYPE_ID = 99 THEN COALESCE(NULLIF(SAT.STUDENT_AGENCY_TYPE_NAME_EN, N''), SAT.STUDENT_AGENCY_TYPE_NAME)
+                ELSE COALESCE(NULLIF(SMT.STUDENT_MINISTRY_TYPE_NAME_EN, N''), SMT.STUDENT_MINISTRY_TYPE_NAME)
+            END
+        ELSE COALESCE(NULLIF(SUT.STUDENT_UNIVERSITY_TYPE_NAME_EN, N''), SUT.STUDENT_UNIVERSITY_TYPE_NAME)
+    END AS TYPE_ALL_IS_EN,
+
+    SAT.STUDENT_AGENCY_TYPE_ORDER,
+
+    STATUS_01.STUDENT_ID AS STUDENT_ID_STATUS_01,
+
+    STATUS_01.STUDENT_FIN_RECIEVED_AMOUNT AS STUDENT_FIN_RECIEVED_AMOUNT_STATUS_01,
+
+    STATUS_02.STUDENT_ID AS STUDENT_ID_STATUS_02,
+
+    STATUS_02.STUDENT_FIN_RECIEVED_AMOUNT AS STUDENT_FIN_RECIEVED_AMOUNT_STATUS_02
+
+FROM 
+
+    MOHECORE.STUDENT_FINANCE SF
+
+    INNER JOIN MOHECORE.STUDY_FINANCE_BANK_BRANCH SFBB 
+
+        ON SF.STUDY_FINANCE_BANK_BRANCH_ID = SFBB.STUDY_FINANCE_BANK_BRANCH_ID
+
+    INNER JOIN MOHECORE.STUDENT_DATA SD 
+
+        ON SF.STUDENT_ID = SD.STUDENT_ID
+
+    INNER JOIN MOHECORE.STUDENT_AGENCY_TYPE SAT 
+
+        ON SD.STUDENT_AGENCY_TYPE_ID = SAT.STUDENT_AGENCY_TYPE_ID
+
+    LEFT JOIN MOHECORE.STUDENT_MINISTRY_TYPE SMT 
+
+        ON SD.STUDENT_MINISTRY_TYPE_ID = SMT.STUDENT_MINISTRY_TYPE_ID
+
+    LEFT JOIN MOHECORE.STUDENT_UNIVERSITY_TYPE SUT 
+
+        ON SD.STUDENT_UNIVERSITY_TYPE_ID = SUT.STUDENT_UNIVERSITY_TYPE_ID
+
+    LEFT JOIN (
+
+        SELECT 
+
+            STUDENT_ID,
+
+            STUDY_FIN_RECIEVED_STATUS,
+
+            STUDENT_FIN_RECIEVED_AMOUNT
+
+        FROM MOHECORE.STUDENT_FINANCE
+
+        WHERE STUDY_FIN_RECIEVED_STATUS = 1
+
+    ) STATUS_01 
+
+        ON SF.STUDENT_ID = STATUS_01.STUDENT_ID
+
+    LEFT JOIN (
+
+        SELECT 
+
+            STUDENT_ID,
+
+            STUDY_FIN_RECIEVED_STATUS,
+
+            STUDENT_FIN_RECIEVED_AMOUNT
+
+        FROM MOHECORE.STUDENT_FINANCE
+
+        WHERE STUDY_FIN_RECIEVED_STATUS <> 1
+
+    ) STATUS_02 
+
+        ON SF.STUDENT_ID = STATUS_02.STUDENT_ID;
+
+GO
+
+/* -- Q_STUD_DATA_ALL --------------------------------------------- */
+CREATE OR ALTER VIEW MOHECORE.Q_STUD_DATA_ALL AS
+
+SELECT 
+
+    SD.STUDENT_ID,
+
+    SD.STUDENT_NAME,
+
+    SD.STUDENT_COUNTRY_ID,
+
+    SD.STUDENT_DELEGATION_DECISION_YEAR,
+
+    SD.STUDENT_DEGREE_ID,
+
+    SD.STUDENT_MAJOR_ID,
+
+    SD.STUDENT_DELEGATE_DECISION_NO,
+
+    SD.STUDENT_STUDY_NO_OF_YEARS,
+
+    SD.STUDENT_CURRENT_LEVEL_ID,
+
+    SD.STUDENT_FIRST_RECEIPT_OF_DUE,
+
+    SD.STUDENT_AMOUNT,
+
+    SD.STUDENT_NOTE_1,
+
+    SD.STUDENT_NOTE_2,
+
+    SD.STUDENT_STUDY_STATUS_ID,
+
+    SD.STUDENT_AGENCY_TYPE_ID,
+
+    SD.STUDENT_MINISTRY_TYPE_ID,
+
+    SD.STUDENT_STUDY_TYPE_ID,
+
+    SD.STUDENT_UNIVERSITY_TYPE_ID,
+
+    SSS.STUDENT_STUDY_STATUS_NAME,
+    COALESCE(NULLIF(SSS.STUDENT_STUDY_STATUS_NAME_EN, N''), SSS.STUDENT_STUDY_STATUS_NAME) AS STUDENT_STUDY_STATUS_NAME_EN,
+
+    SAT.STUDENT_AGENCY_TYPE_NAME,
+    COALESCE(NULLIF(SAT.STUDENT_AGENCY_TYPE_NAME_EN, N''), SAT.STUDENT_AGENCY_TYPE_NAME) AS STUDENT_AGENCY_TYPE_NAME_EN,
+
+    SC.STUDENT_COUNTRY_NAME,
+    COALESCE(NULLIF(SC.STUDENT_COUNTRY_NAME_EN, N''), SC.STUDENT_COUNTRY_NAME) AS STUDENT_COUNTRY_NAME_EN,
+
+    SDG.STUDENT_DEGREE_NAME,
+    COALESCE(NULLIF(SDG.STUDENT_DEGREE_NAME_EN, N''), SDG.STUDENT_DEGREE_NAME) AS STUDENT_DEGREE_NAME_EN,
+
+    SMJ.STUDENT_MAJOR_NAME,
+    COALESCE(NULLIF(SMJ.STUDENT_MAJOR_NAME_EN, N''), SMJ.STUDENT_MAJOR_NAME) AS STUDENT_MAJOR_NAME_EN,
+
+    SMT.STUDENT_MINISTRY_TYPE_NAME,
+    COALESCE(NULLIF(SMT.STUDENT_MINISTRY_TYPE_NAME_EN, N''), SMT.STUDENT_MINISTRY_TYPE_NAME) AS STUDENT_MINISTRY_TYPE_NAME_EN,
+
+    SUT.STUDENT_UNIVERSITY_TYPE_NAME,
+    COALESCE(NULLIF(SUT.STUDENT_UNIVERSITY_TYPE_NAME_EN, N''), SUT.STUDENT_UNIVERSITY_TYPE_NAME) AS STUDENT_UNIVERSITY_TYPE_NAME_EN,
+
+    SCI.STUDY_COUNTRY_IN_NAME,
+    COALESCE(NULLIF(SCI.STUDY_COUNTRY_IN_NAME_EN, N''), SCI.STUDY_COUNTRY_IN_NAME) AS STUDY_COUNTRY_IN_NAME_EN,
+
+    SF.STUDENT_FIN_RECIEVED_YEAR,
+
+    SF.STUDENT_FIN_RECIEVED_MONTH,
+
+    N'إستمارة صرف مستحقات مالية للربع ' 
+
+        + CAST(SF.STUDENT_FIN_RECIEVED_MONTH AS NVARCHAR(10)) 
+
+        + N' للعام ' 
+
+        + CAST(SF.STUDENT_FIN_RECIEVED_YEAR AS NVARCHAR(10)) 
+
+        AS HEAD_TITLE
+
+FROM 
+
+    MOHECORE.STUDENT_FINANCE SF
+
+INNER JOIN MOHECORE.STUDENT_DATA SD 
+
+    ON SF.STUDENT_ID = SD.STUDENT_ID
+
+INNER JOIN MOHECORE.STUDENT_STUDY_STATUS SSS 
+
+    ON SD.STUDENT_STUDY_STATUS_ID = SSS.STUDENT_STUDY_STATUS_ID
+
+INNER JOIN MOHECORE.STUDENT_CURRENT_LEVEL SCL 
+
+    ON SD.STUDENT_CURRENT_LEVEL_ID = SCL.STUDENT_CURRENT_LEVEL_ID
+
+INNER JOIN MOHECORE.STUDENT_AGENCY_TYPE SAT 
+
+    ON SD.STUDENT_AGENCY_TYPE_ID = SAT.STUDENT_AGENCY_TYPE_ID
+
+INNER JOIN MOHECORE.STUDENT_COUNTRY SC 
+
+    ON SD.STUDENT_COUNTRY_ID = SC.STUDENT_COUNTRY_ID
+
+INNER JOIN MOHECORE.STUDENT_DEGREE SDG 
+
+    ON SD.STUDENT_DEGREE_ID = SDG.STUDENT_DEGREE_ID
+
+INNER JOIN MOHECORE.STUDENT_MAJOR SMJ 
+
+    ON SD.STUDENT_MAJOR_ID = SMJ.STUDENT_MAJOR_ID
+
+INNER JOIN MOHECORE.STUDENT_MINISTRY_TYPE SMT 
+
+    ON SD.STUDENT_MINISTRY_TYPE_ID = SMT.STUDENT_MINISTRY_TYPE_ID
+
+INNER JOIN MOHECORE.STUDENT_UNIVERSITY_TYPE SUT 
+
+    ON SD.STUDENT_UNIVERSITY_TYPE_ID = SUT.STUDENT_UNIVERSITY_TYPE_ID
+
+INNER JOIN MOHECORE.STUDY_COUNTRY_IN SCI 
+
+    ON SCI.STUDY_COUNTRY_IN_ID = SD.STUDENT_COUNTRY_ID;
+
+GO
+
+/* -- V_STUD_DATA_CALC_ALL_1 -------------------------------------- */
+CREATE OR ALTER VIEW MOHECORE.V_STUD_DATA_CALC_ALL_1 AS
+
+SELECT 
+
+    SD.STUDENT_ID,
+
+    SD.STUDENT_NAME,
+
+    SD.STUDENT_COUNTRY_ID,
+
+    SD.STUDENT_DELEGATION_DECISION_YEAR,
+
+    SD.STUDENT_DEGREE_ID,
+
+    SD.STUDENT_MAJOR_ID,
+
+   -- SD.STUDENT_MAJOR_NAME,
+
+    SD.STUDENT_DELEGATE_DECISION_NO,
+
+    SD.STUDENT_STUDY_NO_OF_YEARS,
+
+    SD.STUDENT_CURRENT_LEVEL_ID,
+
+    SD.STUDENT_FIRST_RECEIPT_OF_DUE,
+
+    SD.STUDENT_AMOUNT,
+
+    SD.STUDENT_NOTE_1,
+
+    SD.STUDENT_NOTE_2,
+
+    SD.STUDENT_STUDY_STATUS_ID,
+
+    SD.STUDENT_AGENCY_TYPE_ID,
+
+    SD.STUDENT_MINISTRY_TYPE_ID,
+
+    SD.STUDENT_STUDY_TYPE_ID,
+
+    SD.STUDENT_UNIVERSITY_TYPE_ID,
+
+    -- Lookup Names from Other Tables
+
+    SSS.STUDENT_STUDY_STATUS_NAME,
+    COALESCE(NULLIF(SSS.STUDENT_STUDY_STATUS_NAME_EN, N''), SSS.STUDENT_STUDY_STATUS_NAME) AS STUDENT_STUDY_STATUS_NAME_EN,
+
+    SAT.STUDENT_AGENCY_TYPE_NAME,
+    COALESCE(NULLIF(SAT.STUDENT_AGENCY_TYPE_NAME_EN, N''), SAT.STUDENT_AGENCY_TYPE_NAME) AS STUDENT_AGENCY_TYPE_NAME_EN,
+
+    SC.STUDENT_COUNTRY_NAME,
+    COALESCE(NULLIF(SC.STUDENT_COUNTRY_NAME_EN, N''), SC.STUDENT_COUNTRY_NAME) AS STUDENT_COUNTRY_NAME_EN,
+
+    SDG.STUDENT_DEGREE_NAME,
+    COALESCE(NULLIF(SDG.STUDENT_DEGREE_NAME_EN, N''), SDG.STUDENT_DEGREE_NAME) AS STUDENT_DEGREE_NAME_EN,
+
+    SMJ.STUDENT_MAJOR_NAME,
+    COALESCE(NULLIF(SMJ.STUDENT_MAJOR_NAME_EN, N''), SMJ.STUDENT_MAJOR_NAME) AS STUDENT_MAJOR_NAME_EN,
+
+    SMT.STUDENT_MINISTRY_TYPE_NAME,
+    COALESCE(NULLIF(SMT.STUDENT_MINISTRY_TYPE_NAME_EN, N''), SMT.STUDENT_MINISTRY_TYPE_NAME) AS STUDENT_MINISTRY_TYPE_NAME_EN,
+
+    SUT.STUDENT_UNIVERSITY_TYPE_NAME,
+    COALESCE(NULLIF(SUT.STUDENT_UNIVERSITY_TYPE_NAME_EN, N''), SUT.STUDENT_UNIVERSITY_TYPE_NAME) AS STUDENT_UNIVERSITY_TYPE_NAME_EN,
+
+    -- Derived / Calculated Columns (Safe Conversion)
+
+    (TRY_CAST(LEFT(SD.STUDENT_DELEGATION_DECISION_YEAR, 4) AS INT) + SD.STUDENT_STUDY_NO_OF_YEARS) AS END_STUDY_YEAR,
+
+    (TRY_CAST(LEFT(SD.STUDENT_DELEGATION_DECISION_YEAR, 4) AS INT) + SD.STUDENT_CURRENT_LEVEL_ID) AS CURRENT_STUDY_YEAR,
+
+    (4 * SD.STUDENT_STUDY_NO_OF_YEARS) AS NO_OF_QUARTER_ALL,
+
+    (4 * SD.STUDENT_STUDY_NO_OF_YEARS) * SD.STUDENT_AMOUNT AS AMOUNT_OF_QUARTER_MONEY_ALL,
+
+    LEFT(SD.STUDENT_FIRST_RECEIPT_OF_DUE, 4) AS STUDENT_FIRST_RECEIPT_OF_DUE_YEAR,
+
+    RIGHT(SD.STUDENT_FIRST_RECEIPT_OF_DUE, 1) AS STUDENT_FIRST_RECEIPT_OF_DUE_QUARTER,
+
+    (TRY_CAST(LEFT(SD.STUDENT_FIRST_RECEIPT_OF_DUE, 4) AS INT) + SD.STUDENT_STUDY_NO_OF_YEARS) AS END_STUDY_YEAR_WITHOUT_ADDTIONAL,
+
+    RIGHT(SD.STUDENT_FIRST_RECEIPT_OF_DUE, 1) AS STUDENT_FINAL_RECEIPT_OF_DUE_QUARTER_NO_ADDITIONAL,
+
+    (ROUND((SD.STUDENT_STUDY_NO_OF_YEARS * 4.0) / 3.0, 0) - 1) AS STUDENT_ADDITIONAL_QUARTER_ALL,
+
+    ((ROUND((SD.STUDENT_STUDY_NO_OF_YEARS * 4.0) / 3.0, 0) - 1) * SD.STUDENT_AMOUNT) AS STUDENT_ADDITIONAL_QUARTER_MONEY_ALL
+
+FROM 
+
+    MOHECORE.STUDENT_DATA SD
+
+    INNER JOIN MOHECORE.STUDENT_STUDY_STATUS SSS 
+
+        ON SD.STUDENT_STUDY_STATUS_ID = SSS.STUDENT_STUDY_STATUS_ID
+
+    INNER JOIN MOHECORE.STUDENT_CURRENT_LEVEL SCL
+
+        ON SD.STUDENT_CURRENT_LEVEL_ID = SCL.STUDENT_CURRENT_LEVEL_ID
+
+    INNER JOIN MOHECORE.STUDENT_AGENCY_TYPE SAT
+
+        ON SD.STUDENT_AGENCY_TYPE_ID = SAT.STUDENT_AGENCY_TYPE_ID
+
+    INNER JOIN MOHECORE.STUDENT_COUNTRY SC
+
+        ON SD.STUDENT_COUNTRY_ID = SC.STUDENT_COUNTRY_ID
+
+    INNER JOIN MOHECORE.STUDENT_DEGREE SDG
+
+        ON SD.STUDENT_DEGREE_ID = SDG.STUDENT_DEGREE_ID
+
+    INNER JOIN MOHECORE.STUDENT_MAJOR SMJ
+
+        ON SD.STUDENT_MAJOR_ID = SMJ.STUDENT_MAJOR_ID
+
+    INNER JOIN MOHECORE.STUDENT_MINISTRY_TYPE SMT
+
+        ON SD.STUDENT_MINISTRY_TYPE_ID = SMT.STUDENT_MINISTRY_TYPE_ID
+
+    INNER JOIN MOHECORE.STUDENT_UNIVERSITY_TYPE SUT
+
+        ON SD.STUDENT_UNIVERSITY_TYPE_ID = SUT.STUDENT_UNIVERSITY_TYPE_ID;
+
+GO
+
+
+/* -- Verification ------------------------------------------------------------
+   Every column this script introduces must exist afterwards, and the quarterly
+   aggregate must return rows -- returning none is the defect it fixes.       */
+DECLARE @missing NVARCHAR(MAX);
+SELECT @missing = STUFF((
+    SELECT N', ' + c.view_name + N'.' + c.col
+    FROM (VALUES
+        (N'VW_STUDENT_ENROLLMENT_BY_COUNTRY', N'CountryNameEn'),
+        (N'VW_STUDENT_BY_DEGREE',             N'DegreeNameEn'),
+        (N'VW_STUDENT_STATUS_DISTRIBUTION',   N'StatusNameEn'),
+        (N'V_STUDENT_SUMMARY',                N'MUD_NAME_EN'),
+        (N'VW_STUDENT_FINANCE_PAYMENT_ALL',   N'TYPE_ALL_IS_EN'),
+        (N'VW_STUDENT_FINANCE_PAYMENT_ALL',   N'STUDY_FINANCE_BANK_BRANCH_NAME_EN'),
+        (N'Q_STUD_DATA_ALL',                  N'STUDENT_MAJOR_NAME_EN'),
+        (N'Q_STUD_DATA_ALL',                  N'STUDY_COUNTRY_IN_NAME_EN'),
+        (N'V_STUD_DATA_CALC_ALL_1',           N'STUDENT_MAJOR_NAME_EN')
+    ) AS c(view_name, col)
+    JOIN sys.views v ON v.name = c.view_name AND v.schema_id = SCHEMA_ID('MOHECORE')
+    WHERE NOT EXISTS (
+        SELECT 1 FROM sys.columns sc
+         WHERE sc.object_id = v.object_id AND sc.name = c.col)
+    FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, N'');
+
+IF @missing IS NOT NULL
+BEGIN
+    DECLARE @msg NVARCHAR(MAX) = N'V110: columns missing after the rewrite: ' + @missing;
+    THROW 50110, @msg, 1;
+END
+PRINT 'V110: every English column is present';
+GO
+
+EXEC sp_set_session_context @key = N'TenantAll', @value = N'1';
+DECLARE @quarters INT;
+SELECT @quarters = COUNT(*) FROM MOHECORE.VW_FINANCIAL_BY_QUARTER;
+IF @quarters = 0
+    THROW 50110, N'V110: VW_FINANCIAL_BY_QUARTER still returns no rows', 1;
+PRINT 'V110: VW_FINANCIAL_BY_QUARTER rows = ' + CAST(@quarters AS VARCHAR(10))
+    + ' (was 0 -- the MOHE_QUARTER_ID join matched nothing)';
+GO

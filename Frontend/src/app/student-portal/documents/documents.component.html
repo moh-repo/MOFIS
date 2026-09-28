@@ -1,0 +1,142 @@
+<div class="portal-page documents-page">
+
+  <div class="sp-intro">
+    <p class="sp-intro__text">{{ 'STUDENT_PORTAL.PAGE_DOCUMENTS_SUB' | translate }}</p>
+  </div>
+
+  <!-- Upload card -->
+  <nz-card class="upload-card" [nzTitle]="uploadTitle">
+    <ng-template #uploadTitle>
+      <span nz-icon nzType="upload" nzTheme="outline" class="doc-card-icon"></span>
+      {{ 'STUDENT_PORTAL.UPLOAD_DOCUMENT' | translate }}
+    </ng-template>
+
+    <!-- Drop zone -->
+    <div class="doc-dropzone" (click)="fileInput.click()"
+      [class.doc-dropzone--active]="!!uploadFile"
+      [class.doc-dropzone--has-file]="!!uploadFile">
+      <input type="file" #fileInput style="display:none" accept=".pdf,.jpg,.jpeg,.png,.gif" (change)="onFileSelected($event)" />
+      @if (!uploadFile) {
+        <span nz-icon nzType="inbox" nzTheme="outline" class="dz-icon"></span>
+        <p class="dz-text">{{ 'STUDENT_PORTAL.FILE' | translate }}</p>
+        <p class="dz-hint">{{ 'STUDENT_PORTAL.DOCUMENT_FILE_HINT' | translate }}</p>
+      }
+      @if (uploadFile) {
+        <span nz-icon nzType="file-done" nzTheme="outline" class="dz-icon dz-icon--ok"></span>
+        <p class="dz-text dz-text--ok">{{ uploadFile.name }}</p>
+        <p class="dz-hint">{{ (uploadFile.size / 1024 | number:'1.0-0') }} KB &mdash;
+          <a (click)="clearFile($event)">{{ 'COMMON.CLEAR' | translate }}</a>
+        </p>
+      }
+    </div>
+
+    <!-- Metadata fields. Vertical: beside the input, a label took a third of a
+         half-width column and squeezed the field into what was left. -->
+    <div nz-form nzLayout="vertical">
+      <nz-row [nzGutter]="[16, 0]" class="doc-fields">
+        <nz-col [nzXs]="24" [nzSm]="12">
+          <nz-form-item>
+            <nz-form-label nzFor="document-name">{{ 'STUDENT_PORTAL.DOCUMENT_NAME' | translate }}</nz-form-label>
+            <nz-form-control>
+              <input id="document-name" nz-input [(ngModel)]="uploadName"
+                [placeholder]="'STUDENT_PORTAL.DOCUMENT_NAME' | translate" />
+            </nz-form-control>
+          </nz-form-item>
+        </nz-col>
+        <nz-col [nzXs]="24" [nzSm]="12">
+          <nz-form-item>
+            <nz-form-label nzFor="document-type">{{ 'STUDENT_PORTAL.TYPE' | translate }}</nz-form-label>
+            <nz-form-control>
+              <nz-select nzId="document-type" [(ngModel)]="uploadType" nzAllowClear nzShowSearch style="width:100%"
+                [nzPlaceHolder]="'STUDENT_PORTAL.TYPE_PLACEHOLDER' | translate">
+                @for (t of documentTypes; track t.id) {
+                  <nz-option [nzValue]="t.name" [nzLabel]="t | inLanguage:'name'"></nz-option>
+                }
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </nz-col>
+      </nz-row>
+    </div>
+
+    @if (uploadErrorKey || uploadError) {
+      <nz-alert nzType="error"
+        [nzMessage]="uploadErrorKey ? (uploadErrorKey | translate) : uploadError"
+      nzShowIcon class="mb-3"></nz-alert>
+    }
+
+    <button nz-button nzType="primary" (click)="upload()" [nzLoading]="uploading">
+      <span nz-icon nzType="upload" nzTheme="outline"></span>
+      {{ 'STUDENT_PORTAL.UPLOAD' | translate }}
+    </button>
+  </nz-card>
+
+  <!-- Documents list -->
+  <nz-card class="list-card" [nzTitle]="listTitle">
+    <ng-template #listTitle>
+      <span nz-icon nzType="folder-open" nzTheme="outline" class="doc-card-icon"></span>
+      {{ 'STUDENT_PORTAL.YOUR_DOCUMENTS' | translate }}
+      @if (documents.length) {
+        <nz-tag class="doc-count">{{ documents.length }}</nz-tag>
+      }
+    </ng-template>
+
+    <nz-spin [nzSpinning]="loading">
+      @if (documents.length > 0) {
+        <div class="sp-toolbar">
+          <nz-input-group [nzPrefix]="docSearchIcon" class="sp-toolbar__search">
+            <input nz-input [(ngModel)]="search"
+              [placeholder]="'STUDENT_PORTAL.SEARCH_PLACEHOLDER' | translate"
+              [attr.aria-label]="'STUDENT_PORTAL.SEARCH_PLACEHOLDER' | translate" />
+          </nz-input-group>
+          <ng-template #docSearchIcon><span nz-icon nzType="search" nzTheme="outline"></span></ng-template>
+          <span class="sp-toolbar__count">
+            {{ 'STUDENT_PORTAL.SHOWING_COUNT' | translate:{ shown: filteredDocuments.length, total: documents.length } }}
+          </span>
+        </div>
+
+        <div class="doc-list">
+          @for (doc of filteredDocuments; track doc.documentId) {
+            <div class="doc-item">
+              @if (doc.documentName?.toLowerCase()?.endsWith('.pdf')) {
+                <span class="doc-item-icon" nz-icon nzType="file-pdf" nzTheme="twotone" [nzTwotoneColor]="'#c0392b'"></span>
+              } @else {
+                <span class="doc-item-icon" nz-icon nzType="file" nzTheme="twotone" [nzTwotoneColor]="'#2f7fd8'"></span>
+              }
+              <div class="doc-item-info">
+                <p class="doc-item-name">{{ doc.documentType ? typeLabel(doc.documentType) : doc.documentName }}</p>
+                <p class="doc-item-meta">
+                  @if (doc.documentType) {
+                    <nz-tag>{{ displayName(doc) }}</nz-tag>
+                  }
+                  @if (doc.uploadDate) {
+                    <span>{{ doc.uploadDate | localeDate:'mediumDate' }}</span>
+                  }
+                </p>
+              </div>
+              <button nz-button nzType="link" nzSize="small" (click)="download(doc)" class="doc-item-action">
+                <span nz-icon nzType="download" nzTheme="outline"></span>
+                {{ 'COMMON.DOWNLOAD' | translate }}
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      @if (filteredEverythingOut) {
+        <div class="sp-state">
+          <span class="sp-state__icon" nz-icon nzType="search" nzTheme="outline"></span>
+          <p class="sp-state__title">{{ 'STUDENT_PORTAL.NO_MATCHES' | translate }}</p>
+          <button nz-button nzType="link" (click)="clearSearch()">{{ 'STUDENT_PORTAL.CLEAR_FILTERS' | translate }}</button>
+        </div>
+      } @else if (!loading && documents.length === 0) {
+        <div class="sp-state">
+          <span class="sp-state__icon" nz-icon nzType="inbox" nzTheme="outline"></span>
+          <p class="sp-state__title">{{ 'STUDENT_PORTAL.NO_DOCUMENTS' | translate }}</p>
+          <p class="sp-state__text">{{ 'STUDENT_PORTAL.DOCUMENT_FILE_HINT' | translate }}</p>
+        </div>
+      }
+    </nz-spin>
+  </nz-card>
+
+</div>

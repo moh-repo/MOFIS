@@ -1,0 +1,823 @@
+<div class="wafar-container" [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+  <p-toast></p-toast>
+
+  <!-- ── Page header ─────────────────────────────────────────────────── -->
+  <div class="card mb-3">
+    <!-- `flex-1` on the icon-and-title block, not `justify-content-between`:
+         under `direction: rtl` a flex row already runs right to left, and the
+         global rule in styles.scss reverses every `.flex.justify-content-between`
+         again, which put the heading on the left and the button on the right in
+         Arabic. See src/app/demo/components/page-headings.spec.ts. -->
+    <div class="flex align-items-center flex-wrap gap-3">
+      <div class="flex align-items-center gap-3 flex-1">
+        <i class="pi pi-credit-card text-primary" style="font-size: 2.5rem"></i>
+        <div>
+          <h2 class="m-0 text-primary">{{ 'WAFAR.TITLE' | translate }}</h2>
+          <p class="text-600 mt-1 mb-0">{{ 'WAFAR.DESCRIPTION' | translate }}</p>
+        </div>
+      </div>
+      <button pButton pRipple type="button" icon="pi pi-plus"
+        class="p-button-success"
+        [label]="'WAFAR.NEW_TRANSACTION' | translate"
+      (click)="openNew()" *hasPermission="'WAFAR.ADD'"></button>
+    </div>
+  </div>
+
+  <!-- ── Balance summary ─────────────────────────────────────────────── -->
+  <!--
+    Always open, with no collapse button (review F10): the toggle hid the four
+    figures the page is checked for, and the client asked for it to go.
+
+    Cards use the shared band (assets/layout/styles/_summary-cards.scss), so
+    these read the same as the summaries on the other list pages. The primeflex
+    col-12/md:col-3 wrappers are gone with it — the column count is declared on
+    the grid instead.
+  -->
+  <p-panel styleClass="mb-3">
+    <ng-template pTemplate="header">
+      <div class="flex align-items-center gap-2">
+        <i class="pi pi-chart-bar text-primary"></i>
+        <span class="font-semibold">{{ 'WAFAR.BALANCE_SUMMARY' | translate }}</span>
+      </div>
+    </ng-template>
+
+    <!-- Wafar is held per attaché, so these figures cover the signed-in user's
+         own attachés only. They used to be one ministry-wide total, which
+         implied one attaché's savings could pay another's students. -->
+    <div class="text-600 text-sm mb-3">
+      <i class="pi pi-info-circle mr-1"></i>{{ 'WAFAR.BALANCE_SCOPE_HINT' | translate }}
+    </div>
+
+    <div class="summary-cards summary-cards--cols-4">
+        <div class="summary-card deposits">
+          <div class="summary-icon">
+            <i class="pi pi-arrow-down"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'WAFAR.TOTAL_DEPOSITS' | translate }}</span>
+            <span class="summary-value">{{ balance.totalDeposits | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <div class="summary-card spent">
+          <div class="summary-icon">
+            <i class="pi pi-arrow-up"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'WAFAR.TOTAL_SPENT' | translate }}</span>
+            <span class="summary-value">{{ balance.totalSpent | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <div class="summary-card balance"
+          [class.negative]="balance.currentBalance < 0">
+          <div class="summary-icon">
+            <i class="pi pi-wallet"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'WAFAR.CURRENT_BALANCE' | translate }}</span>
+            <span class="summary-value">{{ balance.currentBalance | number:'1.2-2' }}</span>
+          </div>
+        </div>
+        <div class="summary-card pending">
+          <div class="summary-icon">
+            <i class="pi pi-clock"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'WAFAR.PENDING_AMOUNT' | translate }}</span>
+            <span class="summary-value">{{ balance.pendingAmount | number:'1.2-2' }}</span>
+          </div>
+        </div>
+    </div>
+  </p-panel>
+
+  <!--
+    Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+    Laid out on the primeflex grid before, as col-3 + col-2 + col-2 + col-2 for
+    the fields and a fifth col-2 holding only the Clear button, bottom-aligned
+    with `align-items-end` against invisible label height. The button belongs in
+    the action row, not in a column of its own.
+  -->
+  <div class="filter-bar">
+    <div class="filter-bar__grid filter-bar__grid--cols-4">
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterCategoryId">
+        <label for="wafarCategory">{{ 'WAFAR.CATEGORY' | translate }}</label>
+        <p-select inputId="wafarCategory" [options]="categoryOptions"
+          [(ngModel)]="filterCategoryId"
+          optionLabel="label" optionValue="value"
+          [showClear]="true"
+          [placeholder]="'WAFAR.CATEGORIES.ALL' | translate"
+          (onChange)="applyFilters()">
+        </p-select>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterStatus">
+        <label for="wafarStatus">{{ 'WAFAR.STATUS.ALL' | translate }}</label>
+        <p-select inputId="wafarStatus" [options]="statusOptions"
+          [(ngModel)]="filterStatus"
+          optionLabel="label" optionValue="value"
+          [showClear]="true"
+          [placeholder]="'WAFAR.FILTER_STATUS' | translate"
+          (onChange)="applyFilters()">
+        </p-select>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterDateFrom">
+        <label for="wafarFrom">{{ 'WAFAR.DATE_FROM' | translate }}</label>
+        <p-datepicker inputId="wafarFrom" [(ngModel)]="filterDateFrom"
+          dateFormat="yy-mm-dd"
+          [showClear]="true"
+          (onSelect)="applyFilters()"
+          (onClearClick)="applyFilters()">
+        </p-datepicker>
+      </div>
+      <div class="filter-bar__field" [class.filter-bar__field--active]="filterDateTo">
+        <label for="wafarTo">{{ 'WAFAR.DATE_TO' | translate }}</label>
+        <p-datepicker inputId="wafarTo" [(ngModel)]="filterDateTo"
+          dateFormat="yy-mm-dd"
+          [showClear]="true"
+          (onSelect)="applyFilters()"
+          (onClearClick)="applyFilters()">
+        </p-datepicker>
+      </div>
+    </div>
+
+    <div class="filter-bar__actions">
+      <p-button icon="pi pi-filter-slash"
+        [label]="'WAFAR.CLEAR_FILTERS' | translate"
+        styleClass="p-button-action-outlined"
+        [disabled]="!filterCategoryId && !filterStatus && !filterDateFrom && !filterDateTo"
+        (onClick)="clearFilters()">
+      </p-button>
+    </div>
+  </div>
+
+  <!-- ── Transactions Table ──────────────────────────────────────────── -->
+  <div class="card">
+    <p-table [value]="transactions"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="20"
+      [(first)]="first"
+      [showCurrentPageReport]="true"
+      [rowsPerPageOptions]="[10, 20, 50]"
+      dataKey="id"
+      styleClass="p-datatable-sm p-datatable-gridlines"
+      [globalFilterFields]="['referenceNumber','payeeNameAr','payeeNameEn','studentName','notes']">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="spendingDate">{{ 'WAFAR.DATE' | translate }} <p-sortIcon field="spendingDate"></p-sortIcon></th>
+          <th pSortableColumn="referenceNumber">{{ 'WAFAR.REFERENCE' | translate }} <p-sortIcon field="referenceNumber"></p-sortIcon></th>
+          <th pSortableColumn="category">{{ 'WAFAR.CATEGORY' | translate }} <p-sortIcon field="category"></p-sortIcon></th>
+          <th>{{ 'WAFAR.PAYEE' | translate }} / {{ 'WAFAR.STUDENT' | translate }}</th>
+          <th>{{ 'WAFAR.ATTACHE' | translate }}</th>
+          <th pSortableColumn="amount" style="text-align: end;">{{ 'WAFAR.AMOUNT' | translate }} <p-sortIcon field="amount"></p-sortIcon></th>
+          <th pSortableColumn="status">{{ 'WAFAR.STATUS.ALL' | translate }} <p-sortIcon field="status"></p-sortIcon></th>
+          <th>{{ 'WAFAR.ACTIONS' | translate }}</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-tx>
+        <tr>
+          <td>{{ tx.spendingDate }}</td>
+          <td>{{ tx.referenceNumber }}</td>
+          <td>{{ getCategoryLabel(tx.category) }}</td>
+          <td>
+            <div class="flex align-items-center gap-2">
+              <i class="pi text-primary {{ tx.beneficiaryType | codeIcon:'wafar-beneficiary-type' }}"></i>
+              <span>{{ getBeneficiaryLabel(tx) || '—' }}</span>
+            </div>
+          </td>
+          <td>
+            <!-- Shown rather than assumed: a row with no attaché is one nobody can
+                 now attribute, and there are eleven of them. -->
+            <span [class.text-500]="tx.studyCountryInId == null">
+              {{ countryName(tx.studyCountryInId) }}
+            </span>
+          </td>
+          <td class="amount-cell">{{ tx.amount | number:'1.2-2' }}</td>
+          <td>
+            <p-tag [value]="tx.status | codeLabel:'wafar-spending-status':currentLanguage"
+              [severity]="tx.status | codeSeverity:'wafar-spending-status'">
+            </p-tag>
+          </td>
+          <td>
+            <div class="flex gap-1 flex-wrap">
+              <button pButton pRipple type="button" icon="pi pi-eye"
+                class="p-button-rounded p-button-text p-button-info"
+                [pTooltip]="'WAFAR.VIEW' | translate" tooltipPosition="top"
+              (click)="openView(tx)"></button>
+              <button pButton pRipple type="button" icon="pi pi-pencil"
+                class="p-button-rounded p-button-text p-button-warning"
+                [pTooltip]="'WAFAR.EDIT' | translate" tooltipPosition="top"
+                [disabled]="tx.status !== 'PENDING'"
+              (click)="openEdit(tx)" *hasPermission="'WAFAR.EDIT'"></button>
+              <button pButton pRipple type="button" icon="pi pi-check"
+                class="p-button-rounded p-button-text p-button-success"
+                [pTooltip]="'WAFAR.APPROVE' | translate" tooltipPosition="top"
+                [disabled]="tx.status !== 'PENDING'"
+              (click)="openApprove(tx)" *hasPermission="'WAFAR.EDIT'"></button>
+              <button pButton pRipple type="button" icon="pi pi-times"
+                class="p-button-rounded p-button-text p-button-danger"
+                [pTooltip]="'WAFAR.REJECT' | translate" tooltipPosition="top"
+                [disabled]="tx.status !== 'PENDING'"
+              (click)="openReject(tx)" *hasPermission="'WAFAR.EDIT'"></button>
+              <button pButton pRipple type="button" icon="pi pi-ban"
+                class="p-button-rounded p-button-text p-button-secondary"
+                [pTooltip]="'WAFAR.CANCEL' | translate" tooltipPosition="top"
+                [disabled]="tx.status === 'APPROVED' || tx.status === 'CANCELLED'"
+              (click)="cancelTransaction(tx)" *hasPermission="'WAFAR.DELETE'"></button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="8" class="text-center p-4 text-600">
+            <i class="pi pi-inbox" style="font-size:2rem"></i>
+            <div class="mt-2">{{ 'WAFAR.NO_DATA' | translate }}</div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <!-- ── Create / Edit Dialog ────────────────────────────────────────── -->
+  <p-dialog [(visible)]="formVisible"
+    [modal]="true"
+    [style]="{width: '760px'}"
+    [breakpoints]="{'960px': '90vw'}"
+    styleClass="wafar-form-dialog"
+    [closable]="true"
+    [draggable]="false">
+
+    <ng-template pTemplate="header">
+      <div class="dialog-header">
+        <span class="dialog-header-icon" [class.edit]="formMode === 'edit'">
+          <i [class]="formMode === 'create' ? 'pi pi-plus-circle' : 'pi pi-pencil'"></i>
+        </span>
+        <div>
+          <h3 class="m-0">{{ (formMode === 'create' ? 'WAFAR.FORM_TITLE_NEW' : 'WAFAR.FORM_TITLE_EDIT') | translate }}</h3>
+          <span class="text-600 text-sm">{{ 'WAFAR.TITLE' | translate }}</span>
+        </div>
+      </div>
+    </ng-template>
+
+    <div class="form-body">
+      <!-- Section: Transaction details -->
+      <div class="form-section">
+        <div class="section-title">
+          <i class="pi pi-wallet"></i>
+          <span>{{ 'WAFAR.SECTION_DETAILS' | translate }}</span>
+        </div>
+        <div class="grid p-fluid">
+          <div class="col-12 md:col-6">
+            <label class="field-label">{{ 'WAFAR.CATEGORY' | translate }} <span class="req">*</span></label>
+            <p-select [options]="categories"
+              [(ngModel)]="form.categoryId"
+              [optionLabel]="isRtl ? 'categoryNameAr' : 'categoryNameEn'"
+              optionValue="id"
+              [placeholder]="'WAFAR.SELECT_CATEGORY' | translate"
+              styleClass="w-full"
+              (onChange)="onCategoryChange($event.value)">
+            </p-select>
+          </div>
+          <div class="col-12 md:col-6">
+            <label class="field-label">{{ 'WAFAR.AMOUNT' | translate }} <span class="req">*</span></label>
+            <p-inputnumber [(ngModel)]="form.amount"
+              [minFractionDigits]="2"
+              [maxFractionDigits]="2"
+              [min]="0"
+              styleClass="w-full">
+            </p-inputnumber>
+          </div>
+          <div class="col-12 md:col-6">
+            <label class="field-label">{{ 'WAFAR.DATE' | translate }} <span class="req">*</span></label>
+            <p-datepicker [(ngModel)]="formDate"
+              dateFormat="yy-mm-dd"
+              [showClear]="false"
+              appendTo="body"
+              styleClass="w-full">
+            </p-datepicker>
+          </div>
+          <div class="col-12 md:col-6">
+            <label class="field-label">{{ 'WAFAR.REFERENCE' | translate }}</label>
+            <input pInputText [(ngModel)]="form.referenceNumber" class="w-full">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Beneficiary (student or payee) -->
+      <div class="form-section">
+        <div class="section-title">
+          <i class="pi pi-user"></i>
+          <span>{{ 'WAFAR.SECTION_BENEFICIARY' | translate }}</span>
+        </div>
+        <div class="grid p-fluid">
+          <!-- Beneficiary type -->
+          <div class="col-12 md:col-6">
+            <label class="field-label">{{ 'WAFAR.BENEFICIARY_TYPE' | translate }} <span class="req">*</span></label>
+            <p-select [options]="beneficiaryTypeOptions"
+              [(ngModel)]="form.beneficiaryType"
+              optionLabel="label" optionValue="value"
+              [placeholder]="'WAFAR.SELECT_BENEFICIARY_TYPE' | translate"
+              styleClass="w-full"
+              appendTo="body"
+              [disabled]="isUniversityFee"
+              (onChange)="onBeneficiaryTypeChange($event.value)">
+            </p-select>
+            @if (isUniversityFee) {
+              <small class="text-600">
+                <i class="pi pi-info-circle mr-1"></i>{{ 'WAFAR.UNIVERSITY_FEE_HINT' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Attaché (non-student beneficiaries) -->
+          @if (needsAttacheChoice) {
+            <div class="col-12 md:col-6">
+              <label class="field-label">{{ 'WAFAR.ATTACHE' | translate }} <span class="req">*</span></label>
+              <p-select [options]="countryOptions"
+                [(ngModel)]="form.studyCountryInId"
+                optionLabel="name" optionValue="id"
+                [placeholder]="'WAFAR.SELECT_ATTACHE' | translate"
+                [filter]="true" filterBy="name"
+                styleClass="w-full"
+                appendTo="body">
+              </p-select>
+              <small class="text-600">
+                <i class="pi pi-info-circle mr-1"></i>{{ 'WAFAR.ATTACHE_HINT' | translate }}
+              </small>
+            </div>
+          }
+
+          <!-- Student search (STUDENT) -->
+          @if (form.beneficiaryType === 'STUDENT') {
+            <div class="col-12 md:col-6">
+              <label class="field-label">{{ 'WAFAR.STUDENT' | translate }} <span class="req">*</span></label>
+              <p-autoComplete [(ngModel)]="selectedStudent"
+                [suggestions]="studentSuggestions"
+                optionLabel="label"
+                [dropdown]="true"
+                (completeMethod)="searchStudents($event)"
+                (onSelect)="onStudentSelect($event.value)"
+                [placeholder]="'WAFAR.SELECT_STUDENT' | translate"
+                styleClass="w-full"
+                appendTo="body"
+                [forceSelection]="false">
+              </p-autoComplete>
+            </div>
+          }
+
+          <!-- Academic year (university fee only) -->
+          @if (isUniversityFee) {
+            <div class="col-12 md:col-6">
+              <label class="field-label">{{ 'WAFAR.ACADEMIC_YEAR' | translate }}</label>
+              <input pInputText [(ngModel)]="form.academicYear" class="w-full" placeholder="e.g. 2024-2025">
+            </div>
+          }
+
+          <!-- Payee names (OTHER) -->
+          @if (form.beneficiaryType === 'OTHER') {
+            <div class="col-12 md:col-6">
+              <label class="field-label">{{ 'WAFAR.PAYEE_AR' | translate }}</label>
+              <input pInputText [(ngModel)]="form.payeeNameAr" class="w-full" dir="rtl">
+            </div>
+            <div class="col-12 md:col-6">
+              <label class="field-label">{{ 'WAFAR.PAYEE_EN' | translate }}</label>
+              <input pInputText [(ngModel)]="form.payeeNameEn" class="w-full" dir="ltr">
+            </div>
+          }
+
+          <!-- Institutional beneficiary note (MINISTRY / CULTURAL_AFFAIRS) -->
+          @if (form.beneficiaryType === 'MINISTRY' || form.beneficiaryType === 'CULTURAL_AFFAIRS') {
+            <div class="col-12">
+              <div class="beneficiary-note">
+                <i class="pi pi-building"></i>
+                <span>{{ form.beneficiaryType | codeLabel:'wafar-beneficiary-type':currentLanguage }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Section: Description & notes -->
+      <div class="form-section">
+        <div class="section-title">
+          <i class="pi pi-align-left"></i>
+          <span>{{ 'WAFAR.SECTION_DESCRIPTION' | translate }}</span>
+        </div>
+        <div class="grid p-fluid">
+          <div class="col-12 md:col-6">
+            <label class="field-label">{{ 'WAFAR.DESCRIPTION_AR' | translate }}</label>
+            <textarea pTextarea [(ngModel)]="form.descriptionAr" rows="2" class="w-full" dir="rtl"></textarea>
+          </div>
+          <div class="col-12 md:col-6">
+            <label class="field-label">{{ 'WAFAR.DESCRIPTION_EN' | translate }}</label>
+            <textarea pTextarea [(ngModel)]="form.descriptionEn" rows="2" class="w-full" dir="ltr"></textarea>
+          </div>
+          <div class="col-12">
+            <label class="field-label">{{ 'WAFAR.NOTES' | translate }}</label>
+            <textarea pTextarea [(ngModel)]="form.notes" rows="2" class="w-full"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ng-template pTemplate="footer">
+      <p-button [label]="'COMMON.CANCEL' | translate" severity="secondary" [outlined]="true" (onClick)="formVisible = false"></p-button>
+      <p-button [label]="'COMMON.SAVE' | translate" icon="pi pi-check" [loading]="saving" (onClick)="saveForm()"></p-button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- ── View Details Dialog ─────────────────────────────────────────────
+       Shared detail-dialog vocabulary (assets/layout/styles/_detail-dialog.scss):
+       hero (id badge, beneficiary, category / date / attaché chips, status, amount)
+         → KPI tiles (amount / date / reference / attaché)
+         → rejection notice
+         → Transaction details + Beneficiary
+         → Audit trail + Description & notes
+         → footer (close; reject / approve / edit while still pending)
+  -->
+  <p-dialog [(visible)]="viewVisible"
+    [modal]="true"
+    [style]="{width: '760px', maxWidth: '96vw'}"
+    [breakpoints]="{'960px': '90vw'}"
+    [header]="'WAFAR.VIEW_TITLE' | translate"
+    styleClass="dv-dialog"
+    [closable]="true"
+    [draggable]="false">
+
+    <ng-template pTemplate="content">
+      @if (viewingTx; as tx) {
+        <div class="dv-view">
+
+          <!-- Hero: who was paid, what for, where it stands, how much -->
+          <div class="dv-hero"
+            [class.dv-hero--warn]="tx.status === 'PENDING'"
+            [class.dv-hero--success]="tx.status === 'APPROVED'"
+            [class.dv-hero--danger]="tx.status === 'REJECTED'"
+            [class.dv-hero--muted]="tx.status === 'CANCELLED'">
+            <div class="dv-hero__badge">
+              <span class="dv-hero__badge-prefix">#</span>{{ tx.id }}
+            </div>
+            <div class="dv-hero__body">
+              @if (getBeneficiaryLabel(tx); as who) {
+                <div class="dv-hero__eyebrow">
+                  {{ tx.beneficiaryType ? (tx.beneficiaryType | codeLabel:'wafar-beneficiary-type':currentLanguage) : ('WAFAR.BENEFICIARY' | translate) }}
+                </div>
+                <div class="dv-hero__title">{{ who }}</div>
+                <div class="dv-hero__subtitle">{{ getCategoryLabel(tx.category) || '—' }}</div>
+              } @else {
+                <div class="dv-hero__eyebrow">{{ 'WAFAR.CATEGORY' | translate }}</div>
+                <div class="dv-hero__title"
+                  [class.dv-hero__title--placeholder]="!getCategoryLabel(tx.category)">
+                  {{ getCategoryLabel(tx.category) || '—' }}
+                </div>
+              }
+              <div class="dv-hero__meta">
+                <span class="dv-chip dv-chip--primary">
+                  <i class="pi pi-tag"></i>
+                  {{ getCategoryLabel(tx.category) || '—' }}
+                </span>
+                <span class="dv-chip">
+                  <i class="pi pi-calendar"></i>
+                  {{ tx.spendingDate || '—' }}
+                </span>
+                <span class="dv-chip dv-chip--blue">
+                  <i class="pi pi-flag"></i>
+                  {{ countryName(tx.studyCountryInId) }}
+                </span>
+                <p-tag [value]="tx.status | codeLabel:'wafar-spending-status':currentLanguage"
+                  [severity]="tx.status | codeSeverity:'wafar-spending-status'"
+                  [rounded]="true">
+                </p-tag>
+              </div>
+            </div>
+            <div class="dv-hero__amount">
+              <div class="dv-hero__amount-label">{{ 'WAFAR.AMOUNT' | translate }}</div>
+              <div class="dv-hero__amount-value"
+                [class.dv-hero__amount-value--orange]="tx.status === 'PENDING'"
+                [class.dv-hero__amount-value--red]="tx.status === 'REJECTED'"
+                [class.dv-hero__amount-value--plain]="tx.status === 'CANCELLED'">
+                {{ (tx.amount | number:'1.2-2') || '—' }}
+              </div>
+              @if (tx.referenceNumber) {
+                <div class="dv-hero__amount-sub">{{ 'WAFAR.REFERENCE' | translate }} {{ tx.referenceNumber }}</div>
+              }
+            </div>
+          </div>
+
+          <!-- KPIs -->
+          <div class="dv-kpis dv-kpis--cols-4">
+            <div class="dv-kpi dv-kpi--green">
+              <span class="dv-kpi__icon"><i class="pi pi-wallet"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'WAFAR.AMOUNT' | translate }}</div>
+                <div class="dv-kpi__value">{{ (tx.amount | number:'1.2-2') || '—' }}</div>
+              </div>
+            </div>
+            <div class="dv-kpi dv-kpi--blue">
+              <span class="dv-kpi__icon"><i class="pi pi-calendar"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'WAFAR.DATE' | translate }}</div>
+                <div class="dv-kpi__value">{{ tx.spendingDate || '—' }}</div>
+              </div>
+            </div>
+            <div class="dv-kpi dv-kpi--purple">
+              <span class="dv-kpi__icon"><i class="pi pi-hashtag"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'WAFAR.REFERENCE' | translate }}</div>
+                <div class="dv-kpi__value">{{ tx.referenceNumber || '—' }}</div>
+              </div>
+            </div>
+            <div class="dv-kpi dv-kpi--orange">
+              <span class="dv-kpi__icon"><i class="pi pi-flag"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'WAFAR.ATTACHE' | translate }}</div>
+                <div class="dv-kpi__value">{{ countryName(tx.studyCountryInId) }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rejection reason -->
+          @if (tx.status === 'REJECTED' && tx.rejectionReason) {
+            <div class="dv-notice dv-notice--danger">
+              <i class="pi pi-exclamation-triangle"></i>
+              <div>
+                <strong>{{ 'WAFAR.REJECTION_REASON' | translate }}</strong>
+                <div>{{ tx.rejectionReason }}</div>
+              </div>
+            </div>
+          }
+
+          <div class="dv-columns">
+            <!-- Transaction details -->
+            <section class="dv-section">
+              <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-wallet"></i></span>
+                <div>
+                  <div class="dv-section__title">{{ 'WAFAR.SECTION_DETAILS' | translate }}</div>
+                </div>
+              </header>
+              <dl class="dv-dl">
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.CATEGORY' | translate }}</dt>
+                  <dd>{{ getCategoryLabel(tx.category) || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.AMOUNT' | translate }}</dt>
+                  <dd class="dv-dl__green">{{ (tx.amount | number:'1.2-2') || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.DATE' | translate }}</dt>
+                  <dd>{{ tx.spendingDate || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.REFERENCE' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!tx.referenceNumber">{{ tx.referenceNumber || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.ATTACHE' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="tx.studyCountryInId == null">{{ countryName(tx.studyCountryInId) }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.STATUS.ALL' | translate }}</dt>
+                  <dd>
+                    <p-tag [value]="tx.status | codeLabel:'wafar-spending-status':currentLanguage"
+                      [severity]="tx.status | codeSeverity:'wafar-spending-status'"
+                      [rounded]="true">
+                    </p-tag>
+                  </dd>
+                </div>
+              </dl>
+            </section>
+
+            <!-- Beneficiary -->
+            <section class="dv-section">
+              <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-user"></i></span>
+                <div>
+                  <div class="dv-section__title">{{ 'WAFAR.SECTION_BENEFICIARY' | translate }}</div>
+                </div>
+              </header>
+              <dl class="dv-dl">
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.BENEFICIARY_TYPE' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!tx.beneficiaryType">
+                    {{ tx.beneficiaryType ? (tx.beneficiaryType | codeLabel:'wafar-beneficiary-type':currentLanguage) : '—' }}
+                  </dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.BENEFICIARY' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!getBeneficiaryLabel(tx)">{{ getBeneficiaryLabel(tx) || '—' }}</dd>
+                </div>
+                @if (tx.beneficiaryType === 'STUDENT' || tx.studentId) {
+                  <div class="dv-dl__row">
+                    <dt>{{ 'WAFAR.STUDENT' | translate }}</dt>
+                    <dd [class.dv-dl__muted]="tx.studentId == null">
+                      {{ tx.studentId != null ? ('#' + tx.studentId + (tx.studentName ? ' · ' + tx.studentName : '')) : '—' }}
+                    </dd>
+                  </div>
+                }
+                @if (tx.beneficiaryType === 'OTHER' || tx.payeeNameAr || tx.payeeNameEn) {
+                  <div class="dv-dl__row">
+                    <dt>{{ 'WAFAR.PAYEE_AR' | translate }}</dt>
+                    <dd dir="rtl" [class.dv-dl__muted]="!tx.payeeNameAr">{{ tx.payeeNameAr || '—' }}</dd>
+                  </div>
+                  <div class="dv-dl__row">
+                    <dt>{{ 'WAFAR.PAYEE_EN' | translate }}</dt>
+                    <dd dir="ltr" [class.dv-dl__muted]="!tx.payeeNameEn">{{ tx.payeeNameEn || '—' }}</dd>
+                  </div>
+                }
+              </dl>
+            </section>
+          </div>
+
+          <div class="dv-columns">
+            <!-- Audit trail / approval workflow -->
+            <section class="dv-section">
+              <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-history"></i></span>
+                <div>
+                  <div class="dv-section__title">{{ 'WAFAR.SECTION_AUDIT' | translate }}</div>
+                </div>
+              </header>
+              <dl class="dv-dl">
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.CREATED_AT' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!tx.createdAt">{{ tx.createdAt || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.CREATED_BY' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="tx.createdBy == null">{{ tx.createdBy ?? '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.APPROVED_AT' | translate }}</dt>
+                  <dd [class.dv-dl__green]="!!tx.approvedAt" [class.dv-dl__muted]="!tx.approvedAt">{{ tx.approvedAt || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'WAFAR.APPROVED_BY' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="tx.approvedBy == null">{{ tx.approvedBy ?? '—' }}</dd>
+                </div>
+                @if (tx.status === 'REJECTED') {
+                  <div class="dv-dl__row dv-dl__row--stack">
+                    <dt>{{ 'WAFAR.REJECTION_REASON' | translate }}</dt>
+                    <dd [class.dv-dl__red]="!!tx.rejectionReason" [class.dv-dl__muted]="!tx.rejectionReason">{{ tx.rejectionReason || '—' }}</dd>
+                  </div>
+                }
+              </dl>
+            </section>
+
+            <!-- Description & notes -->
+            <section class="dv-section">
+              <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-align-left"></i></span>
+                <div>
+                  <div class="dv-section__title">{{ 'WAFAR.SECTION_DESCRIPTION' | translate }}</div>
+                </div>
+              </header>
+              <dl class="dv-dl">
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'WAFAR.DESCRIPTION_LABEL' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!(tx.descriptionAr || tx.descriptionEn)">
+                    {{ (isRtl ? (tx.descriptionAr || tx.descriptionEn) : (tx.descriptionEn || tx.descriptionAr)) || '—' }}
+                  </dd>
+                </div>
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'WAFAR.NOTES' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!tx.notes">{{ tx.notes || '—' }}</dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+        </div>
+      }
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="dv-footer">
+        <div class="dv-footer__hint">
+          @if (viewingTx) {
+            <i class="pi pi-receipt"></i>
+            <span>#{{ viewingTx.id }}</span>
+            @if (viewingTx.spendingDate) {
+              <span>·</span>
+              <span>{{ viewingTx.spendingDate }}</span>
+            }
+          }
+        </div>
+        <div class="dv-footer__actions">
+          <p-button [label]="'COMMON.CLOSE' | translate" icon="pi pi-times"
+            severity="secondary" [text]="true"
+            (onClick)="viewVisible = false"></p-button>
+          <!-- N-04.e: the ministry asks the attaché to correct; it does not edit. -->
+          @if (viewingTx && isMinistryLevel && viewingTx.status !== 'CANCELLED') {
+            <p-button [label]="'WAFAR.CORRECTION.ACTION' | translate" icon="pi pi-flag"
+              severity="warn" [outlined]="true"
+              (onClick)="viewVisible = false; openCorrection(viewingTx)"></p-button>
+          }
+          @if (viewingTx && viewingTx.status === 'PENDING') {
+            <p-button [label]="'WAFAR.REJECT' | translate" icon="pi pi-times"
+              severity="danger" [outlined]="true"
+              (onClick)="viewVisible = false; openReject(viewingTx)" *hasPermission="'WAFAR.EDIT'"></p-button>
+            <p-button [label]="'WAFAR.APPROVE' | translate" icon="pi pi-check"
+              severity="success" [outlined]="true"
+              (onClick)="viewVisible = false; openApprove(viewingTx)" *hasPermission="'WAFAR.EDIT'"></p-button>
+            <p-button [label]="'WAFAR.EDIT' | translate" icon="pi pi-pencil"
+              (onClick)="viewVisible = false; openEdit(viewingTx)" *hasPermission="'WAFAR.EDIT'"></p-button>
+          }
+        </div>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- ── Approve Confirmation ────────────────────────────────────────── -->
+  <p-dialog [(visible)]="approveVisible"
+    [modal]="true"
+    [style]="{width: '420px'}"
+    [header]="'WAFAR.APPROVE' | translate"
+    [closable]="true"
+    [draggable]="false">
+    <p>{{ 'WAFAR.APPROVE_CONFIRM' | translate }}</p>
+    @if (approvingTx) {
+      <div class="mt-2 p-3 surface-100 border-round">
+        <div><strong>{{ getCategoryLabel(approvingTx.category) }}</strong></div>
+        <div>{{ approvingTx.amount | number:'1.2-2' }} — {{ approvingTx.spendingDate }}</div>
+      </div>
+    }
+    <ng-template pTemplate="footer">
+      <p-button [label]="'COMMON.CANCEL' | translate" severity="secondary" (onClick)="approveVisible = false"></p-button>
+      <p-button [label]="'WAFAR.APPROVE' | translate" severity="success" (onClick)="confirmApprove()"></p-button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- ── Reject Dialog ───────────────────────────────────────────────── -->
+  <p-dialog [(visible)]="rejectVisible"
+    [modal]="true"
+    [style]="{width: '420px'}"
+    [header]="'WAFAR.REJECT' | translate"
+    [closable]="true"
+    [draggable]="false">
+    <p>{{ 'WAFAR.REJECT_CONFIRM' | translate }}</p>
+    <div class="mt-3">
+      <label class="block mb-2 font-semibold">{{ 'WAFAR.REJECTION_REASON' | translate }}</label>
+      <textarea pTextarea [(ngModel)]="rejectReason"
+        rows="3"
+        class="w-full"
+        [placeholder]="'WAFAR.ENTER_REJECTION_REASON' | translate">
+      </textarea>
+    </div>
+    <ng-template pTemplate="footer">
+      <p-button [label]="'COMMON.CANCEL' | translate" severity="secondary" (onClick)="rejectVisible = false"></p-button>
+      <p-button [label]="'WAFAR.REJECT' | translate" severity="danger" (onClick)="confirmReject()"></p-button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- N-04.e: correction request (ministry-level accounts) -->
+  <p-dialog [(visible)]="correctionVisible" [modal]="true" [draggable]="false" [resizable]="false"
+    [style]="{width: '34rem'}" [header]="'WAFAR.CORRECTION.TITLE' | translate">
+    @if (correctionTx) {
+      <p class="text-500 mb-3">{{ 'WAFAR.CORRECTION.INTRO' | translate }} <strong>#{{ correctionTx.id }}</strong> · {{ correctionTx.amount }}</p>
+    }
+    <div class="flex flex-column gap-3">
+      <div class="flex gap-3">
+        <div class="flex-1">
+          <label class="block text-sm mb-1">{{ 'WAFAR.AMOUNT' | translate }}</label>
+          <p-inputNumber [(ngModel)]="correctionAmount" mode="decimal" [minFractionDigits]="2" [maxFractionDigits]="2" styleClass="w-full" [disabled]="correctionCancel"></p-inputNumber>
+        </div>
+        <div class="flex-1">
+          <label class="block text-sm mb-1">{{ 'WAFAR.DATE' | translate }}</label>
+          <p-datePicker [(ngModel)]="correctionDate" dateFormat="yy-mm-dd" [showIcon]="true" styleClass="w-full" [disabled]="correctionCancel"></p-datePicker>
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm mb-1">{{ 'WAFAR.DESCRIPTION_AR' | translate }}</label>
+        <input pInputText class="w-full" [(ngModel)]="correctionDescriptionAr" [disabled]="correctionCancel">
+      </div>
+      <div>
+        <label class="block text-sm mb-1">{{ 'WAFAR.DESCRIPTION_EN' | translate }}</label>
+        <input pInputText class="w-full" [(ngModel)]="correctionDescriptionEn" [disabled]="correctionCancel">
+      </div>
+      <div>
+        <label class="block text-sm mb-1">{{ 'WAFAR.NOTES' | translate }}</label>
+        <input pInputText class="w-full" [(ngModel)]="correctionNotes" [disabled]="correctionCancel">
+      </div>
+      @if (correctionTx?.status === 'PENDING') {
+        <label class="flex align-items-center gap-2">
+          <input type="checkbox" [(ngModel)]="correctionCancel">
+          <span>{{ 'WAFAR.CORRECTION.CANCEL_ROW' | translate }}</span>
+        </label>
+      }
+      <div>
+        <label class="block text-sm mb-1">{{ 'WAFAR.CORRECTION.REASON' | translate }} *</label>
+        <textarea pTextarea class="w-full" rows="3" [(ngModel)]="correctionReason"></textarea>
+      </div>
+      <small class="text-500">{{ 'WAFAR.CORRECTION.HINT' | translate }}</small>
+    </div>
+    <ng-template pTemplate="footer">
+      <p-button [label]="'COMMON.CANCEL' | translate" severity="secondary" (onClick)="correctionVisible = false"></p-button>
+      <p-button [label]="'WAFAR.CORRECTION.SUBMIT' | translate" icon="pi pi-send" [loading]="submittingCorrection"
+        [disabled]="!correctionReason.trim() || !correctionChangesSomething" (onClick)="submitCorrection()"></p-button>
+    </ng-template>
+  </p-dialog>
+</div>

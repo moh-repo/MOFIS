@@ -1,0 +1,256 @@
+:host {
+    display: block;
+    background: var(--surface-ground);
+    min-height: 100vh;
+}
+
+/* Width comes from .layout-main, matching the other pages. The 1920px cap and
+   auto margins used to centre this page on a wide monitor. */
+.sg-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+}
+
+// ── Filter Card ────────────────────────────────────────────
+::ng-deep .sg-filter-card {
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+
+    .p-card-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-600) 100%);
+        border-bottom: none;
+        padding: 0;
+        border-radius: 14px 14px 0 0;
+    }
+
+    .p-card-body { padding: 1.5rem; }
+}
+
+.sg-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    gap: 1rem;
+}
+
+// Export actions sit on the coloured header, so they need light-on-dark styling.
+.sg-card-header-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+
+    ::ng-deep .p-button.p-button-outlined {
+        color: white;
+        border-color: rgba(255, 255, 255, 0.6);
+        background: rgba(255, 255, 255, 0.08);
+
+        &:enabled:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+        }
+    }
+}
+
+.sg-card-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: white;
+
+    i {
+        font-size: 2rem;
+        opacity: 0.9;
+    }
+
+    div {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+}
+
+.sg-card-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1.2;
+}
+
+.sg-card-subtitle {
+    font-size: 0.88rem;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.4;
+}
+
+.sg-filter-row {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.sg-filter-field {
+    flex: 1;
+    min-width: 220px;
+
+    label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: var(--text-color);
+        font-size: 0.9rem;
+    }
+}
+
+.sg-filter-action {
+    display: flex;
+    flex-direction: column;
+
+    label { display: block; margin-bottom: 0.5rem; }
+}
+
+.sg-dropdown-loading {
+    padding: 0.5rem;
+    text-align: center;
+    color: var(--primary-color);
+}
+
+// ── Loading ────────────────────────────────────────────────
+.sg-loading-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    gap: 1rem;
+
+    p {
+        color: var(--primary-color);
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0;
+    }
+}
+
+// ── Graph Card ─────────────────────────────────────────────
+::ng-deep .sg-graph-card {
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+    overflow: hidden;
+
+    .p-card-body { padding: 0; }
+    .p-card-content { padding: 0; }
+}
+
+.sg-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5rem 2rem;
+    text-align: center;
+    color: var(--text-color-secondary);
+
+    .sg-empty-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+        color: var(--primary-color);
+    }
+
+    p {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+        color: var(--text-color);
+    }
+
+    small { font-size: 0.9rem; }
+}
+
+.sg-network-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.sg-hidden { display: none; }
+
+.sg-graph-canvas {
+    width: 100%;
+    height: clamp(650px, 75vh, 1200px);
+    background: var(--surface-0);
+
+    ::ng-deep .vis-network {
+        height: 100% !important;
+    }
+}
+
+// ── Legend ─────────────────────────────────────────────────
+.sg-legend {
+    position: absolute;
+    top: 16px;
+    inset-inline-start: 16px;
+    background: var(--surface-0);
+    border: 1px solid var(--surface-border);
+    border-radius: 10px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 5;
+    min-width: 160px;
+
+    h4 {
+        margin: 0 0 0.75rem 0;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-color);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+}
+
+.sg-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+
+    span:last-child {
+        font-size: 0.85rem;
+        color: var(--text-color-secondary);
+    }
+}
+
+.sg-legend-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.sg-legend-hint {
+    display: block;
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-color-secondary);
+    font-style: italic;
+}
+
+// ── Responsive ─────────────────────────────────────────────
+@media (max-width: 768px) {
+    .sg-filter-row { flex-direction: column; gap: 1rem; }
+
+    .sg-filter-field,
+    .sg-filter-action { min-width: 100%; }
+
+    .sg-graph-canvas { height: 500px; }
+
+    .sg-page-header {
+        padding: 1.5rem 1.25rem;
+        .sg-page-title { font-size: 1.4rem; }
+    }
+}

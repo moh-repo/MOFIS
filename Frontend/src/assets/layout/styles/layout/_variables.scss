@@ -1,0 +1,12 @@
+/* General */
+/* The UI renders at 90% of its original size. Everything below, and the layout's
+   rem-based spacing, derives from $scale, so this is the single lever.
+   CSS `zoom` was tried first and rejected: PrimeNG reads getBoundingClientRect()
+   to place body-appended overlays, then writes a px `top` that the same zoom
+   scales a second time, leaving every dropdown and datepicker ~12px off its
+   input. Scaling the root font size has no such coordinate-space mismatch. */
+$uiScale:0.9;                   /* keep the px values below in step with $scale */
+$scale:12.6px;                  /* main font size — was 14px */
+$borderRadius:11px;             /* border radius of layout element e.g. card, sidebar — was 12px */
+$sidebarWidth:270px;            /* sidebar width, and the matching main-content offset — was 300px */
+$transitionDuration:.2s;        /* transition duration of layout elements e.g. sidebar, overlay menus */ 

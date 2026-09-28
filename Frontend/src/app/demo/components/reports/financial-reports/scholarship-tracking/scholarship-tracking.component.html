@@ -1,0 +1,242 @@
+<div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="mb-3">
+    <button pButton type="button" [label]="'REPORTS.REPORT_SUBPAGES.BACK_TO_FINANCIAL_REPORTS' | translate"
+      [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+      class="p-button-text p-button-sm"
+    routerLink="/reports/financial"></button>
+  </div>
+
+  <!-- Header Section. `flex-1` on the leading block, not
+       `justify-content-between`: under `direction: rtl` a flex row already
+       runs right to left, and the global rule in styles.scss reverses every
+       `.flex.justify-content-between` again, which put the heading back on
+       the left and the actions on the right in Arabic. See
+       src/app/demo/components/page-headings.spec.ts. -->
+  <div class="flex align-items-center mb-4">
+    <h2 class="m-0 flex-1">
+      <i class="pi pi-bookmark text-primary mr-2"></i>
+      {{ 'REPORTS.INDIVIDUAL_REPORTS.SCHOLARSHIP_TRACKING.TITLE' | translate }}
+    </h2>
+    <div class="flex gap-2">
+      <app-report-actions
+        pdfApiPath="/api/reports/financial/scholarship-tracking/export-report"
+        [query]="reportQuery()"
+        baseFilename="scholarship-tracking">
+      </app-report-actions>
+
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid mb-4">
+    <div class="col-12 md:col-6 lg:col-3">
+      <div class="surface-card shadow-2 border-round p-3">
+        <div class="flex align-items-center justify-content-between mb-2">
+          <div class="text-500">{{ 'REPORTS.REPORT_SUBPAGES.TOTAL_SCHOLARSHIPS' | translate }}</div>
+          <div class="flex align-items-center justify-content-center bg-blue-100 border-circle" style="width:2.5rem;height:2.5rem">
+            <i class="pi pi-bookmark text-blue-600 text-xl"></i>
+          </div>
+        </div>
+        <div class="text-900 text-2xl font-bold">{{ totalScholarships | number }}</div>
+      </div>
+    </div>
+
+    <div class="col-12 md:col-6 lg:col-3">
+      <div class="surface-card shadow-2 border-round p-3">
+        <div class="flex align-items-center justify-content-between mb-2">
+          <div class="text-500">{{ 'REPORTS.REPORT_SUBPAGES.TOTAL_ALLOCATED' | translate }}</div>
+          <div class="flex align-items-center justify-content-center bg-green-100 border-circle" style="width:2.5rem;height:2.5rem">
+            <i class="pi pi-dollar text-green-600 text-xl"></i>
+          </div>
+        </div>
+        <div class="text-900 text-2xl font-bold">{{ formatCurrency(totalAllocated) }}</div>
+      </div>
+    </div>
+
+    <div class="col-12 md:col-6 lg:col-3">
+      <div class="surface-card shadow-2 border-round p-3">
+        <div class="flex align-items-center justify-content-between mb-2">
+          <div class="text-500">{{ 'REPORTS.REPORT_SUBPAGES.TOTAL_PAID' | translate }}</div>
+          <div class="flex align-items-center justify-content-center bg-green-100 border-circle" style="width:2.5rem;height:2.5rem">
+            <i class="pi pi-check text-green-600 text-xl"></i>
+          </div>
+        </div>
+        <div class="text-900 text-2xl font-bold">{{ formatCurrency(totalPaid) }}</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Filters Section -->
+  <div class="card mb-4">
+    <h3 class="mt-0 mb-3">
+      <i class="pi pi-filter text-primary mr-2"></i>
+      {{ 'REPORTS.REPORT_SUBPAGES.FILTERS' | translate }}
+    </h3>
+    <div class="p-fluid grid formgrid">
+      @if (hasMultiCountry) {
+        <div class="field col-12 md:col-3">
+          <label>{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</label>
+          <p-multiselect
+            [options]="allowedCountries"
+            [(ngModel)]="selectedCountryIds"
+            optionLabel="label"
+            optionValue="value"
+            [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_COUNTRIES' | translate"
+            (onChange)="onCountryChange()"
+            styleClass="w-full"
+            appendTo="body">
+          </p-multiselect>
+        </div>
+      }
+      <div class="field col-12 md:col-3">
+        <label for="type">{{ 'REPORTS.INDIVIDUAL_REPORTS.SCHOLARSHIP_TRACKING.TYPE' | translate }}</label>
+        <p-select
+          id="type"
+          [(ngModel)]="selectedType"
+          [options]="metadata.types"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_TYPE' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+
+      <div class="field col-12 md:col-3">
+        <label for="provider">{{ 'REPORTS.REPORT_SUBPAGES.PROVIDER' | translate }}</label>
+        <p-select
+          id="provider"
+          [(ngModel)]="selectedProvider"
+          [options]="metadata.providers"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_PROVIDER' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+
+      <div class="field col-12 md:col-3">
+        <label for="status">{{ 'REPORTS.COMMON_FIELDS.STATUS' | translate }}</label>
+        <p-select
+          id="status"
+          [(ngModel)]="selectedStatus"
+          [options]="metadata.statuses"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_STATUS' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+
+
+      <div class="field col-12 md:col-3">
+        <label for="search">{{ 'REPORTS.REPORT_SUBPAGES.SEARCH' | translate }}</label>
+        <input type="text"
+          pInputText
+          id="search"
+          [(ngModel)]="searchText"
+          (input)="onFilterChange()"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.STUDENT_NAME_OR_PASSPORT' | translate">
+      </div>
+    </div>
+    <div class="flex justify-content-end">
+      <button pButton type="button" [label]="'REPORTS.REPORT_SUBPAGES.CLEAR_FILTERS' | translate" icon="pi pi-times" (click)="clearFilters()" class="p-button-outlined"></button>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="card">
+    <p-table
+      [value]="scholarshipData"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="pageSize"
+      [totalRecords]="totalRecords"
+      [showCurrentPageReport]="true"
+      [currentPageReportTemplate]="'REPORTS.REPORT_SUBPAGES.SHOWING_SCHOLARSHIPS' | translate"
+      [rowsPerPageOptions]="[10, 20, 50, 100]"
+      (onPage)="onPageChange($event)"
+      styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="scholarshipId">{{ 'REPORTS.INDIVIDUAL_REPORTS.SCHOLARSHIP_TRACKING.ID' | translate }} <p-sortIcon field="scholarshipId"></p-sortIcon></th>
+          <th pSortableColumn="studentName">{{ 'REPORTS.INDIVIDUAL_REPORTS.SCHOLARSHIP_TRACKING.STUDENT' | translate }} <p-sortIcon field="studentName"></p-sortIcon></th>
+          <th pSortableColumn="scholarshipType">{{ 'REPORTS.INDIVIDUAL_REPORTS.SCHOLARSHIP_TRACKING.TYPE' | translate }} <p-sortIcon field="scholarshipType"></p-sortIcon></th>
+          <th pSortableColumn="scholarshipProvider">{{ 'REPORTS.REPORT_SUBPAGES.PROVIDER' | translate }} <p-sortIcon field="scholarshipProvider"></p-sortIcon></th>
+          <th pSortableColumn="scholarshipAmount">{{ 'REPORTS.INDIVIDUAL_REPORTS.SCHOLARSHIP_TRACKING.TOTAL_AMOUNT' | translate }} <p-sortIcon field="scholarshipAmount"></p-sortIcon></th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.SCHOLARSHIP_TRACKING.PROGRESS' | translate }}</th>
+          <th pSortableColumn="scholarshipStatus">{{ 'REPORTS.COMMON_FIELDS.STATUS' | translate }} <p-sortIcon field="scholarshipStatus"></p-sortIcon></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-scholarship>
+        <tr>
+          <td>{{ scholarship.scholarshipId }}</td>
+          <td>
+            <div>{{ scholarship.studentName }}</div>
+            <small class="text-500">{{ scholarship.studentPassportNumber }}</small>
+          </td>
+          <td>{{ scholarship.scholarshipType ?? ('COMMON.UNSPECIFIED' | translate) }}</td>
+          <td>{{ scholarship.scholarshipProvider ?? ('COMMON.UNSPECIFIED' | translate) }}</td>
+          <td class="font-bold">{{ formatCurrency(scholarship.scholarshipAmount, scholarship.scholarshipCurrency) }}</td>
+          <td>
+            <div class="flex flex-column gap-2">
+              <div class="flex justify-content-between text-sm">
+                <span>{{ 'REPORTS.REPORT_SUBPAGES.PAID' | translate }}: {{ formatCurrency(scholarship.amountPaid) }}</span>
+                <span>{{ getProgressPercentage(scholarship.amountPaid, scholarship.scholarshipAmount) }}%</span>
+              </div>
+              <p-progressBar [value]="getProgressPercentage(scholarship.amountPaid, scholarship.scholarshipAmount)"
+                [showValue]="false"
+                [style]="{'height': '8px'}">
+              </p-progressBar>
+            </div>
+          </td>
+          <td>
+            <p-tag [value]="scholarship.scholarshipStatus ?? ('COMMON.UNSPECIFIED' | translate)" [severity]="getStatusSeverity(scholarship)"></p-tag>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="8" class="text-center py-5">
+            <i class="pi pi-info-circle text-4xl text-400 mb-3"></i>
+            <p class="text-600">{{ 'REPORTS.REPORT_SUBPAGES.NO_SCHOLARSHIP_RECORDS' | translate }}</p>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<!-- PDF Report Viewer -->
+<div class="card mt-3">
+  <!-- Heading leads this row too; see the comment on the page header above. -->
+  <div class="flex align-items-center mb-3 flex-wrap gap-2">
+    <div class="flex align-items-center gap-2 flex-1">
+      <i class="pi pi-file-pdf" style="font-size:1.4rem;color:#6b2737"></i>
+      <h4 class="m-0" style="color:#6b2737">{{ 'REPORTS.VIEWER.GENERATE_REPORT' | translate }}</h4>
+    </div>
+    <div class="flex align-items-center gap-3 flex-wrap">
+      <div class="flex align-items-center gap-2">
+        <span class="font-semibold text-sm">{{ 'REPORTS.VIEWER.LANGUAGE' | translate }}: </span>
+        <p-selectButton [options]="reportLangOptions"
+          [(ngModel)]="selectedLang" optionLabel="label" optionValue="value">
+        </p-selectButton>
+      </div>
+      <p-button icon="pi pi-play"
+        [label]="'REPORTS.VIEWER.GENERATE_REPORT' | translate"
+        [loading]="reportLoading"
+        (onClick)="generateReport()">
+      </p-button>
+    </div>
+  </div>
+  <app-report-viewer [pdfApiPath]="pdfApiPath" [pdfQuery]="pdfQuery" [loadTrigger]="loadTrigger" [loading]="reportLoading" [filename]="'scholarship-tracking.pdf'">
+  </app-report-viewer>
+</div>
+<p-toast></p-toast>
+

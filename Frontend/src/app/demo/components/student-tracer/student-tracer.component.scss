@@ -1,0 +1,552 @@
+:host {
+    display: block;
+    background: var(--surface-ground);
+    min-height: 100vh;
+}
+
+/* Width comes from .layout-main, matching the other student pages. The 1920px
+   cap and auto margins used to centre this page on a wide monitor. */
+.tracer-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+
+    // Modern Page Header with Gradient
+    .page-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-600) 100%);
+        padding: 2rem 2.5rem;
+        margin: -1rem -1rem 2rem -1rem;
+        border-radius: 0 0 24px 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2rem;
+            flex-wrap: wrap;
+
+            .header-title-section {
+                flex: 1;
+
+                .page-title {
+                    margin: 0 0 0.5rem 0;
+                    font-size: 2.5rem;
+                    font-weight: 700;
+                    color: white;
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    letter-spacing: -0.5px;
+
+                    i {
+                        font-size: 2.2rem;
+                        opacity: 0.9;
+                    }
+                }
+
+                .page-subtitle {
+                    margin: 0;
+                    color: rgba(255, 255, 255, 0.95);
+                    font-size: 1.1rem;
+                    line-height: 1.6;
+                    max-width: 600px;
+                }
+            }
+
+            .header-actions {
+                display: flex;
+                gap: 0.75rem;
+
+                ::ng-deep .p-button {
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+                    &.p-button-outlined {
+                        background: rgba(255, 255, 255, 0.15);
+                        border-color: rgba(255, 255, 255, 0.4);
+                        color: white;
+
+                        &:hover {
+                            background: rgba(255, 255, 255, 0.25);
+                            border-color: rgba(255, 255, 255, 0.6);
+                        }
+                    }
+
+                    &:not(.p-button-outlined) {
+                        background: white;
+                        border-color: white;
+                        color: var(--primary-color);
+
+                        &:hover {
+                            background: rgba(255, 255, 255, 0.95);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Filters Card
+    .filters-card {
+        margin-bottom: 2rem;
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+
+        ::ng-deep .p-card-header {
+            background: var(--surface-50);
+            border-bottom: 2px solid var(--surface-border);
+            padding: 0;
+
+            .section-header {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 1.25rem 1.5rem;
+                font-size: 1.15rem;
+                font-weight: 600;
+                color: var(--primary-color);
+
+                i {
+                    font-size: 1.3rem;
+                }
+            }
+        }
+
+        ::ng-deep .p-card-body {
+            padding: 1.5rem;
+        }
+
+        .filter-section {
+            .p-field {
+                margin-bottom: 1rem;
+
+                label {
+                    display: block;
+                    margin-bottom: 0.5rem;
+                    font-weight: 600;
+                    color: var(--text-color);
+                }
+            }
+
+            .filter-buttons {
+                display: flex;
+                align-items: flex-end;
+                gap: 0.5rem;
+
+                ::ng-deep .p-button {
+                    flex: 1;
+                    min-width: 0;
+                }
+            }
+        }
+    }
+
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+
+        .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem;
+            background: white;
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+
+            &::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 100px;
+                height: 100px;
+                background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+                transform: translate(30%, -30%);
+            }
+
+            &:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+            }
+
+            .stat-icon {
+                width: 48px;
+                height: 48px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.5rem;
+                color: white;
+                flex-shrink: 0;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                position: relative;
+                z-index: 1;
+            }
+
+            .stat-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                position: relative;
+                z-index: 1;
+
+                .stat-label {
+                    font-size: 0.8rem;
+                    color: var(--text-color-secondary);
+                    margin-bottom: 0.4rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.4px;
+                }
+
+                .stat-value {
+                    font-size: 1.75rem;
+                    font-weight: 700;
+                    color: var(--text-color);
+                    line-height: 1;
+                }
+            }
+        }
+    }
+}
+
+// Sidebar Styles
+::ng-deep .p-drawer {
+    .p-drawer-header {
+        background: var(--primary-color);
+        color: white;
+        border-bottom: none;
+
+        .sidebar-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .p-drawer-close-button {
+            color: white;
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+    }
+
+    .p-drawer-content {
+        padding: 1rem;
+        background: var(--surface-50);
+    }
+
+    .node-details {
+        .p-card {
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+
+            .detail-header {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.75rem 1rem;
+                background: var(--surface-100);
+                border-bottom: 2px solid var(--primary-color);
+                font-weight: 600;
+                color: var(--primary-color);
+
+                i {
+                    font-size: 1.1rem;
+                }
+            }
+
+            .detail-row {
+                display: flex;
+                flex-direction: column;
+                padding: 0.75rem 0;
+                border-bottom: 1px solid var(--surface-border);
+
+                &:last-child {
+                    border-bottom: none;
+                }
+
+                .detail-label {
+                    font-weight: 600;
+                    color: var(--text-color-secondary);
+                    font-size: 0.85rem;
+                    margin-bottom: 0.25rem;
+                }
+
+                .detail-value {
+                    color: var(--text-color);
+                    font-size: 1rem;
+                    word-break: break-word;
+                }
+
+                .detail-link {
+                    color: var(--primary-color);
+                    text-decoration: none;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    transition: color 0.3s;
+
+                    &:hover {
+                        color: var(--primary-color-text);
+                        text-decoration: underline;
+                    }
+                }
+            }
+        }
+    }
+}
+
+:host ::ng-deep .network-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+:host ::ng-deep .network-card .p-card-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0;
+}
+
+:host ::ng-deep .network-card .network-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    background: var(--surface-50);
+    border-bottom: 2px solid var(--surface-border);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+:host ::ng-deep .network-card .network-toolbar .layout-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+:host ::ng-deep .network-card .network-toolbar .layout-selector label {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+:host ::ng-deep .network-card .network-toolbar .network-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+:host ::ng-deep .network-card .network-wrapper {
+    position: relative;
+    flex: 1 1 auto;
+    height: clamp(900px, 90vh, 1500px);
+    max-height: none;
+    background: var(--surface-0);
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-container {
+    width: 100%;
+                        height: 100%;
+                        min-height: inherit;
+                        max-height: inherit;
+    position: relative;
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-container.loading {
+    opacity: 0.3;
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-container ::ng-deep .vis-network {
+                            height: 100% !important;
+                            min-height: inherit !important;
+                            max-height: inherit !important;
+                        }
+
+:host ::ng-deep .network-card .network-wrapper .loading-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--primary-color);
+    z-index: 10;
+}
+
+:host ::ng-deep .network-card .network-wrapper .loading-overlay p {
+    margin-top: 1rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-legend {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: var(--surface-0);
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 5;
+    max-width: 200px;
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-legend h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+    color: var(--text-color);
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-legend .legend-item .legend-shape {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-legend .legend-item .legend-shape.circle {
+    border-radius: 50%;
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-legend .legend-item .legend-shape.square {
+    border-radius: 2px;
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-legend .legend-item .legend-shape.triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-legend .legend-item span:last-child {
+    font-size: 0.9rem;
+    color: var(--text-color-secondary);
+}
+
+:host ::ng-deep .network-card .network-wrapper .network-legend small {
+    color: var(--text-color-secondary);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+// Large screen optimization
+@media (min-width: 1920px) {
+    :host ::ng-deep .network-card .network-wrapper {
+        height: clamp(1100px, 95vh, 1900px);
+        max-height: none;
+        }
+    }
+
+// Responsive Styles
+@media (max-width: 768px) {
+    :host {
+        padding: 0.5rem;
+    }
+
+    .tracer-container {
+        .tracer-header-card {
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+
+                .header-actions {
+                    width: 100%;
+                    flex-direction: column;
+
+                    ::ng-deep .p-button {
+                        width: 100%;
+                    }
+                }
+            }
+        }
+
+        .stats-container {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.75rem;
+
+            .stat-card {
+                padding: 1rem;
+
+                .stat-icon {
+                    width: 50px;
+                    height: 50px;
+                    font-size: 1.5rem;
+                }
+
+                .stat-content .stat-value {
+                    font-size: 1.5rem;
+                }
+                }
+            }
+        }
+
+    :host ::ng-deep .network-card .network-toolbar {
+                flex-direction: column;
+                align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    :host ::ng-deep .network-card .network-toolbar .layout-selector {
+                    width: 100%;
+                }
+
+    :host ::ng-deep .network-card .network-toolbar .network-controls {
+                    width: 100%;
+                    justify-content: space-between;
+                }
+
+    :host ::ng-deep .network-card .network-wrapper {
+        height: 650px;
+    }
+
+    :host ::ng-deep .network-card .network-wrapper .network-legend {
+                    top: 10px;
+                    left: 10px;
+                    padding: 0.75rem;
+                    max-width: 150px;
+    }
+
+    :host ::ng-deep .network-card .network-wrapper .network-legend h4 {
+                        font-size: 0.9rem;
+    }
+
+    ::ng-deep .p-drawer {
+        width: 100% !important;
+    }
+}
+
+// Print Styles
+@media print {
+    .tracer-container {
+        .header-actions,
+        .filter-section,
+        .network-toolbar {
+            display: none !important;
+        }
+
+        .network-wrapper {
+            height: auto !important;
+            page-break-inside: avoid;
+        }
+    }
+}
+

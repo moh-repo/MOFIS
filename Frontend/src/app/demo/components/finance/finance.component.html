@@ -1,0 +1,214 @@
+<div class="grid fin-page" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"
+  [class.rtl]="translationService.isRTL()">
+  <div class="col-12">
+    <div class="card p-0 overflow-hidden">
+
+      <!-- Header + inline filters -->
+      <div class="fin-header">
+        <div class="fin-header__left">
+          <div class="fin-header__icon"><i class="pi pi-dollar"></i></div>
+          <div>
+            <h4 class="fin-header__title">{{ 'FINANCE.TITLE' | translate }}</h4>
+            <span class="fin-header__count">
+              {{ totalElements | localeNumber }} &middot; {{ 'FINANCE.SUBTITLE' | translate }}
+            </span>
+          </div>
+        </div>
+
+        <!-- The header keeps only what acts on the data, not what narrows
+             the view of it. -->
+        <div class="fin-header__actions">
+          <button pButton pRipple icon="pi pi-file-excel" class="p-button-action-outlined"
+            (click)="exportToExcel()" [loading]="exporting"
+            [pTooltip]="'FINANCE.EXPORT_TO_EXCEL' | translate" tooltipPosition="bottom"
+            *hasPermission="'FINANCE.EXPORT'">
+          </button>
+
+          <button pButton pRipple [label]="'FINANCE.ADD_NEW_FINANCE' | translate" icon="pi pi-plus"
+            class="p-button-success" (click)="goToAdd()" *hasPermission="'FINANCE.EDIT'">
+          </button>
+        </div>
+      </div>
+
+      <!--
+        Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+        They used to share the header band with Export and Add, so "narrow the
+        list" and "change the data" sat in one undifferentiated row of six.
+      -->
+      <div class="filter-bar filter-bar--inset">
+        <div class="filter-bar__grid filter-bar__grid--cols-4">
+          <div class="filter-bar__field filter-bar__field--wide"
+            [class.filter-bar__field--active]="globalFilter">
+            <label for="finSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="finSearch" pInputText type="text" [(ngModel)]="globalFilter"
+                (input)="onGlobalFilter($event)"
+                [placeholder]="'FINANCE.SEARCH_PLACEHOLDER' | translate" />
+            </span>
+          </div>
+
+          <div class="filter-bar__field" [class.filter-bar__field--active]="selectedStatus">
+            <label for="finStatus">{{ 'FINANCE.SELECT_STATUS' | translate }}</label>
+            <p-select inputId="finStatus" [options]="statusOptions" [(ngModel)]="selectedStatus"
+              (onChange)="onStatusFilter($event)" optionLabel="label" optionValue="value"
+              [placeholder]="'FINANCE.ALL_STATUSES' | translate" [showClear]="true">
+            </p-select>
+          </div>
+
+          <div class="filter-bar__field" [class.filter-bar__field--active]="dateRange?.length">
+            <label for="finDates">{{ 'FINANCE.SELECT_DATE_RANGE' | translate }}</label>
+            <p-datepicker inputId="finDates" [(ngModel)]="dateRange" selectionMode="range"
+              (onSelect)="onDateFilter($event)"
+              [placeholder]="'FINANCE.SELECT_DATE_RANGE' | translate" [showIcon]="true"
+              [readonlyInput]="true">
+            </p-datepicker>
+          </div>
+        </div>
+
+        <div class="filter-bar__actions">
+          <button pButton pRipple type="button" icon="pi pi-filter-slash"
+            class="p-button-action-outlined p-button-sm"
+            [label]="'FINANCE.CLEAR_FILTERS' | translate"
+            [disabled]="!globalFilter && !selectedStatus && !dateRange?.length"
+            (click)="clearFilters()">
+          </button>
+        </div>
+      </div>
+
+      <!-- Records -->
+      <p-table #dt [value]="studentFinanceList" [rows]="rows" [first]="first" [totalRecords]="totalElements"
+        [loading]="loading" [paginator]="true" [lazy]="true" [rowsPerPageOptions]="rowsPerPageOptions"
+        [showCurrentPageReport]="true"
+        [currentPageReportTemplate]="'FINANCE.SHOWING_ENTRIES' | translate" (onPage)="onPageChange($event)"
+        (onSort)="onSort($event)" [rowHover]="true" styleClass="p-datatable-sm p-datatable-gridlines"
+        responsiveLayout="scroll" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="id" style="width: 8rem">
+              {{ 'FINANCE.STUDENT_ID' | translate }}
+              <p-sortIcon field="id"></p-sortIcon>
+            </th>
+            <th pSortableColumn="studentFinId" style="width: 10rem">
+              {{ 'FINANCE.FINANCE_ID' | translate }}
+              <p-sortIcon field="studentFinId"></p-sortIcon>
+            </th>
+            <th pSortableColumn="studentFinName" style="min-width: 14rem">
+              {{ 'FINANCE.STUDENT_NAME' | translate }}
+              <p-sortIcon field="studentFinName"></p-sortIcon>
+            </th>
+            <th pSortableColumn="studentFinRecievedAmount" style="width: 11rem">
+              {{ 'FINANCE.AMOUNT_RECEIVED' | translate }}
+              <p-sortIcon field="studentFinRecievedAmount"></p-sortIcon>
+            </th>
+            <th pSortableColumn="wafarAmount" style="width: 10rem">
+              {{ 'FINANCE.WAFAR_AMOUNT' | translate }}
+              <p-sortIcon field="wafarAmount"></p-sortIcon>
+            </th>
+            <th pSortableColumn="netAmount" style="width: 11rem">
+              {{ 'FINANCE.NET_AMOUNT' | translate }}
+              <p-sortIcon field="netAmount"></p-sortIcon>
+            </th>
+            <th pSortableColumn="studyCheckDate" style="width: 9rem">
+              {{ 'FINANCE.CHECK_DATE' | translate }}
+              <p-sortIcon field="studyCheckDate"></p-sortIcon>
+            </th>
+            <th pSortableColumn="studyFinRecievedStatus" style="min-width: 10rem">
+              {{ 'FINANCE.FINANCE_RECEIVED_STATUS' | translate }}
+              <p-sortIcon field="studyFinRecievedStatus"></p-sortIcon>
+            </th>
+            <th style="width: 9rem; text-align: center">{{ 'FINANCE.ACTIONS' | translate }}</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-studentFinance>
+          <tr class="fin-row" (dblclick)="goToView(studentFinance)">
+            <td><span class="font-semibold text-900">{{ studentFinance.id }}</span></td>
+            <td><span class="text-600">{{ studentFinance.studentFinId }}</span></td>
+            <td><span class="text-900">{{ studentFinance.studentFinName }}</span></td>
+            <td>
+              <span class="fin-amount">
+                {{ studentFinance.studentFinRecievedAmount | localeNumber:'1.2-2' }}
+                @if (getCurrencyName(studentFinance.studyCurrencyInId); as currency) {
+                  <small class="fin-amount__currency"
+                    >
+                    {{ currency }}
+                  </small>
+                }
+              </span>
+            </td>
+            <td>
+              @if (studentFinance.wafarAmount > 0) {
+                <span class="fin-amount fin-amount--wafar">
+                  {{ studentFinance.wafarAmount | localeNumber:'1.2-2' }}
+                  @if (getCurrencyName(studentFinance.studyCurrencyInId); as currency) {
+                    <small class="fin-amount__currency"
+                      >
+                      {{ currency }}
+                    </small>
+                  }
+                </span>
+              } @else {
+                <span class="text-500">&mdash;</span>
+              }
+            </td>
+            <td>
+              <span class="fin-amount fin-amount--net">
+                {{ getNetAmount(studentFinance) | localeNumber:'1.2-2' }}
+                @if (getCurrencyName(studentFinance.studyCurrencyInId); as currency) {
+                  <small class="fin-amount__currency"
+                    >
+                    {{ currency }}
+                  </small>
+                }
+              </span>
+            </td>
+            <td><span class="text-600">{{ studentFinance.studyCheckDate | localeDate:'mediumDate' }}</span></td>
+            <td>
+              <p-tag [severity]="getFinReceivedStatusSeverity(studentFinance.studyFinRecievedStatus)"
+                [value]="getFinReceivedStatusName(studentFinance.studyFinRecievedStatus)"
+                [rounded]="true">
+              </p-tag>
+            </td>
+            <td style="text-align: center">
+              <div class="flex justify-content-center gap-1">
+                <button pButton pRipple icon="pi pi-eye"
+                  class="p-button-rounded p-button-text p-button-info"
+                  [pTooltip]="'FINANCE.VIEW_DETAILS' | translate" tooltipPosition="top"
+                  (click)="goToView(studentFinance)" *hasPermission="'FINANCE.VIEW'">
+                </button>
+                <button pButton pRipple icon="pi pi-pencil"
+                  class="p-button-rounded p-button-text p-button-warning"
+                  [pTooltip]="'COMMON.EDIT' | translate" tooltipPosition="top"
+                  (click)="goToEdit(studentFinance)" *hasPermission="'FINANCE.EDIT'">
+                </button>
+                <button pButton pRipple icon="pi pi-trash"
+                  class="p-button-rounded p-button-text p-button-danger"
+                  [pTooltip]="'COMMON.DELETE' | translate" tooltipPosition="top"
+                  (click)="deleteStudentFinance(studentFinance)" *hasPermission="'FINANCE.EDIT'">
+                </button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="9">
+              <div class="fin-empty">
+                <i class="pi pi-inbox"></i>
+                <span class="fin-empty__title">{{ 'FINANCE.NO_FINANCE_RECORDS' | translate }}</span>
+                <p class="fin-empty__hint">{{ 'FINANCE.ADJUST_FILTERS' | translate }}</p>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>
+
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>

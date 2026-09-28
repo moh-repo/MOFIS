@@ -1,0 +1,586 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE jasperReport PUBLIC "-//JasperReports//DTD Report Design//EN"
+  "http://jasperreports.sourceforge.net/dtds/jasperreport.dtd">
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports
+    http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+  name="quarterly-financial"
+  pageWidth="842" pageHeight="595"
+  orientation="Landscape"
+  columnWidth="802" leftMargin="20" rightMargin="20"
+  topMargin="10" bottomMargin="15"
+  whenNoDataType="AllSectionsNoDetail">
+
+  <!-- STYLES -->
+  <style name="defaultStyle" isDefault="true" fontName="Cairo" fontSize="8"/>
+
+  <parameter name="IS_RTL"       class="java.lang.Boolean"><defaultValueExpression><![CDATA[Boolean.TRUE]]></defaultValueExpression></parameter>
+  <parameter name="LANG"         class="java.lang.String"><defaultValueExpression><![CDATA["ar"]]></defaultValueExpression></parameter>
+  <parameter name="LOGO_IMAGE"   class="java.io.InputStream"/>
+  <parameter name="TITLE_01"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_02"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_03"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_04"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_05"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_COUNT"    class="java.lang.Integer"><defaultValueExpression><![CDATA[0]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_1"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_2"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_3"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_4"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_NAME_5"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_1"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_2"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_3"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_4"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="SIG_POS_5"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="REPORT_DATE"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="FOOTER_TEXT" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <!-- Column headers -->
+  <parameter name="COL_ENTITY"           class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_RECEIVED_COUNT"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_RECEIVED_AMOUNT"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_DISBURSED_COUNT"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_DISBURSED_AMOUNT" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_REMAINING_COUNT"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_REMAINING_AMOUNT" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_TOTAL_AMOUNT"     class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_TOTAL_RECORDS"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_GENERATED"        class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_PAGE"             class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_OF"               class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_SIGNATORY"        class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_DISBURSEMENT_RATIO" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_QUARTER_SUMMARY" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+
+  <!-- Grouped header: section names plus the shared Amount / Count sub-columns -->
+  <parameter name="COL_RECEIVED_GROUP"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_DISBURSED_GROUP" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_REMAINING_GROUP" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_AMOUNT"          class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="COL_COUNT"           class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_SUMMARY"         class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_RECEIVED_AMOUNT_SUM"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_DISBURSED_AMOUNT_SUM" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_REMAINING_AMOUNT_SUM" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_RECEIVED_COUNT_SUM"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_DISBURSED_COUNT_SUM"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="LBL_REMAINING_COUNT_SUM"  class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <!-- Filter context -->
+  <parameter name="FILTER_YEAR"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="FILTER_QUARTER" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="QUARTER_NAME"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <!--
+    The period the figures cover, e.g. "الربع الأول 2024". This is the report's
+    identity — a quarterly summary that does not name its quarter is unusable —
+    and PERIOD_NOTE warns when the requested quarter was empty and these figures
+    belong to a different one.
+  -->
+  <parameter name="PERIOD_LABEL"   class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="PERIOD_NOTE"    class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TOTAL_ENTITIES" class="java.lang.Integer"><defaultValueExpression><![CDATA[0]]></defaultValueExpression></parameter>
+  <!-- Pre-calculated totals passed in from service -->
+  <parameter name="TOTAL_RECEIVED_AMOUNT"  class="java.lang.Long"><defaultValueExpression><![CDATA[0L]]></defaultValueExpression></parameter>
+  <parameter name="TOTAL_RECEIVED_COUNT"   class="java.lang.Integer"><defaultValueExpression><![CDATA[0]]></defaultValueExpression></parameter>
+  <parameter name="TOTAL_DISBURSED_AMOUNT" class="java.lang.Long"><defaultValueExpression><![CDATA[0L]]></defaultValueExpression></parameter>
+  <parameter name="TOTAL_DISBURSED_COUNT"  class="java.lang.Integer"><defaultValueExpression><![CDATA[0]]></defaultValueExpression></parameter>
+  <parameter name="TOTAL_REMAINING_AMOUNT" class="java.lang.Long"><defaultValueExpression><![CDATA[0L]]></defaultValueExpression></parameter>
+  <parameter name="TOTAL_REMAINING_COUNT"  class="java.lang.Integer"><defaultValueExpression><![CDATA[0]]></defaultValueExpression></parameter>
+  <parameter name="DISBURSEMENT_RATIO"     class="java.lang.Double"><defaultValueExpression><![CDATA[0.0]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_01_AR" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_02_AR" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_03_AR" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_01_EN" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_02_EN" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="TITLE_03_EN" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="REPORT_TITLE" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+  <parameter name="PRINTED_BY" class="java.lang.String"><defaultValueExpression><![CDATA[""]]></defaultValueExpression></parameter>
+
+  <field name="entityName"       class="java.lang.String"/>
+  <field name="receivedAmount"   class="java.lang.Long"/>
+  <field name="receivedCount"    class="java.lang.Integer"/>
+  <field name="disbursedAmount"  class="java.lang.Long"/>
+  <field name="disbursedCount"   class="java.lang.Integer"/>
+  <field name="remainingAmount"  class="java.lang.Long"/>
+  <field name="remainingCount"   class="java.lang.Integer"/>
+
+  <variable name="ROW_NUMBER" class="java.lang.Integer" calculation="Count">
+    <variableExpression><![CDATA[$F{entityName}]]></variableExpression>
+      <initialValueExpression><![CDATA[0]]></initialValueExpression>
+  </variable>
+
+
+  <!--
+    The period the figures cover. It sits in its own band rather than in the
+    page header because the page header is regenerated by
+    scripts/apply_official_layout.py and is shared with every other report.
+  -->
+
+  <!--
+    Two-level header matching the screen layout: each of the three sections
+    (received / disbursed / remaining) spans an Amount and a Count column, with
+    the entity column spanning both rows.
+    RTL column order, right to left:
+      Entity | Received(Count,Amount) | Disbursed(Count,Amount) | Remaining(Count,Amount)
+  -->
+  <columnHeader>
+    <band height="44" splitType="Stretch">
+      <rectangle>
+        <reportElement x="0" y="0" width="802" height="44" backcolor="#722030" forecolor="#722030"/>
+        <graphicElement><pen lineWidth="0.0"/></graphicElement>
+      </rectangle>
+      <line><reportElement x="0" y="43" width="802" height="1" forecolor="#c4922a"/></line>
+
+      <!-- Entity spans both header rows -->
+      <textField>
+        <reportElement x="602" y="0" width="200" height="44" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="9" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_ENTITY}]]></textFieldExpression>
+      </textField>
+
+      <!-- Row 1: section names, each spanning its Amount + Count pair -->
+      <textField>
+        <reportElement x="402" y="0" width="200" height="22" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="9" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_RECEIVED_GROUP}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="202" y="0" width="200" height="22" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="9" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_DISBURSED_GROUP}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="0" y="0" width="202" height="22" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="9" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_REMAINING_GROUP}]]></textFieldExpression>
+      </textField>
+
+      <!-- Row 2: Count / Amount within each section -->
+      <textField>
+        <reportElement x="502" y="22" width="100" height="22" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_COUNT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="402" y="22" width="100" height="22" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_AMOUNT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="302" y="22" width="100" height="22" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_COUNT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="202" y="22" width="100" height="22" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_AMOUNT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="101" y="22" width="101" height="22" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_COUNT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="0" y="22" width="101" height="22" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{COL_AMOUNT}]]></textFieldExpression>
+      </textField>
+
+      <!-- Dividers: section splits run full height, inner splits only row 2 -->
+      <line><reportElement x="602" y="0" width="1" height="44" forecolor="#5a1a2a"/></line>
+      <line><reportElement x="402" y="0" width="1" height="44" forecolor="#5a1a2a"/></line>
+      <line><reportElement x="202" y="0" width="1" height="44" forecolor="#5a1a2a"/></line>
+      <line><reportElement x="502" y="22" width="1" height="22" forecolor="#5a1a2a"/></line>
+      <line><reportElement x="302" y="22" width="1" height="22" forecolor="#5a1a2a"/></line>
+      <line><reportElement x="101" y="22" width="1" height="22" forecolor="#5a1a2a"/></line>
+      <!-- Stops at the entity column, which spans both rows and must not be struck through -->
+      <line><reportElement x="0" y="22" width="602" height="1" forecolor="#8d3a4a"/></line>
+    </band>
+  </columnHeader>
+
+  <detail>
+    <band height="20" splitType="Stretch">
+      <rectangle>
+        <reportElement x="0" y="0" width="802" height="20" backcolor="#fdf4f6" forecolor="#fdf4f6">
+  <printWhenExpression><![CDATA[$V{ROW_NUMBER} % 2 == 0]]></printWhenExpression>
+</reportElement>
+        <graphicElement><pen lineWidth="0.0"/></graphicElement>
+      </rectangle>
+      <line><reportElement x="0" y="19" width="802" height="1" forecolor="#e8c0c8"/></line>
+
+      <textField>
+        <reportElement x="602" y="0" width="200" height="20"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{entityName} != null ? $F{entityName} : ""]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="502" y="0" width="100" height="20"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{receivedCount} != null ? $F{receivedCount} : 0]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="402" y="0" width="100" height="20"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{receivedAmount} != null ? $F{receivedAmount} : 0L]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="302" y="0" width="100" height="20"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{disbursedCount} != null ? $F{disbursedCount} : 0]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="202" y="0" width="100" height="20"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{disbursedAmount} != null ? $F{disbursedAmount} : 0L]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="101" y="0" width="101" height="20"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{remainingCount} != null ? $F{remainingCount} : 0]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="0" y="0" width="101" height="20"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$F{remainingAmount} != null ? $F{remainingAmount} : 0L]]></textFieldExpression>
+      </textField>
+
+      <line><reportElement x="101" y="0" width="1" height="20" forecolor="#e8c0c8"/></line>
+      <line><reportElement x="202" y="0" width="1" height="20" forecolor="#e8c0c8"/></line>
+      <line><reportElement x="302" y="0" width="1" height="20" forecolor="#e8c0c8"/></line>
+      <line><reportElement x="402" y="0" width="1" height="20" forecolor="#e8c0c8"/></line>
+      <line><reportElement x="502" y="0" width="1" height="20" forecolor="#e8c0c8"/></line>
+      <line><reportElement x="602" y="0" width="1" height="20" forecolor="#e8c0c8"/></line>
+    </band>
+  </detail>
+
+  <summary>
+    <band height="162" splitType="Stretch">
+      <!-- Totals row (dark maroon) -->
+      <rectangle>
+        <reportElement x="0" y="0" width="802" height="24" backcolor="#3a1422" forecolor="#3a1422"/>
+        <graphicElement><pen lineWidth="0.0"/></graphicElement>
+      </rectangle>
+      <textField>
+        <reportElement x="602" y="0" width="200" height="24" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="9" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_TOTAL_AMOUNT}]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="502" y="0" width="100" height="24" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TOTAL_RECEIVED_COUNT}]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="402" y="0" width="100" height="24" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TOTAL_RECEIVED_AMOUNT}]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="302" y="0" width="100" height="24" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TOTAL_DISBURSED_COUNT}]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="202" y="0" width="100" height="24" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TOTAL_DISBURSED_AMOUNT}]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="101" y="0" width="101" height="24" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TOTAL_REMAINING_COUNT}]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="0" y="0" width="101" height="24" forecolor="#FFFFFF"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle">
+          <font fontName="Cairo" size="8" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{TOTAL_REMAINING_AMOUNT}]]></textFieldExpression>
+      </textField>
+
+      <!--
+        ══ Summary ══════════════════════════════════════════════════════
+        Every detail row of this report is already an aggregate, and the row
+        directly above is the grand total, so a summary that merely restates
+        those six figures adds nothing. It therefore carries what the table
+        cannot express: the period, how many entities were aggregated, each
+        amount's share of the money received, and the disbursement ratio.
+      -->
+      <textField>
+        <reportElement x="0" y="34" width="802" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="10" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[$P{LBL_SUMMARY} + ($P{PERIOD_LABEL} != null && !$P{PERIOD_LABEL}.isEmpty() ? " — " + $P{PERIOD_LABEL} : "")]]></textFieldExpression>
+      </textField>
+
+      <!-- Box A (right in RTL): the three amounts, each with its share of the received total -->
+      <rectangle>
+        <reportElement x="406" y="56" width="396" height="96" backcolor="#fdf4f6" forecolor="#d4a870"/>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement>
+      </rectangle>
+      <textField>
+        <reportElement x="596" y="64" width="196" height="20"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="8"/></textElement>
+        <textFieldExpression><![CDATA[$P{LBL_RECEIVED_AMOUNT_SUM}]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="416" y="64" width="170" height="20" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{TOTAL_RECEIVED_AMOUNT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="596" y="92" width="196" height="20"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="8"/></textElement>
+        <textFieldExpression><![CDATA[$P{LBL_DISBURSED_AMOUNT_SUM}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="416" y="92" width="170" height="20" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[String.format("%,d", $P{TOTAL_DISBURSED_AMOUNT}) + "  (" + String.format("%.1f", $P{TOTAL_RECEIVED_AMOUNT} > 0 ? $P{TOTAL_DISBURSED_AMOUNT} * 100.0 / $P{TOTAL_RECEIVED_AMOUNT} : 0.0) + "%)"]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="596" y="120" width="196" height="20"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="8"/></textElement>
+        <textFieldExpression><![CDATA[$P{LBL_REMAINING_AMOUNT_SUM}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="416" y="120" width="170" height="20" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[String.format("%,d", $P{TOTAL_REMAINING_AMOUNT}) + "  (" + String.format("%.1f", $P{TOTAL_RECEIVED_AMOUNT} > 0 ? $P{TOTAL_REMAINING_AMOUNT} * 100.0 / $P{TOTAL_RECEIVED_AMOUNT} : 0.0) + "%)"]]></textFieldExpression>
+      </textField>
+
+      <!-- Box B (left in RTL): ratio, how many entities were aggregated, and the transaction counts -->
+      <rectangle>
+        <reportElement x="0" y="56" width="396" height="96" backcolor="#fdf4f6" forecolor="#d4a870"/>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement>
+      </rectangle>
+      <textField>
+        <reportElement x="190" y="60" width="196" height="18"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="8" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{LBL_DISBURSEMENT_RATIO}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="10" y="60" width="170" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[String.format("%.1f", $P{DISBURSEMENT_RATIO}) + "%"]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="190" y="78" width="196" height="18"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="8"/></textElement>
+        <textFieldExpression><![CDATA[$P{LBL_TOTAL_RECORDS}]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="10" y="78" width="170" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{TOTAL_ENTITIES}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="190" y="96" width="196" height="18"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="8"/></textElement>
+        <textFieldExpression><![CDATA[$P{LBL_RECEIVED_COUNT_SUM}]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="10" y="96" width="170" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{TOTAL_RECEIVED_COUNT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="190" y="114" width="196" height="18"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="8"/></textElement>
+        <textFieldExpression><![CDATA[$P{LBL_DISBURSED_COUNT_SUM}]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="10" y="114" width="170" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{TOTAL_DISBURSED_COUNT}]]></textFieldExpression>
+      </textField>
+      <textField>
+        <reportElement x="190" y="132" width="196" height="18"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="8"/></textElement>
+        <textFieldExpression><![CDATA[$P{LBL_REMAINING_COUNT_SUM}]]></textFieldExpression>
+      </textField>
+      <textField pattern="#,##0">
+        <reportElement x="10" y="132" width="170" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{TOTAL_REMAINING_COUNT}]]></textFieldExpression>
+      </textField>
+    </band>
+  </summary>
+
+<!-- OFFICIAL-LAYOUT:SKIP
+     This report reproduces the ministry's prescribed Access layout: date and
+     page number top-left, emblem centred, embassy / attache / city top-right,
+     the "خلاصة <quarter> <year>" heading beneath, and both signatories in the
+     page footer so they appear on every page.
+     scripts/apply_official_layout.py must not overwrite these bands with the
+     shared masthead. -->
+  <pageHeader>
+    <band height="120" splitType="Stretch">
+
+      <!-- Right (RTL leading edge): the three title lines from REPORT_TYPE_SETTINGS -->
+      <rectangle><reportElement x="542" y="4" width="260" height="22" backcolor="#FFFFFF" forecolor="#3a1422"/>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement></rectangle>
+      <textField>
+        <reportElement x="546" y="6" width="252" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="11" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{TITLE_01_AR} != null && !$P{TITLE_01_AR}.isEmpty() ? $P{TITLE_01_AR} : $P{TITLE_01}]]></textFieldExpression>
+      </textField>
+      <rectangle><reportElement x="542" y="28" width="260" height="22" backcolor="#FFFFFF" forecolor="#3a1422"/>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement></rectangle>
+      <textField>
+        <reportElement x="546" y="30" width="252" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="10" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{TITLE_02_AR} != null && !$P{TITLE_02_AR}.isEmpty() ? $P{TITLE_02_AR} : $P{TITLE_02}]]></textFieldExpression>
+      </textField>
+      <rectangle><reportElement x="542" y="52" width="260" height="22" backcolor="#FFFFFF" forecolor="#3a1422"/>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement></rectangle>
+      <textField>
+        <reportElement x="546" y="54" width="252" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="10" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{TITLE_03_AR} != null && !$P{TITLE_03_AR}.isEmpty() ? $P{TITLE_03_AR} : $P{TITLE_03}]]></textFieldExpression>
+      </textField>
+
+      <!-- Centre: emblem -->
+      <image scaleImage="RetainShape" hAlign="Center" vAlign="Middle" onErrorType="Blank">
+        <reportElement x="361" y="2" width="80" height="72">
+          <printWhenExpression><![CDATA[$P{LOGO_IMAGE} != null]]></printWhenExpression>
+        </reportElement>
+        <imageExpression><![CDATA[$P{LOGO_IMAGE}]]></imageExpression>
+      </image>
+
+      <!-- Left: issue date and page number, boxed as in the Access design -->
+      <rectangle><reportElement x="140" y="4" width="110" height="22" backcolor="#FFFFFF" forecolor="#3a1422"/>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement></rectangle>
+      <textField>
+        <reportElement x="144" y="6" width="102" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{LBL_GENERATED} + ":-"]]></textFieldExpression>
+      </textField>
+      <rectangle><reportElement x="10" y="4" width="126" height="22" backcolor="#FFFFFF" forecolor="#3a1422"/>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement></rectangle>
+      <textField>
+        <reportElement x="14" y="6" width="118" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{REPORT_DATE}]]></textFieldExpression>
+      </textField>
+
+      <rectangle><reportElement x="140" y="30" width="110" height="22" backcolor="#FFFFFF" forecolor="#3a1422"/>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement></rectangle>
+      <textField>
+        <reportElement x="144" y="32" width="102" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{LBL_PAGE} + ":-"]]></textFieldExpression>
+      </textField>
+      <rectangle><reportElement x="10" y="30" width="126" height="22" backcolor="#FFFFFF" forecolor="#3a1422"/>
+        <graphicElement><pen lineWidth="0.5"/></graphicElement></rectangle>
+      <!-- "1-1": current page, then the total once the report is laid out. -->
+      <textField>
+        <reportElement x="14" y="32" width="56" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Right" verticalAlignment="Middle"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[String.valueOf($V{PAGE_NUMBER})]]></textFieldExpression>
+      </textField>
+      <textField evaluationTime="Report">
+        <reportElement x="70" y="32" width="62" height="18" forecolor="#3a1422"/>
+        <textElement textAlignment="Left" verticalAlignment="Middle"><font fontName="Cairo" size="9" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA["-" + $V{PAGE_NUMBER}]]></textFieldExpression>
+      </textField>
+
+      <!-- Heading, e.g. "خلاصة الربع الأول 2024" -->
+      <textField textAdjust="StretchHeight">
+        <reportElement x="0" y="84" width="802" height="22" forecolor="#3a1422"/>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL">
+          <font fontName="Cairo" size="13" isBold="true"/>
+        </textElement>
+        <textFieldExpression><![CDATA[($P{LBL_QUARTER_SUMMARY} != null ? $P{LBL_QUARTER_SUMMARY} : "") + ($P{PERIOD_LABEL} != null && !$P{PERIOD_LABEL}.isEmpty() ? " " + $P{PERIOD_LABEL} : "")]]></textFieldExpression>
+      </textField>
+      <textField textAdjust="StretchHeight">
+        <reportElement x="0" y="106" width="802" height="12" forecolor="#8a3a1a">
+          <printWhenExpression><![CDATA[$P{PERIOD_NOTE} != null && !$P{PERIOD_NOTE}.isEmpty()]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="7" isItalic="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{PERIOD_NOTE}]]></textFieldExpression>
+      </textField>
+    </band>
+  </pageHeader>
+
+  <pageFooter>
+    <band height="62" splitType="Stretch">
+      <!-- Both signatories on every page, as the Access page footer does. -->
+      <textField>
+        <reportElement x="502" y="6" width="240" height="16" forecolor="#3a1422">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 1]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="10" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_1}]]></textFieldExpression>
+      </textField>
+      <line><reportElement x="522" y="30" width="200" height="1" forecolor="#3a1422">
+        <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 1]]></printWhenExpression></reportElement></line>
+
+      <textField>
+        <reportElement x="60" y="6" width="240" height="16" forecolor="#3a1422">
+          <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 2]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="10" isBold="true"/></textElement>
+        <textFieldExpression><![CDATA[$P{SIG_POS_2}]]></textFieldExpression>
+      </textField>
+      <line><reportElement x="80" y="30" width="200" height="1" forecolor="#3a1422">
+        <printWhenExpression><![CDATA[$P{SIG_COUNT} >= 2]]></printWhenExpression></reportElement></line>
+
+      <textField textAdjust="StretchHeight">
+        <reportElement x="0" y="44" width="802" height="12" forecolor="#7a3040">
+          <printWhenExpression><![CDATA[$P{FOOTER_TEXT} != null && !$P{FOOTER_TEXT}.isEmpty()]]></printWhenExpression>
+        </reportElement>
+        <textElement textAlignment="Center" verticalAlignment="Middle" runDirection="RTL"><font fontName="Cairo" size="7"/></textElement>
+        <textFieldExpression><![CDATA[$P{FOOTER_TEXT}]]></textFieldExpression>
+      </textField>
+    </band>
+  </pageFooter>
+</jasperReport>

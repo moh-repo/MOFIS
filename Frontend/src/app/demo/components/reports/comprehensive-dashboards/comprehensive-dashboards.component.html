@@ -1,0 +1,166 @@
+<p-toast></p-toast>
+
+<div class="page-wrapper" id="comprehensive-dashboards-print-area" [ngClass]="{ 'rtl-layout': isRTL(), 'ltr-layout': !isRTL() }">
+  <div class="page-hero card surface-0 border-none shadow-none">
+    <div class="page-hero__content">
+      <span class="page-hero__icon surface-100 border-round-xl">
+        <i class="pi pi-dashboard"></i>
+      </span>
+      <div>
+        <h2 class="page-hero__title">{{ 'COMPREHENSIVE_DASHBOARDS.TITLE' | translate }}</h2>
+        <p class="page-hero__subtitle">{{ 'COMPREHENSIVE_DASHBOARDS.SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+    <div class="page-hero__actions">
+      <button pButton pRipple type="button"
+        [icon]="isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+        class="p-button-text"
+        [label]="'COMMON.BACK' | translate"
+      (click)="goBack()"></button>
+      <button pButton pRipple type="button"
+        icon="pi pi-refresh"
+        class="p-button-action-outlined"
+        [label]="'COMMON.REFRESH' | translate"
+        (click)="refresh()"
+      [loading]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-eye" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.PREVIEW_CHARTS_PDF' | translate"
+      (click)="previewChartsPdf()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-print" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.PRINT' | translate"
+      (click)="printCharts()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-file-pdf" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.EXPORT_PDF' | translate"
+      (click)="downloadChartsPdf()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-images" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_IMAGES' | translate"
+      (click)="downloadChartImages()" [disabled]="loading"></button>
+    </div>
+  </div>
+
+  @if (overview) {
+    <div class="stats-grid">
+      <div class="stat-card primary">
+        <div class="stat-card__label">{{ 'COMPREHENSIVE_DASHBOARDS.METRICS.TOTAL_STUDENTS' | translate }}</div>
+        <div class="stat-card__value">{{ formatNumber(overview.totalStudents) }}</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-card__label">{{ 'COMPREHENSIVE_DASHBOARDS.METRICS.ACTIVE_STUDENTS' | translate }}</div>
+        <div class="stat-card__value">{{ formatNumber(overview.activeStudents) }}</div>
+      </div>
+      <div class="stat-card info">
+        <div class="stat-card__label">{{ 'COMPREHENSIVE_DASHBOARDS.METRICS.NEW_STUDENTS' | translate }}</div>
+        <div class="stat-card__value">{{ formatNumber(overview.newStudents) }}</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-card__label">{{ 'COMPREHENSIVE_DASHBOARDS.METRICS.SUSPENDED_STUDENTS' | translate }}</div>
+        <div class="stat-card__value">{{ formatNumber(overview.suspendedStudents) }}</div>
+      </div>
+      <div class="stat-card accent">
+        <div class="stat-card__label">{{ 'COMPREHENSIVE_DASHBOARDS.METRICS.TOTAL_DISBURSED' | translate }}</div>
+        <div class="stat-card__value">{{ formatCurrency(overview.totalDisbursedAmount) }}</div>
+      </div>
+      <div class="stat-card neutral">
+        <div class="stat-card__label">{{ 'COMPREHENSIVE_DASHBOARDS.METRICS.AVERAGE_DISBURSED' | translate }}</div>
+        <div class="stat-card__value">{{ formatCurrency(overview.averageDisbursement) }}</div>
+      </div>
+    </div>
+  }
+
+  @if (overview) {
+    <div class="grid-layout">
+      <div class="card chart-card">
+        <div class="chart-card__header">
+          <div>
+            <h3>{{ 'COMPREHENSIVE_DASHBOARDS.CHARTS.ENROLLMENT_TITLE' | translate }}</h3>
+            <p>{{ 'COMPREHENSIVE_DASHBOARDS.CHARTS.ENROLLMENT_DESCRIPTION' | translate }}</p>
+          </div>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(enrollmentDashChart, 'enrollment-trend')"></button>
+        </div>
+        <div class="chart-card__body">
+          <p-chart #enrollmentDashChart type="line"
+            [data]="enrollmentChartData"
+            [options]="enrollmentChartOptions"
+          height="320px"></p-chart>
+        </div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-card__header">
+          <div>
+            <h3>{{ 'COMPREHENSIVE_DASHBOARDS.CHARTS.FINANCIAL_TITLE' | translate }}</h3>
+            <p>{{ 'COMPREHENSIVE_DASHBOARDS.CHARTS.FINANCIAL_DESCRIPTION' | translate }}</p>
+          </div>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(financialDashChart, 'financial-data')"></button>
+        </div>
+        <div class="chart-card__body">
+          <p-chart #financialDashChart type="bar"
+            [data]="financialChartData"
+            [options]="financialChartOptions"
+          height="320px"></p-chart>
+        </div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-card__header">
+          <div>
+            <h3>{{ 'COMPREHENSIVE_DASHBOARDS.CHARTS.TOP_COUNTRIES_TITLE' | translate }}</h3>
+            <p>{{ 'COMPREHENSIVE_DASHBOARDS.CHARTS.TOP_COUNTRIES_DESCRIPTION' | translate }}</p>
+          </div>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(topCountriesChart, 'top-countries')"></button>
+        </div>
+        <div class="chart-card__body">
+          <p-chart #topCountriesChart type="doughnut"
+            [data]="topCountriesChartData"
+            [options]="topCountriesChartOptions"
+          height="320px"></p-chart>
+        </div>
+      </div>
+      <div class="card insights-card">
+        <div class="insights-card__header">
+          <h3>{{ 'COMPREHENSIVE_DASHBOARDS.INSIGHTS.TITLE' | translate }}</h3>
+        </div>
+        @if (overview) {
+          <div class="insights-card__body">
+            <div class="insight-item">
+              <span class="insight-label">{{ 'COMPREHENSIVE_DASHBOARDS.INSIGHTS.ACTIVE_RATIO' | translate }}</span>
+              <span class="insight-value">
+                {{ (overview.totalStudents ? (overview.activeStudents / overview.totalStudents * 100) : 0) | number:'1.0-1' }}%
+              </span>
+            </div>
+            <div class="insight-item">
+              <span class="insight-label">{{ 'COMPREHENSIVE_DASHBOARDS.INSIGHTS.NEW_RATIO' | translate }}</span>
+              <span class="insight-value">
+                {{ (overview.totalStudents ? (overview.newStudents / overview.totalStudents * 100) : 0) | number:'1.0-1' }}%
+              </span>
+            </div>
+            <div class="insight-item">
+              <span class="insight-label">{{ 'COMPREHENSIVE_DASHBOARDS.INSIGHTS.SUSPENDED_RATIO' | translate }}</span>
+              <span class="insight-value">
+                {{ (overview.totalStudents ? (overview.suspendedStudents / overview.totalStudents * 100) : 0) | number:'1.0-1' }}%
+              </span>
+            </div>
+            <div class="insight-item">
+              <span class="insight-label">{{ 'COMPREHENSIVE_DASHBOARDS.INSIGHTS.AVG_DISBURSEMENT' | translate }}</span>
+              <span class="insight-value">{{ formatCurrency(overview.averageDisbursement) }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
+
+@if (loading) {
+  <div class="loading-overlay">
+    <p-progressSpinner></p-progressSpinner>
+  </div>
+}
+

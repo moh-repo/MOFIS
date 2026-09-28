@@ -1,0 +1,1059 @@
+<p-toast></p-toast>
+
+<div class="page-wrapper" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'" [class.rtl]="translationService.isRTL()">
+  <div class="page-hero card surface-0 border-none shadow-none">
+    <div class="page-hero__content">
+      <span class="page-hero__icon surface-100 border-round-xl">
+        <i class="pi pi-pencil"></i>
+      </span>
+      <div>
+        <span class="page-hero__badge">{{ 'STUDENT_QUICK_EDIT.HERO.BADGE' | translate }}</span>
+        <h2 class="page-hero__title">{{ 'STUDENT_QUICK_EDIT.TITLE' | translate }}</h2>
+        <p class="page-hero__subtitle">{{ 'STUDENT_QUICK_EDIT.SUBTITLE' | translate }}</p>
+        <div class="page-hero__meta">
+          <span class="meta-item">
+            <i class="pi pi-filter text-primary"></i>
+            <span>{{ 'STUDENT_QUICK_EDIT.FILTERS.ACTIVE' | translate }}: </span>
+            @if (activeFiltersCount > 0) {
+              <p-badge [value]="activeFiltersCount" severity="info"></p-badge>
+            }
+            @if (activeFiltersCount === 0) {
+              <span class="text-500">{{ 'STUDENT_QUICK_EDIT.FILTERS.NONE' |
+              translate }}</span>
+            }
+          </span>
+          <span class="meta-divider"></span>
+          <span class="meta-item">
+            <i class="pi pi-clock text-primary"></i>
+            <span>{{ 'STUDENT_QUICK_EDIT.SUMMARY.LATEST_FIN_YEAR' | translate }}: </span>
+            <strong>{{ latestFinanceYear }}</strong>
+          </span>
+          <span class="meta-divider"></span>
+          <span class="meta-item">
+            <i class="pi pi-calendar-clock text-primary"></i>
+            <span>{{ 'STUDENT_QUICK_EDIT.SUMMARY.LAST_REFRESH' | translate }}: </span>
+            <strong>{{ lastUpdatedLabel }}</strong>
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- Clearing lives in the filters card only (footer button + the search box's ×);
+         a second copy here and in the empty state read as different actions (review S6). -->
+    <div class="page-hero__actions">
+      <button pButton pRipple type="button" icon="pi pi-refresh" class="p-button-action-outlined"
+      [label]="'COMMON.REFRESH' | translate" (click)="loadData()" [loading]="loading"></button>
+    </div>
+  </div>
+
+  <div class="card filters-card">
+    <div class="filters-card__header">
+      <span class="filters-card__icon" aria-hidden="true"><i class="pi pi-sliders-h"></i></span>
+      <div class="filters-card__heading">
+        <h3>{{ 'STUDENT_QUICK_EDIT.FILTERS.TITLE' | translate }}</h3>
+        <p>{{ 'STUDENT_QUICK_EDIT.FILTERS.DESCRIPTION' | translate }}</p>
+      </div>
+      @if (activeFiltersCount > 0) {
+        <p-tag
+          [value]="activeFiltersCount + ' ' + (activeFiltersCount === 1 ? ( 'STUDENT_QUICK_EDIT.FILTERS.FILTER' | translate ) : ( 'STUDENT_QUICK_EDIT.FILTERS.FILTERS' | translate ))"
+        severity="info" styleClass="filters-badge"></p-tag>
+      }
+    </div>
+
+    <!-- A field that is narrowing the list says so, so the reader can see which
+         of the four is responsible for the count in the footer. -->
+    <div class="filters-card__grid">
+      <div class="filters-field filters-field--search" [class.filters-field--active]="searchTerm">
+        <label for="qeSearch">{{ 'STUDENT_QUICK_EDIT.FILTERS.SEARCH' | translate }}</label>
+        <!-- Own class, not p-input-icon-left: PrimeNG 21 dropped that one and
+             ships no styles for it, so the icon rendered as a stray glyph
+             beside the box instead of inside it. -->
+        <div class="filters-search">
+          <i class="pi pi-search filters-search__icon" aria-hidden="true"></i>
+          <input id="qeSearch" pInputText type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()"
+            [placeholder]="'STUDENT_QUICK_EDIT.FILTERS.SEARCH_PLACEHOLDER' | translate" class="w-full" />
+          @if (searchTerm) {
+            <button type="button" class="filters-search__clear" (click)="searchTerm = ''; applyFilters()"
+              [attr.aria-label]="'STUDENT_QUICK_EDIT.FILTERS.CLEAR' | translate">
+              <i class="pi pi-times-circle" aria-hidden="true"></i>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="filters-field" [class.filters-field--active]="selectedYear !== null">
+        <label>{{ 'STUDENT_QUICK_EDIT.FILTERS.YEAR' | translate }}</label>
+        <p-select [options]="yearOptions" optionLabel="label" optionValue="value" [(ngModel)]="selectedYear"
+          (onChange)="applyFilters()" [showClear]="true"
+          [placeholder]="'STUDENT_QUICK_EDIT.FILTERS.YEAR_PLACEHOLDER' | translate" styleClass="w-full">
+        </p-select>
+      </div>
+      <div class="filters-field" [class.filters-field--active]="selectedGender !== null">
+        <label>{{ 'STUDENT_QUICK_EDIT.FILTERS.GENDER' | translate }}</label>
+        <p-select [options]="genderFilterOptions" optionLabel="label" optionValue="value"
+          [(ngModel)]="selectedGender" (onChange)="applyFilters()" [showClear]="true"
+          [placeholder]="'STUDENT_QUICK_EDIT.FILTERS.GENDER_PLACEHOLDER' | translate" styleClass="w-full">
+        </p-select>
+      </div>
+      <div class="filters-field" [class.filters-field--active]="selectedStatus !== null">
+        <label>{{ 'STUDENT_QUICK_EDIT.FILTERS.STATUS' | translate }}</label>
+        <p-select [options]="statusOptions" optionLabel="label" optionValue="value"
+          [(ngModel)]="selectedStatus" (onChange)="applyFilters()" [showClear]="true"
+          [placeholder]="'STUDENT_QUICK_EDIT.FILTERS.STATUS_PLACEHOLDER' | translate" styleClass="w-full">
+        </p-select>
+      </div>
+    </div>
+
+    <div class="filters-card__footer">
+      <div class="filters-summary">
+        <i class="pi pi-list-check"></i>
+        <span>{{ 'STUDENT_QUICK_EDIT.FILTERS.MATCHING' | translate }} <strong>{{ filteredStudents.length
+        }}</strong></span>
+      </div>
+      <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined p-button-sm"
+        [label]="'STUDENT_QUICK_EDIT.FILTERS.CLEAR' | translate" (click)="clearFilters()"
+      [disabled]="activeFiltersCount === 0"></button>
+    </div>
+  </div>
+
+  <div class="card data-card">
+    <p-table [value]="filteredStudents" dataKey="studentId" [paginator]="true" [rows]="rows" [loading]="loading"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="{{ 'STUDENT_QUICK_EDIT.TABLE.REPORT_TEMPLATE' | translate }}"
+      [rowsPerPageOptions]="[10, 20, 50, 100]" responsiveLayout="scroll" styleClass="modern-table"
+      [totalRecords]="filteredStudents.length" [first]="first" (onPage)="first = $event.first">
+
+      <ng-template pTemplate="caption">
+        <div class="table-caption flex justify-content-between align-items-center">
+          <span class="table-caption__label">{{ tableCaptionLabel }}</span>
+          @if (activeFiltersLabel; as activeLabel) {
+            <p-tag [value]="activeLabel" severity="info"
+            styleClass="table-caption__tag"></p-tag>
+          }
+        </div>
+      </ng-template>
+
+      <ng-template pTemplate="header">
+        <tr>
+          <!-- No per-column min-width: the six of them summed to 73rem and
+               stopped the table shrinking with the page. Column behaviour when
+               space is tight lives in the stylesheet. -->
+          <th pSortableColumn="studentName">
+            {{ 'STUDENT_QUICK_EDIT.TABLE.STUDENT' | translate }}
+            <p-sortIcon field="studentName"></p-sortIcon>
+          </th>
+          <th pSortableColumn="studentDelegationDecisionYear">
+            {{ 'STUDENT_QUICK_EDIT.TABLE.DELEGATION' | translate }}
+            <p-sortIcon field="studentDelegationDecisionYear"></p-sortIcon>
+          </th>
+          <th pSortableColumn="studentAmount" class="text-right">
+            {{ 'STUDENT_QUICK_EDIT.TABLE.AWARD' | translate }}
+            <p-sortIcon field="studentAmount"></p-sortIcon>
+          </th>
+          <th pSortableColumn="studentFinRecievedYear">
+            {{ 'STUDENT_QUICK_EDIT.TABLE.FINANCE' | translate }}
+            <p-sortIcon field="studentFinRecievedYear"></p-sortIcon>
+          </th>
+          <th pSortableColumn="studentStudyStatusId">
+            {{ 'STUDENT_QUICK_EDIT.TABLE.STATUS' | translate }}
+            <p-sortIcon field="studentStudyStatusId"></p-sortIcon>
+          </th>
+          <th class="text-center actions-col">{{ 'COMMON.ACTIONS' | translate }}</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-student>
+        <tr>
+          <td>
+            <div class="student-cell">
+              <div class="student-cell__name">{{ student.studentName || '-' }}</div>
+              <div class="student-cell__meta">
+                <p-tag [value]="'#' + (student.studentId || '---')" severity="info"
+                rounded="true"></p-tag>
+                <p-tag [value]="getGenderLabel(student.studentGender)" severity="secondary"
+                rounded="true"></p-tag>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="cell-stack">
+              <span class="cell-primary">
+                {{ 'STUDENT_QUICK_EDIT.TABLE.DELEGATION_YEAR' | translate }}:
+                <strong>{{ student.studentDelegationDecisionYear || '-' }}</strong>
+              </span>
+              <span class="cell-secondary">
+                {{ 'STUDENT_QUICK_EDIT.TABLE.CURRENT_LEVEL' | translate }}:
+                {{ student.studentCurrentLevelId || '-' }}
+              </span>
+            </div>
+          </td>
+          <td class="text-right">
+            <div class="cell-stack align-end">
+              <span class="cell-primary amount-positive">{{ student.studentAmount | number:'1.0-0'
+              }}</span>
+              @if (student.studentAddedQuarter) {
+                <p-tag
+                  [value]="getQuarterLabel(student.studentAddedQuarter)" severity="info"
+                styleClass="quarter-tag"></p-tag>
+              }
+            </div>
+          </td>
+          <td>
+            <div class="cell-stack">
+              <span class="cell-primary">
+                {{ 'STUDENT_QUICK_EDIT.TABLE.FIN_YEAR' | translate }}:
+                <strong>{{ student.studentFinRecievedYear || '-' }}</strong>
+              </span>
+              <span class="cell-secondary">
+                {{ 'STUDENT_QUICK_EDIT.TABLE.FIN_AMOUNT' | translate }}:
+                {{ student.studentFinRecievedAmount | number:'1.0-0' }}
+              </span>
+            </div>
+          </td>
+          <td>
+            <p-tag [value]="getStatusLabel(student.studentStudyStatusId)"
+            [severity]="getStatusSeverity(student.studentStudyStatusId)" class="status-tag"></p-tag>
+          </td>
+          <td class="actions-cell">
+            <div class="flex gap-1 justify-content-center">
+              <button pButton pRipple type="button" icon="pi pi-eye"
+                class="p-button-rounded p-button-text p-button-info" (click)="viewStudent(student)"
+              [pTooltip]="'COMMON.VIEW' | translate" tooltipPosition="top"></button>
+              <button pButton pRipple type="button" icon="pi pi-pencil"
+                class="p-button-rounded p-button-text p-button-warning" (click)="editStudent(student)"
+              [pTooltip]="'COMMON.EDIT' | translate" tooltipPosition="top"></button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6">
+            <div class="empty-state">
+              <i class="pi pi-search empty-state__icon"></i>
+              <h5>{{ 'STUDENT_QUICK_EDIT.EMPTY.TITLE' | translate }}</h5>
+              <p>{{ 'STUDENT_QUICK_EDIT.EMPTY.SUGGESTION' | translate }}</p>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<!-- View Dialog -->
+<p-dialog [(visible)]="displayViewDialog" [header]="selectedStudent?.studentName || ('COMMON.VIEW' | translate)"
+  [modal]="true" [style]="{width: '82vw', maxWidth: '1100px'}"
+  [maximizable]="true" [draggable]="false" [resizable]="false">
+
+  <ng-template pTemplate="content">
+    @if (selectedStudent) {
+      <div class="vd">
+        <!-- ── Hero ── -->
+        <div class="vd__hero">
+          <div class="vd__hero-avatar" aria-hidden="true">
+            <i class="pi pi-user"></i>
+          </div>
+          <div class="vd__hero-info">
+            <h2 class="vd__hero-name">{{ selectedStudent.studentName || ('STUDENT_QUICK_EDIT.LABELS.UNKNOWN' | translate) }}</h2>
+            <div class="vd__hero-meta">
+              <span class="vd__hero-id">#{{ selectedStudent.studentId }}</span>
+              <p-tag [value]="getStatusLabel(selectedStudent.studentStudyStatusId)"
+              [severity]="getStatusSeverity(selectedStudent.studentStudyStatusId)" [rounded]="true"></p-tag>
+              <p-tag [value]="getGenderLabel(selectedStudent.studentGender)"
+              severity="info" [rounded]="true"></p-tag>
+              @if (selectedStudent.studentDelegationDecisionYear) {
+                <span class="vd__hero-year">
+                  {{ 'STUDENT_QUICK_EDIT.FORM.DELEGATION_YEAR' | translate }}:
+                  <strong>{{ selectedStudent.studentDelegationDecisionYear }}</strong>
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+        <!-- ── Stats strip ── -->
+        <div class="vd__stats">
+          <div class="vd__stat vd__stat--success">
+            <span class="vd__stat-icon"><i class="pi pi-wallet"></i></span>
+            <div>
+              <span class="vd__stat-label">{{ 'STUDENT_QUICK_EDIT.TABLE.AWARD' | translate }}</span>
+              <span class="vd__stat-value">{{ (selectedStudent.studentAmount || 0) | number:'1.0-0' }}</span>
+            </div>
+          </div>
+          <div class="vd__stat vd__stat--info">
+            <span class="vd__stat-icon"><i class="pi pi-chart-bar"></i></span>
+            <div>
+              <span class="vd__stat-label">{{ 'STUDENT_QUICK_EDIT.TABLE.FINANCE' | translate }}</span>
+              <span class="vd__stat-value">{{ (selectedStudent.studentFinRecievedAmount || 0) | number:'1.0-0' }}</span>
+            </div>
+          </div>
+          <div class="vd__stat vd__stat--neutral">
+            <span class="vd__stat-icon"><i class="pi pi-book"></i></span>
+            <div>
+              <span class="vd__stat-label">{{ 'STUDENT_QUICK_EDIT.FORM.STUDY_YEARS' | translate }}</span>
+              <span class="vd__stat-value">{{ selectedStudent.studentStudyNoOfYears ?? '—' }}</span>
+            </div>
+          </div>
+        </div>
+        <!-- ── 2-column info grid ── -->
+        <div class="vd__grid">
+          <!-- Personal & Contact -->
+          <div class="vd__card">
+            <div class="vd__card-head">
+              <span class="vd__card-icon"><i class="pi pi-id-card"></i></span>
+              <span class="vd__card-title">{{ 'STUDENT_QUICK_EDIT.VIEW.STUDENT_SECTION' | translate }}</span>
+            </div>
+            <dl class="vd__dl">
+              <div class="vd__dl-row">
+                <dt>{{ 'STUDENT_QUICK_EDIT.FORM.GENDER' | translate }}</dt>
+                <dd>{{ getGenderLabel(selectedStudent.studentGender) }}</dd>
+              </div>
+              <div class="vd__dl-row">
+                <dt>{{ 'STUDENT_QUICK_EDIT.FORM.PASSPORT' | translate }}</dt>
+                <dd>{{ selectedStudent.studentPassportNumber || '—' }}</dd>
+              </div>
+              @if (selectedStudent.studentEmail || selectedStudent.studentCellphone || selectedStudent.studentHomeNumber || selectedStudent.studentEmergencyContact) {
+                <div class="vd__dl-divider">
+                  <i class="pi pi-phone"></i>
+                  {{ 'STUDENT_QUICK_EDIT.VIEW.CONTACT_SECTION' | translate }}
+                </div>
+                @if (selectedStudent.studentEmail) {
+                  <div class="vd__dl-row">
+                    <dt>{{ 'STUDENT_QUICK_EDIT.FORM.EMAIL' | translate }}</dt>
+                    <dd>{{ selectedStudent.studentEmail }}</dd>
+                  </div>
+                }
+                @if (selectedStudent.studentCellphone) {
+                  <div class="vd__dl-row">
+                    <dt>{{ 'STUDENT_QUICK_EDIT.FORM.CELLPHONE' | translate }}</dt>
+                    <dd>{{ selectedStudent.studentCellphone }}</dd>
+                  </div>
+                }
+                @if (selectedStudent.studentHomeNumber) {
+                  <div class="vd__dl-row">
+                    <dt>{{ 'STUDENT_QUICK_EDIT.FORM.HOME_NUMBER' | translate }}</dt>
+                    <dd>{{ selectedStudent.studentHomeNumber }}</dd>
+                  </div>
+                }
+                @if (selectedStudent.studentEmergencyContact) {
+                  <div class="vd__dl-row">
+                    <dt>{{ 'STUDENT_QUICK_EDIT.FORM.EMERGENCY_CONTACT' | translate }}</dt>
+                    <dd>{{ selectedStudent.studentEmergencyContact }}</dd>
+                  </div>
+                }
+              }
+            </dl>
+          </div>
+          <!-- Academic -->
+          <div class="vd__card">
+            <div class="vd__card-head">
+              <span class="vd__card-icon"><i class="pi pi-graduation-cap"></i></span>
+              <span class="vd__card-title">{{ 'STUDENT_QUICK_EDIT.VIEW.ACADEMIC_SECTION' | translate }}</span>
+            </div>
+            <dl class="vd__dl">
+              <div class="vd__dl-row">
+                <dt>{{ 'STUDENT_QUICK_EDIT.FORM.DEGREE' | translate }}</dt>
+                <dd>{{ getDegreeLabel(selectedStudent.studentDegreeId) }}</dd>
+              </div>
+              <div class="vd__dl-row">
+                <dt>{{ 'STUDENT_QUICK_EDIT.FORM.MAJOR' | translate }}</dt>
+                <dd>{{ getMajorLabel(selectedStudent.studentMajorId) }}</dd>
+              </div>
+              <div class="vd__dl-row">
+                <dt>{{ 'STUDENT_QUICK_EDIT.FORM.CURRENT_LEVEL' | translate }}</dt>
+                <dd>{{ getLevelLabel(selectedStudent.studentCurrentLevelId) }}</dd>
+              </div>
+              <div class="vd__dl-row">
+                <dt>{{ 'STUDENT_QUICK_EDIT.FORM.STUDY_YEARS' | translate }}</dt>
+                <dd>{{ selectedStudent.studentStudyNoOfYears ?? '—' }}</dd>
+              </div>
+              <div class="vd__dl-row">
+                <dt>{{ 'STUDENT_QUICK_EDIT.FORM.QUARTER_ADDED' | translate }}</dt>
+                <dd>{{ selectedStudent.studentAddedQuarter ?? '—' }}</dd>
+              </div>
+              <div class="vd__dl-row">
+                <dt>{{ 'STUDENT_QUICK_EDIT.FORM.QUARTER_LAST' | translate }}</dt>
+                <dd>{{ selectedStudent.studentLastQuarter ?? '—' }}</dd>
+              </div>
+              <div class="vd__dl-row">
+                <dt>{{ 'STUDENT_QUICK_EDIT.FORM.CURRENT_QUARTER' | translate }}</dt>
+                <dd>
+                  @if (selectedStudent.currentQuarter) {
+                    <p-tag severity="info"
+                    [value]="getCurrentQuarterLabel(selectedStudent.currentQuarter)"></p-tag>
+                  }
+                  @if (!selectedStudent.currentQuarter) {
+                    <span>—</span>
+                  }
+                </dd>
+              </div>
+            </dl>
+          </div>
+          <!-- Finance (full-width) -->
+          <div class="vd__card vd__card--full">
+            <div class="vd__card-head">
+              <span class="vd__card-icon vd__card-icon--finance"><i class="pi pi-briefcase"></i></span>
+              <span class="vd__card-title">{{ 'STUDENT_QUICK_EDIT.VIEW.FINANCE_SECTION' | translate }}</span>
+            </div>
+            <div class="vd__dl-2col">
+              <dl class="vd__dl">
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.AMOUNT' | translate }}</dt>
+                  <dd class="vd__dl-positive">{{ (selectedStudent.studentAmount || 0) | number:'1.0-0' }}</dd>
+                </div>
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.RECEIVED_AMOUNT' | translate }}</dt>
+                  <dd>{{ (selectedStudent.studentFinRecievedAmount || 0) | number:'1.0-0' }}</dd>
+                </div>
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.FIN_ID' | translate }}</dt>
+                  <dd>{{ selectedStudent.studentFinId || '—' }}</dd>
+                </div>
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.FIN_NAME' | translate }}</dt>
+                  <dd>{{ selectedStudent.studentFinName || '—' }}</dd>
+                </div>
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.RECEIVED_YEAR' | translate }}</dt>
+                  <dd>{{ selectedStudent.studentFinRecievedYear ?? '—' }}</dd>
+                </div>
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.RECEIVED_MONTH' | translate }}</dt>
+                  <dd>{{ selectedStudent.studentFinRecievedMonth ?? '—' }}</dd>
+                </div>
+              </dl>
+              <dl class="vd__dl">
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.FINANCE_RECEIVED_STATUS' | translate }}</dt>
+                  <dd>{{ getFinReceivedStatusLabel(selectedStudent.studyFinRecievedStatus) }}</dd>
+                </div>
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.RECEIVED_WHOM_STATUS' | translate }}</dt>
+                  <dd>{{ getReceivedWhomStatusLabel(selectedStudent.studyReceivedWhomStatusId) }}</dd>
+                </div>
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.COUNTRY' | translate }}</dt>
+                  <dd>{{ getCountryLabel(selectedStudent.studyCountryInId) }}</dd>
+                </div>
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.BANK' | translate }}</dt>
+                  <dd>{{ getBankLabel(selectedStudent.studyFinanceBankeId) }}</dd>
+                </div>
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.BRANCH' | translate }}</dt>
+                  <dd>{{ getBankBranchLabel(selectedStudent.studyFinanceBankBranchId) }}</dd>
+                </div>
+                <div class="vd__dl-row">
+                  <dt>{{ 'STUDENT_QUICK_EDIT.FORM.DOF' | translate }}</dt>
+                  <dd>{{ getDofLabel(selectedStudent.studyFinanceDofId) }}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+          <!-- Progress & Year Results (full-width) -->
+          <div class="vd__card vd__card--full">
+            <div class="vd__card-head">
+              <span class="vd__card-icon"><i class="pi pi-chart-line"></i></span>
+              <span class="vd__card-title">{{ 'STUDENT_QUICK_EDIT.PROGRESS.TITLE' | translate }}</span>
+            </div>
+            @if (progressLoading) {
+              <div class="vd__loading">
+                <p-skeleton width="60%" height="1.25rem"></p-skeleton>
+                <p-skeleton width="40%" height="1rem" class="mt-2"></p-skeleton>
+                <p-skeleton width="100%" height="0.65rem" class="mt-3"></p-skeleton>
+              </div>
+            }
+            @if (!progressLoading && studentProgress) {
+              <div class="vd__progress-body">
+                <div class="vd__progress-meta">
+                  <span class="vd__progress-meta-item">
+                    <span class="vd__progress-meta-label">{{ 'STUDENT_QUICK_EDIT.PROGRESS.CURRENT_YEAR' | translate }}</span>
+                    <span class="vd__progress-meta-value">{{ studentProgress | inLanguage:'currentYearLabel' }}</span>
+                  </span>
+                  <span class="vd__progress-meta-item">
+                    <span class="vd__progress-meta-label">{{ 'STUDENT_QUICK_EDIT.PROGRESS.YEAR_OF' | translate }}</span>
+                    <span class="vd__progress-meta-value">{{ studentProgress.currentYearOrder }} / {{ studentProgress.totalYears }}</span>
+                  </span>
+                </div>
+                <div class="vd__progress-bar-wrap">
+                  <p-progressBar [value]="studentProgress.progressPercent" [showValue]="false" styleClass="vd__pbar"></p-progressBar>
+                  <span class="vd__progress-pct">{{ studentProgress.progressPercent }}%</span>
+                </div>
+              </div>
+            }
+            @if (!progressLoading && !studentProgress) {
+              <div class="vd__empty">
+                <i class="pi pi-info-circle"></i> {{ 'STUDENTS.NO_RECORD_FOUND' | translate }}
+              </div>
+            }
+            <div class="vd__yr-section">
+              <div class="vd__card-head vd__card-head--sub">
+                <span class="vd__card-icon"><i class="pi pi-list-check"></i></span>
+                <span class="vd__card-title">{{ 'STUDENT_QUICK_EDIT.YEAR_RESULTS.TITLE' | translate }}</span>
+              </div>
+              @if (yearResultsLoading) {
+                <div>
+                  <p-skeleton width="100%" height="1.5rem"></p-skeleton>
+                </div>
+              }
+              @if (!yearResultsLoading && yearResults.length) {
+                <div class="vd__yr-grid">
+                  @for (r of yearResults; track r) {
+                    <div class="vd__yr-row">
+                      <span class="vd__yr-num">{{ 'STUDENT_QUICK_EDIT.YEAR_RESULTS.YEAR' | translate }} {{ r.yearNumber }}</span>
+                      <p-tag [value]="outcomeKey(r) | translate" [severity]="outcomeSeverity(r)"></p-tag>
+                      @if (r.grade) {
+                        <span class="vd__yr-grade">{{ r.grade }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+              @if (!yearResultsLoading && yearResults.length === 0) {
+                <div class="vd__empty">
+                  {{ 'STUDENT_QUICK_EDIT.YEAR_RESULTS.NONE' | translate }}
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+        <!-- ── Notes ── -->
+        @if (selectedStudent.studentNote1 || selectedStudent.studentNote2 || selectedStudent.studyNote1) {
+          <div class="vd__notes">
+            <div class="vd__card-head">
+              <span class="vd__card-icon"><i class="pi pi-comment"></i></span>
+              <span class="vd__card-title">{{ 'STUDENT_QUICK_EDIT.FORM.NOTE1' | translate }} / {{ 'STUDENT_QUICK_EDIT.FORM.NOTE2' | translate }}</span>
+            </div>
+            <div class="vd__notes-grid">
+              @if (selectedStudent.studentNote1) {
+                <div class="vd__note">
+                  <span class="vd__note-label">{{ 'STUDENT_QUICK_EDIT.FORM.NOTE1' | translate }}</span>
+                  <p class="vd__note-text">{{ selectedStudent.studentNote1 }}</p>
+                </div>
+              }
+              @if (selectedStudent.studentNote2) {
+                <div class="vd__note">
+                  <span class="vd__note-label">{{ 'STUDENT_QUICK_EDIT.FORM.NOTE2' | translate }}</span>
+                  <p class="vd__note-text">{{ selectedStudent.studentNote2 }}</p>
+                </div>
+              }
+              @if (selectedStudent.studyNote1) {
+                <div class="vd__note">
+                  <span class="vd__note-label">{{ 'STUDENT_QUICK_EDIT.FORM.STUDY_NOTE' | translate }}</span>
+                  <p class="vd__note-text">{{ selectedStudent.studyNote1 }}</p>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <button pButton pRipple [label]="'COMMON.CLOSE' | translate" icon="pi pi-times" class="p-button-text"
+    (click)="closeViewDialog()"></button>
+    <button pButton pRipple [label]="'COMMON.EDIT' | translate" icon="pi pi-pencil" class="p-button-primary"
+    (click)="editFromView()"></button>
+  </ng-template>
+</p-dialog>
+
+<!-- Edit Dialog -->
+<p-dialog [(visible)]="displayEditDialog" [header]="'STUDENT_QUICK_EDIT.FORM.TITLE_EDIT' | translate" [modal]="true"
+  [style]="{width: '96vw', maxWidth: '1200px'}" [maximizable]="true" [draggable]="false" [resizable]="false"
+  styleClass="student-edit-dialog"
+  [contentStyle]="{'padding': '0', 'overflow': 'hidden'}">
+
+  <ng-template pTemplate="content">
+    @if (selectedStudent) {
+      <div class="edit-dialog">
+        <!-- Student hero banner -->
+        <div class="edit-dialog__hero">
+          <div class="edit-dialog__hero-main">
+            <div class="edit-dialog__avatar" aria-hidden="true">
+              <i class="pi pi-user"></i>
+            </div>
+            <div class="edit-dialog__hero-text">
+              <h3 class="edit-dialog__name">{{ selectedStudent?.studentName || ('STUDENT_QUICK_EDIT.LABELS.UNKNOWN' | translate) }}</h3>
+              <div class="edit-dialog__tags">
+                <p-tag [value]="'#' + (selectedStudent?.studentId || '---')" severity="info" [rounded]="true"></p-tag>
+                <p-tag [value]="cachedStudentGenderLabel" severity="secondary" [rounded]="true"></p-tag>
+                <p-tag [value]="cachedStudentStatusLabel" [severity]="cachedStudentStatusSeverity" [rounded]="true"></p-tag>
+              </div>
+            </div>
+          </div>
+          @if (editSummaryChips.length || editFinanceChips.length) {
+            <div class="edit-dialog__hero-stats">
+              @for (chip of editSummaryChips.slice(0, 2); track chip) {
+                <div class="edit-dialog__stat">
+                  <span class="edit-dialog__stat-label">{{ chip.label }}</span>
+                  <span class="edit-dialog__stat-value">{{ chip.value }}</span>
+                </div>
+              }
+              @if (editFinanceChips.length) {
+                <div class="edit-dialog__stat edit-dialog__stat--highlight">
+                  <span class="edit-dialog__stat-label">{{ editFinanceChips[0].label }}</span>
+                  <span class="edit-dialog__stat-value">{{ editFinanceChips[0].value }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+        <!-- Tabbed form -->
+        <p-tabs [(value)]="editActiveTabIndex" class="edit-tabview">
+          <p-tablist>
+            <p-tab [value]="0">
+              <i class="pi pi-user edit-tabview__icon"></i>
+              <span>{{ 'STUDENT_QUICK_EDIT.FORM.BASIC_INFORMATION' | translate }}</span>
+            </p-tab>
+            <p-tab [value]="1">
+              <i class="pi pi-calendar edit-tabview__icon"></i>
+              <span>{{ 'STUDENT_QUICK_EDIT.FORM.ACADEMIC_DETAILS' | translate }}</span>
+            </p-tab>
+            <p-tab [value]="2">
+              <i class="pi pi-book edit-tabview__icon"></i>
+              <span>{{ 'STUDENT_QUICK_EDIT.FORM.PROGRAM_INFORMATION' | translate }}</span>
+            </p-tab>
+            <p-tab [value]="3">
+              <i class="pi pi-wallet edit-tabview__icon"></i>
+              <span>{{ 'STUDENT_QUICK_EDIT.FORM.FINANCIAL_INFORMATION' | translate }}</span>
+            </p-tab>
+            <p-tab [value]="4">
+              <i class="pi pi-map-marker edit-tabview__icon"></i>
+              <span>{{ 'STUDENT_QUICK_EDIT.FORM.LOCATION_DETAILS' | translate }}</span>
+            </p-tab>
+            <p-tab [value]="5">
+              <i class="pi pi-phone edit-tabview__icon"></i>
+              <span>{{ 'STUDENT_QUICK_EDIT.FORM.CONTACT_DETAILS' | translate }}</span>
+            </p-tab>
+            <p-tab [value]="6">
+              <i class="pi pi-file edit-tabview__icon"></i>
+              <span>{{ 'STUDENT_QUICK_EDIT.FORM.DOCUMENTS' | translate }}</span>
+            </p-tab>
+          </p-tablist>
+          <p-tabpanels>
+            <p-tabpanel [value]="0">
+              <div class="edit-tab-panel">
+                <p class="edit-tab-panel__hint">{{ 'STUDENT_QUICK_EDIT.EDIT.PRIMARY_HINT' | translate }}</p>
+                <div class="grid">
+                  <div class="col-12">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.STUDENT_NAME' | translate }}</label>
+                      <input pInputText class="w-full" [(ngModel)]="selectedStudent.studentName"
+                        [ngModelOptions]="{standalone: true, updateOn: 'blur'}" />
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-4">
+                    <div class="edit-field edit-field--disabled">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.STUDENT_ID' | translate }}</label>
+                      <input pInputText class="w-full" [(ngModel)]="selectedStudent.studentId"
+                        [ngModelOptions]="{standalone: true, updateOn: 'blur'}" [disabled]="true" />
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.GENDER' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studentGender"
+                        [ngModelOptions]="{standalone: true}" [options]="genderOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_GENDER' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.PASSPORT' | translate }}</label>
+                      <input pInputText class="w-full" [(ngModel)]="selectedStudent.studentPassportNumber"
+                        [ngModelOptions]="{standalone: true, updateOn: 'blur'}" />
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.PASSPORT_ISSUE_COUNTRY' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studentPassportIssueCountryId"
+                        [ngModelOptions]="{standalone: true}" [options]="homeCountryOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_HOME_COUNTRY' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.BIRTHDATE_PLACE' | translate }}</label>
+                      <input pInputText class="w-full" [(ngModel)]="selectedStudent.studentBirthdatePlace"
+                        [ngModelOptions]="{standalone: true, updateOn: 'blur'}" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+            <p-tabpanel [value]="1">
+              <div class="edit-tab-panel">
+                <p class="edit-tab-panel__hint">{{ 'STUDENT_QUICK_EDIT.EDIT.ACADEMIC_HINT' | translate }}</p>
+                <div class="grid">
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.DELEGATION_YEAR' | translate }}</label>
+                      <input pInputText class="w-full" [(ngModel)]="selectedStudent.studentDelegationDecisionYear"
+                        [ngModelOptions]="{standalone: true, updateOn: 'blur'}"
+                        maxlength="4" placeholder="yyyy" pattern="[12][0-9]{3}" />
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.STUDY_STATUS' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studentStudyStatusId"
+                        [ngModelOptions]="{standalone: true}" [options]="filteredStatusOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_STATUS' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.CURRENT_LEVEL' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studentCurrentLevelId"
+                        [ngModelOptions]="{standalone: true}" [options]="levelOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_LEVEL' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.QUARTER_ADDED' | translate }}</label>
+                      <p-inputnumber class="w-full" [(ngModel)]="selectedStudent.studentAddedQuarter"
+                        [ngModelOptions]="{standalone: true}" [min]="19901" [max]="20994"
+                      [useGrouping]="false" placeholder="yyyyq"></p-inputnumber>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.QUARTER_LAST' | translate }}</label>
+                      <p-inputnumber class="w-full" [(ngModel)]="selectedStudent.studentLastQuarter"
+                        [ngModelOptions]="{standalone: true}" [min]="19901" [max]="20994"
+                      [useGrouping]="false" placeholder="yyyyq"></p-inputnumber>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.CURRENT_QUARTER' | translate }}</label>
+                      <div class="qe-quarter">
+                        <p-inputnumber styleClass="qe-quarter__year" inputStyleClass="w-full"
+                          [(ngModel)]="currentQuarterYear" [ngModelOptions]="{standalone: true}"
+                          [min]="1990" [max]="2099" [useGrouping]="false"
+                          [placeholder]="'STUDENT_ADD.YEAR' | translate"
+                        (ngModelChange)="onCurrentQuarterChange()"></p-inputnumber>
+                        <p-select styleClass="qe-quarter__q" [(ngModel)]="currentQuarterQ"
+                          [ngModelOptions]="{standalone: true}" [options]="quarterNumberOptions"
+                          optionLabel="label" optionValue="value" [appendTo]="'body'"
+                          [placeholder]="'STUDENT_ADD.QUARTER' | translate"
+                        (onChange)="onCurrentQuarterChange()"></p-select>
+                      </div>
+                      <small class="qe-quarter__hint">
+                        {{ 'STUDENT_QUICK_EDIT.FORM.CURRENT_QUARTER_HINT' | translate }}:
+                        <b>{{ selectedStudent.currentQuarter || '—' }}</b>
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+            <p-tabpanel [value]="2">
+              <div class="edit-tab-panel">
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.DEGREE' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studentDegreeId"
+                        [ngModelOptions]="{standalone: true}" [options]="degreeOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_DEGREE' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.MAJOR' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studentMajorId"
+                        [ngModelOptions]="{standalone: true}" [options]="majorOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_MAJOR' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.STUDY_YEARS' | translate }}</label>
+                      <p-inputnumber class="w-full" [(ngModel)]="selectedStudent.studentStudyNoOfYears"
+                      [ngModelOptions]="{standalone: true}" [min]="0" [step]="1"></p-inputnumber>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.NOTE1' | translate }}</label>
+                      <textarea pTextarea class="w-full" [(ngModel)]="selectedStudent.studentNote1"
+                      [ngModelOptions]="{standalone: true, updateOn: 'blur'}" [rows]="3"></textarea>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.NOTE2' | translate }}</label>
+                      <textarea pTextarea class="w-full" [(ngModel)]="selectedStudent.studentNote2"
+                      [ngModelOptions]="{standalone: true, updateOn: 'blur'}" [rows]="3"></textarea>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.AGENCY_TYPE' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studentAgencyTypeId"
+                        [ngModelOptions]="{standalone: true}" [options]="agencyTypeOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_AGENCY_TYPE' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.MINISTRY_TYPE' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studentMinistryTypeId"
+                        [ngModelOptions]="{standalone: true}" [options]="ministryTypeOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_MINISTRY_TYPE' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.STUDY_TYPE' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studentStudyTypeId"
+                        [ngModelOptions]="{standalone: true}" [options]="studyTypeOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_STUDY_TYPE' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.UNIVERSITY_TYPE' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studentUniversityTypeId"
+                        [ngModelOptions]="{standalone: true}" [options]="universityTypeOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_UNIVERSITY_TYPE' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+            <p-tabpanel [value]="3">
+              <div class="edit-tab-panel">
+                <p class="edit-tab-panel__hint">{{ 'STUDENT_QUICK_EDIT.EDIT.FINANCE_HINT' | translate }}</p>
+                <div class="grid">
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.AMOUNT' | translate }}</label>
+                      <p-inputnumber [min]="0" class="w-full" [(ngModel)]="selectedStudent.studentAmount"
+                      [ngModelOptions]="{standalone: true}" [mode]="'decimal'"></p-inputnumber>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.UNIVERSITY_FEE_STATUS' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studyUniversityFeeStatusId"
+                        [ngModelOptions]="{standalone: true}" [options]="universityFeeStatusOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_STATUS' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.FIN_ID' | translate }}</label>
+                      <input pInputText class="w-full" [(ngModel)]="selectedStudent.studentFinId"
+                        [ngModelOptions]="{standalone: true, updateOn: 'blur'}" />
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.FIN_NAME' | translate }}</label>
+                      <input pInputText class="w-full" [(ngModel)]="selectedStudent.studentFinName"
+                        [ngModelOptions]="{standalone: true, updateOn: 'blur'}" />
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.RECEIVED_YEAR' | translate }}</label>
+                      <p-inputnumber class="w-full" [(ngModel)]="selectedStudent.studentFinRecievedYear"
+                      [ngModelOptions]="{standalone: true}" [min]="1900" [max]="2100" [step]="1"></p-inputnumber>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.RECEIVED_MONTH' | translate }}</label>
+                      <p-inputnumber class="w-full" [(ngModel)]="selectedStudent.studentFinRecievedMonth"
+                      [ngModelOptions]="{standalone: true}" [min]="1" [max]="12" [step]="1"></p-inputnumber>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6 lg:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.RECEIVED_AMOUNT' | translate }}</label>
+                      <p-inputnumber [min]="0" class="w-full" [(ngModel)]="selectedStudent.studentFinRecievedAmount"
+                      [ngModelOptions]="{standalone: true}" [mode]="'decimal'"></p-inputnumber>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.FINANCE_RECEIVED_STATUS' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studyFinRecievedStatus"
+                        [ngModelOptions]="{standalone: true}" [options]="finReceivedStatusOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_STATUS' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.RECEIVED_WHOM_STATUS' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studyReceivedWhomStatusId"
+                        [ngModelOptions]="{standalone: true}" [options]="receivedWhomStatusOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_STATUS' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.RECEIVED_WHOM' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studyReceivedWhomId"
+                        [ngModelOptions]="{standalone: true}" [options]="finReceivedWhomOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_RECEIVED_WHOM' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+            <p-tabpanel [value]="4">
+              <div class="edit-tab-panel">
+                <p class="edit-tab-panel__hint">{{ 'STUDENT_QUICK_EDIT.EDIT.LOCATION_HINT' | translate }}</p>
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.COUNTRY' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studyCountryInId"
+                        [ngModelOptions]="{standalone: true}" [options]="countryOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_COUNTRY' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.GOVERNMENT' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studyGovInId"
+                        [ngModelOptions]="{standalone: true}" [options]="governmentOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_GOVERNMENT' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.BANK' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studyFinanceBankeId"
+                        [ngModelOptions]="{standalone: true}" [options]="bankOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_BANK' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.BRANCH' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studyFinanceBankBranchId"
+                        [ngModelOptions]="{standalone: true}" [options]="bankBranchOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_BRANCH' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-4">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.DOF' | translate }}</label>
+                      <p-select class="w-full" [(ngModel)]="selectedStudent.studyFinanceDofId"
+                        [ngModelOptions]="{standalone: true}" [options]="dofOptions"
+                        optionLabel="label" optionValue="value"
+                        [placeholder]="'STUDENT_QUICK_EDIT.FORM.SELECT_DOF' | translate"
+                      [filter]="true" [appendTo]="'body'"></p-select>
+                    </div>
+                  </div>
+                  <div class="col-12">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.STUDY_NOTE' | translate }}</label>
+                      <textarea pTextarea class="w-full" [(ngModel)]="selectedStudent.studyNote1"
+                      [ngModelOptions]="{standalone: true, updateOn: 'blur'}" [rows]="3"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+            <p-tabpanel [value]="5">
+              <div class="edit-tab-panel">
+                <p class="edit-tab-panel__hint">{{ 'STUDENT_QUICK_EDIT.EDIT.CONTACT_HINT' | translate }}</p>
+                <div class="grid">
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.EMAIL' | translate }}</label>
+                      <input pInputText class="w-full" [(ngModel)]="selectedStudent.studentEmail"
+                        [ngModelOptions]="{standalone: true, updateOn: 'blur'}" type="email" />
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.CELLPHONE' | translate }}</label>
+                      <input pInputText class="w-full" [(ngModel)]="selectedStudent.studentCellphone"
+                        [ngModelOptions]="{standalone: true, updateOn: 'blur'}"
+                        type="tel" inputmode="tel" dir="ltr" maxlength="25" />
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.HOME_NUMBER' | translate }}</label>
+                      <input pInputText class="w-full" [(ngModel)]="selectedStudent.studentHomeNumber"
+                        [ngModelOptions]="{standalone: true, updateOn: 'blur'}"
+                        type="tel" inputmode="tel" dir="ltr" maxlength="25" />
+                    </div>
+                  </div>
+                  <div class="col-12 md:col-6">
+                    <div class="edit-field">
+                      <label>{{ 'STUDENT_QUICK_EDIT.FORM.EMERGENCY_CONTACT' | translate }}</label>
+                      <input pInputText class="w-full" [(ngModel)]="selectedStudent.studentEmergencyContact"
+                        [ngModelOptions]="{standalone: true, updateOn: 'blur'}"
+                        type="tel" inputmode="tel" dir="ltr" maxlength="25" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </p-tabpanel>
+            <p-tabpanel [value]="6">
+              <div class="edit-tab-panel">
+                <p class="edit-tab-panel__hint">{{ 'STUDENT_QUICK_EDIT.EDIT.DOCUMENTS_HINT' | translate }}</p>
+                <app-student-documents [studentId]="selectedStudent.studentId"></app-student-documents>
+              </div>
+            </p-tabpanel>
+          </p-tabpanels>
+        </p-tabs>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="edit-dialog__footer">
+      <button pButton pRipple [label]="'COMMON.CANCEL' | translate" icon="pi pi-times" class="p-button-text"
+      (click)="cancelEdit()"></button>
+      <button pButton pRipple [label]="'COMMON.SAVE' | translate" icon="pi pi-check" class="p-button-primary"
+      (click)="saveStudent()" [loading]="loading"></button>
+    </div>
+  </ng-template>
+</p-dialog>

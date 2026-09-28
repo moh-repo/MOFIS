@@ -1,0 +1,9 @@
+<div class="layout-footer flex align-items-center gap-2">
+    <!--
+      One emblem, whatever the colour scheme. The pair of file names this
+      replaced held identical bytes, and those bytes drew the emblem on an
+      opaque black rectangle — see SYSTEM_LOGO_FALLBACK.
+    -->
+    <img [src]="logoUrl" alt="" height="20"/>
+    <span>{{ 'LAYOUT.FOOTER_COPYRIGHT' | translate:{ year: year, system: ('LAYOUT.SYSTEM_NAME' | translate) } }}</span>
+</div>

@@ -1,0 +1,233 @@
+<div class="portal-page travel-tickets-page">
+  <div class="sp-intro">
+    <p class="sp-intro__text">{{ 'STUDENT_PORTAL.PAGE_TRAVEL_TICKETS_SUB' | translate }}</p>
+  </div>
+
+  <nz-spin [nzSpinning]="loading">
+    @if (errorKey) {
+      <nz-alert nzType="error" [nzMessage]="errorKey | translate" nzShowIcon class="page-alert"></nz-alert>
+    }
+
+    @if (!loading && !errorKey) {
+      @if (list.length > 0) {
+        <div class="sp-toolbar">
+          <nz-input-group [nzPrefix]="searchIcon" class="sp-toolbar__search">
+            <input nz-input [(ngModel)]="search"
+              [placeholder]="'STUDENT_PORTAL.SEARCH_PLACEHOLDER' | translate"
+              [attr.aria-label]="'STUDENT_PORTAL.SEARCH_PLACEHOLDER' | translate" />
+          </nz-input-group>
+          <ng-template #searchIcon><span nz-icon nzType="search" nzTheme="outline"></span></ng-template>
+
+          @if (typeOptions.length > 1) {
+            <nz-select class="sp-toolbar__filter" [(ngModel)]="typeFilter" nzAllowClear
+              [nzPlaceHolder]="'STUDENT_PORTAL.TRAVEL_TYPE' | translate">
+              @for (type of typeOptions; track type) {
+                <nz-option [nzValue]="type" [nzLabel]="travelTypeLabel(type)"></nz-option>
+              }
+            </nz-select>
+          }
+
+          <span class="sp-toolbar__count">
+            {{ 'STUDENT_PORTAL.SHOWING_COUNT' | translate:{ shown: filteredList.length, total: list.length } }}
+          </span>
+        </div>
+
+        <!-- sp-stack: nine columns is a sideways scroll on a phone; below the
+             breakpoint each row becomes a card labelled from data-label. -->
+        <div class="portal-table-wrapper sp-stack">
+          <nz-table #tbl [nzData]="filteredList" [nzShowPagination]="false" [nzSize]="'middle'">
+            <thead>
+              <tr>
+                <th>{{ 'STUDENT_PORTAL.TRAVEL_TYPE' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.TRAVEL_DATE' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.DEPARTURE' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.DESTINATION' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.AIRLINE' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.FLIGHT_NUMBER' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.TICKET_NUMBER' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.FAMILY_MEMBERS' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.TRAVEL_PURPOSE' | translate }}</th>
+                <th nzWidth="80px">{{ 'STUDENT_PORTAL.ACTIONS' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of tbl.data; track row) {
+                <tr>
+                  <td [attr.data-label]="'STUDENT_PORTAL.TRAVEL_TYPE' | translate"><nz-tag>{{ travelTypeLabel(row.travelType) }}</nz-tag></td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.TRAVEL_DATE' | translate">{{ row.travelDate ? (row.travelDate | localeDate:'mediumDate') : '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.DEPARTURE' | translate">{{ row.departureCity || row.departureCountry || '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.DESTINATION' | translate">{{ row.destinationCity || row.destinationCountry || '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.AIRLINE' | translate">{{ row.airline || '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.FLIGHT_NUMBER' | translate">{{ row.flightNumber || '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.TICKET_NUMBER' | translate">{{ row.ticketNumber || '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.FAMILY_MEMBERS' | translate">{{ getFamilyCountText(row) }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.TRAVEL_PURPOSE' | translate">{{ row.travelPurpose || '-' }}</td>
+                  <td>
+                    <button nz-button nzType="link" nzSize="small" (click)="openDetail(row)">
+                      <span nz-icon nzType="eye" nzTheme="outline"></span>
+                      {{ 'STUDENT_PORTAL.VIEW' | translate }}
+                    </button>
+                    @if (row.documentId) {
+                      <button nz-button nzType="link" nzSize="small" (click)="openTicketDocument(row)">
+                        <span nz-icon nzType="file-pdf" nzTheme="outline"></span>
+                        {{ 'STUDENT_PORTAL.VIEW_TICKET' | translate }}
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </nz-table>
+        </div>
+      }
+
+      @if (filteredEverythingOut) {
+        <div class="sp-state">
+          <span class="sp-state__icon" nz-icon nzType="search" nzTheme="outline"></span>
+          <p class="sp-state__title">{{ 'STUDENT_PORTAL.NO_MATCHES' | translate }}</p>
+          <button nz-button nzType="link" (click)="clearFilters()">{{ 'STUDENT_PORTAL.CLEAR_FILTERS' | translate }}</button>
+        </div>
+      } @else if (list.length === 0) {
+        <div class="sp-state">
+          <span class="sp-state__icon" nz-icon nzType="car" nzTheme="outline"></span>
+          <p class="sp-state__title">{{ 'STUDENT_PORTAL.NO_TRAVEL_TICKETS' | translate }}</p>
+        </div>
+      }
+    }
+  </nz-spin>
+</div>
+
+<!-- Detail. Laid out by the portal dialog kit (assets/layout/styles/_student-portal-dialog.scss). -->
+<nz-modal [(nzVisible)]="showDetailModal" nzWrapClassName="sp-dialog" nzWidth="660px"
+  [nzTitle]="'STUDENT_PORTAL.TRAVEL_TICKET_DETAILS' | translate" [nzFooter]="detailFooter" (nzOnCancel)="closeDetail()">
+  <ng-container *nzModalContent>
+    @if (selectedTicket; as t) {
+      <div class="sp-dlg-summary">
+        <span class="sp-dlg-summary__icon"><span nz-icon nzType="car" nzTheme="outline"></span></span>
+        <div class="sp-dlg-summary__body">
+          <span class="sp-dlg-summary__eyebrow">{{ 'STUDENT_PORTAL.TRAVEL_DATE' | translate }}</span>
+          <span class="sp-dlg-summary__headline">{{ t.travelDate ? (t.travelDate | localeDate:'mediumDate') : '—' }}</span>
+          @if (t.ticketNumber) {
+            <span class="sp-dlg-summary__meta">{{ 'STUDENT_PORTAL.TICKET_NUMBER' | translate }}: <bdi>{{ t.ticketNumber }}</bdi></span>
+          }
+        </div>
+        <div class="sp-dlg-summary__status">
+          <nz-tag>{{ travelTypeLabel(t.travelType) }}</nz-tag>
+        </div>
+      </div>
+
+      <!-- The journey the way a boarding pass shows it: from, to, and the flight between. -->
+      <div class="sp-dlg-span">
+        <div class="sp-dlg-span__end">
+          <span class="sp-dlg-span__label">{{ 'STUDENT_PORTAL.DEPARTURE' | translate }}</span>
+          <span class="sp-dlg-span__value">{{ t.departureCity || t.departureCountry || '—' }}</span>
+          @if (t.departureCity && t.departureCountry) {
+            <span class="sp-dlg-span__sub">{{ t.departureCountry }}</span>
+          }
+        </div>
+        <div class="sp-dlg-span__path">
+          @if (t.flightNumber) {
+            <span class="sp-dlg-span__badge"><bdi>{{ t.flightNumber }}</bdi></span>
+          }
+          <span class="sp-dlg-span__track">
+            <span class="sp-dlg-span__arrow"><span nz-icon nzType="arrow-right" nzTheme="outline"></span></span>
+          </span>
+        </div>
+        <div class="sp-dlg-span__end sp-dlg-span__end--to">
+          <span class="sp-dlg-span__label">{{ 'STUDENT_PORTAL.DESTINATION' | translate }}</span>
+          <span class="sp-dlg-span__value">{{ t.destinationCity || t.destinationCountry || '—' }}</span>
+          @if (t.destinationCity && t.destinationCountry) {
+            <span class="sp-dlg-span__sub">{{ t.destinationCountry }}</span>
+          }
+        </div>
+      </div>
+
+      <section class="sp-dlg-section">
+        <h4 class="sp-dlg-section__title">
+          <span nz-icon nzType="file-text" nzTheme="outline"></span>
+          {{ 'STUDENT_PORTAL.TICKET_DETAILS' | translate }}
+        </h4>
+        <dl class="sp-dlg-grid">
+          <div class="sp-dlg-field">
+            <dt>{{ 'STUDENT_PORTAL.AIRLINE' | translate }}</dt>
+            <dd>{{ t.airline || '—' }}</dd>
+          </div>
+          <div class="sp-dlg-field">
+            <dt>{{ 'STUDENT_PORTAL.FLIGHT_NUMBER' | translate }}</dt>
+            <dd><bdi>{{ t.flightNumber || '—' }}</bdi></dd>
+          </div>
+          <div class="sp-dlg-field">
+            <dt>{{ 'STUDENT_PORTAL.TICKET_NUMBER' | translate }}</dt>
+            <dd><bdi>{{ t.ticketNumber || '—' }}</bdi></dd>
+          </div>
+          <div class="sp-dlg-field">
+            <dt>{{ 'STUDENT_PORTAL.BOOKING_DATE' | translate }}</dt>
+            <dd>{{ t.bookingDate ? (t.bookingDate | localeDate:'mediumDate') : '—' }}</dd>
+          </div>
+          @if (t.ticketCost != null) {
+            <div class="sp-dlg-field">
+              <dt>{{ 'STUDENT_PORTAL.TICKET_COST' | translate }}</dt>
+              <dd>{{ t.ticketCost | number:'1.0-2' }}</dd>
+            </div>
+          }
+          @if (t.travelPurpose) {
+            <div class="sp-dlg-field sp-dlg-field--wide">
+              <dt>{{ 'STUDENT_PORTAL.TRAVEL_PURPOSE' | translate }}</dt>
+              <dd>{{ t.travelPurpose }}</dd>
+            </div>
+          }
+        </dl>
+      </section>
+
+      @if (t.travelType === 'WITH_FAMILY' && t.familyMembers?.length) {
+        <section class="sp-dlg-section">
+          <h4 class="sp-dlg-section__title">
+            <span nz-icon nzType="team" nzTheme="outline"></span>
+            {{ 'STUDENT_PORTAL.FAMILY_MEMBERS' | translate }}
+            <span class="sp-dlg-section__aside">{{ t.familyMembers!.length }}</span>
+          </h4>
+          <!-- One card per traveller: four facts about a person read better together
+               than across a four-column table squeezed into a dialog. -->
+          <ul class="family-list">
+            @for (m of t.familyMembers; track $index) {
+              <li class="family-list__item">
+                <span class="family-list__avatar">{{ (m.memberName || '?').trim().charAt(0) }}</span>
+                <div class="family-list__body">
+                  <span class="family-list__name">{{ m.memberName || '—' }}</span>
+                  <span class="family-list__meta">
+                    <nz-tag [attr.title]="'STUDENT_PORTAL.RELATIONSHIP' | translate">{{ relationshipLabel(m.relationship) }}</nz-tag>
+                    @if (m.birthdate) {
+                      <span>{{ 'STUDENT_PORTAL.BIRTHDATE' | translate }}: {{ m.birthdate | localeDate:'mediumDate' }}</span>
+                    }
+                    @if (m.passportNumber) {
+                      <span>{{ 'STUDENT_PORTAL.PASSPORT_NUMBER' | translate }}: <bdi>{{ m.passportNumber }}</bdi></span>
+                    }
+                  </span>
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (t.notes) {
+        <section class="sp-dlg-section">
+          <h4 class="sp-dlg-section__title">
+            <span nz-icon nzType="form" nzTheme="outline"></span>
+            {{ 'STUDENT_PORTAL.NOTES' | translate }}
+          </h4>
+          <p class="sp-dlg-prose" dir="auto">{{ t.notes }}</p>
+        </section>
+      }
+    }
+  </ng-container>
+</nz-modal>
+<ng-template #detailFooter>
+  <button nz-button (click)="closeDetail()">{{ 'STUDENT_PORTAL.CLOSE' | translate }}</button>
+  @if (selectedTicket?.documentId) {
+    <button nz-button nzType="primary" (click)="openTicketDocument(selectedTicket!)">
+      <span nz-icon nzType="file-pdf" nzTheme="outline"></span>
+      {{ 'STUDENT_PORTAL.VIEW_TICKET' | translate }}
+    </button>
+  }
+</ng-template>

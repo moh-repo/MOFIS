@@ -1,0 +1,236 @@
+<div class="portal-page my-requests-page">
+
+  <div class="sp-intro">
+    <p class="sp-intro__text">{{ 'CHANGE_REQUEST.SUBTITLE' | translate }}</p>
+    <button nz-button nzType="primary" class="sp-intro__action" (click)="openSubmitDialog()">
+      <span nz-icon nzType="plus" nzTheme="outline"></span>
+      {{ 'CHANGE_REQUEST.NEW_REQUEST' | translate }}
+    </button>
+  </div>
+
+  <!-- Error banner (backend unreachable or auth issue) -->
+  @if (loadError && !loading) {
+    <nz-alert
+      nzType="warning"
+      nzShowIcon
+      [nzMessage]="'CHANGE_REQUEST.LOAD_ERROR' | translate"
+      [nzDescription]="'CHANGE_REQUEST.LOAD_ERROR_HINT' | translate"
+      class="mb-3">
+    </nz-alert>
+  }
+
+  <!-- Loading skeleton -->
+  @if (loading) {
+    <div class="cr-loading-wrap">
+      <nz-spin nzSimple [nzSize]="'large'"></nz-spin>
+    </div>
+  }
+
+  <!-- Empty state. The same shape the other lists use, and it offers the action
+       instead of only reporting the absence: with no requests yet, making one is
+       the only thing this page is for. -->
+  @if (!loading && groups.length === 0 && !loadError) {
+    <div class="sp-state">
+      <span class="sp-state__icon" nz-icon nzType="edit" nzTheme="outline"></span>
+      <p class="sp-state__title">{{ 'CHANGE_REQUEST.NO_REQUESTS' | translate }}</p>
+      <p class="sp-state__text">{{ 'CHANGE_REQUEST.SUBTITLE' | translate }}</p>
+      <button nz-button nzType="primary" (click)="openSubmitDialog()">
+        <span nz-icon nzType="plus" nzTheme="outline"></span>
+        {{ 'CHANGE_REQUEST.NEW_REQUEST' | translate }}
+      </button>
+    </div>
+  }
+
+  <!-- Submission groups -->
+  @for (group of groups; track trackGroup($index, group)) {
+    <nz-card
+      class="cr-group-card"
+      [nzBodyStyle]="{'padding': '0'}">
+      <!-- Card header: submission date + overall badge -->
+      <div class="cr-group-head">
+        <div class="cr-group-head__left">
+          <span nz-icon nzType="form" nzTheme="outline" class="cr-group-icon"></span>
+          <div>
+            <div class="cr-group-date">{{ group.date | localeDate:'short' }}</div>
+            <div class="cr-group-id text-secondary">{{ group.submissionId }}</div>
+          </div>
+        </div>
+        <div class="cr-group-head__right">
+          <nz-tag [nzColor]="overallStatusColor(group.overallStatus)" class="cr-overall-tag">
+          <span nz-icon [nzType]="group.overallStatus === 'APPROVED' ? 'check-circle' :
+                                   group.overallStatus === 'REJECTED' ? 'close-circle' :
+                                   group.overallStatus === 'MODIFIED' ? 'edit' : 'clock-circle'"
+            nzTheme="outline"></span>
+            &nbsp;{{ ('CHANGE_REQUEST.STATUS_' + group.overallStatus) | translate }}
+          </nz-tag>
+        </div>
+      </div>
+      <!-- Field rows -->
+      <div class="cr-field-list">
+        @for (req of group.items; track req) {
+          <div class="cr-field-row" [class.cr-field-row--rejected]="req.status === 'REJECTED'">
+            <!-- Status indicator bar -->
+            <div class="cr-field-bar" [class]="'cr-field-bar--' + req.status.toLowerCase()"></div>
+            <div class="cr-field-content">
+              <!-- Field name + status -->
+              <div class="cr-field-top">
+                <span class="cr-field-name">{{ fieldLabel(req.fieldName, req.fieldLabel) }}</span>
+                <nz-tag [nzColor]="statusColor(req.status)" class="cr-status-tag">
+                  {{ ('CHANGE_REQUEST.STATUS_' + req.status) | translate }}
+                </nz-tag>
+              </div>
+              <!-- Value comparison -->
+              <div class="cr-field-values">
+                <div class="cr-value cr-value--old">
+                  <span class="cr-value-label">{{ 'CHANGE_REQUEST.OLD_VALUE' | translate }}</span>
+                  <span class="cr-value-text"><bdi>{{ resolveValue(req.fieldName, req.oldValue) }}</bdi></span>
+                </div>
+                <span nz-icon [nzType]="translationService.isRTL() ? 'arrow-left' : 'arrow-right'" nzTheme="outline" class="cr-arrow"></span>
+                <div class="cr-value cr-value--new">
+                  <span class="cr-value-label">{{ 'CHANGE_REQUEST.NEW_VALUE' | translate }}</span>
+                  <span class="cr-value-text cr-value-text--new"><bdi>{{ resolveValue(req.fieldName, req.newValue) }}</bdi></span>
+                </div>
+                <!-- Applied value if modified -->
+                @if (req.status === 'MODIFIED' && req.appliedValue) {
+                  <span nz-icon [nzType]="translationService.isRTL() ? 'arrow-left' : 'arrow-right'" nzTheme="outline" class="cr-arrow"></span>
+                  <div class="cr-value cr-value--applied">
+                    <span class="cr-value-label">{{ 'CHANGE_REQUEST.APPLIED' | translate }}</span>
+                    <span class="cr-value-text cr-value-text--applied"><bdi>{{ resolveValue(req.fieldName, req.appliedValue) }}</bdi></span>
+                  </div>
+                }
+              </div>
+              <!-- Comment / rejection reason -->
+              @if (req.rejectionReason || req.employeeComment) {
+                <div class="cr-field-note">
+                  <span nz-icon [nzType]="req.rejectionReason ? 'exclamation-circle' : 'info-circle'"
+                    nzTheme="outline"
+                    [class]="req.rejectionReason ? 'note-icon--reject' : 'note-icon--info'">
+                  </span>
+                  <span [class]="req.rejectionReason ? 'note-text--reject' : 'note-text--info'">
+                    {{ req.rejectionReason || req.employeeComment }}
+                  </span>
+                </div>
+              }
+            </div>
+            <!-- Cancel action (PENDING only) -->
+            @if (req.status === 'PENDING') {
+              <div class="cr-field-action">
+                <button nz-button nzType="link" nzDanger nzSize="small"
+                  nz-popconfirm
+                  [nzPopconfirmTitle]="'CHANGE_REQUEST.CONFIRM_CANCEL' | translate"
+                  (nzOnConfirm)="cancelRequest(req.requestId)">
+                  <span nz-icon nzType="close" nzTheme="outline"></span>
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </nz-card>
+  }
+
+</div>
+
+<!-- ── Submit Change Request Modal ─────────────────────────────
+     Frame, lead and footer from the portal dialog kit
+     (assets/layout/styles/_student-portal-dialog.scss); the field table is this
+     page's own (.cr-edit in the stylesheet). -->
+<nz-modal [(nzVisible)]="showSubmitDialog"
+  nzWrapClassName="sp-dialog"
+  [nzTitle]="'CHANGE_REQUEST.NEW_REQUEST' | translate"
+  [nzWidth]="860"
+  [nzFooter]="submitFooter"
+  (nzOnCancel)="showSubmitDialog = false">
+
+  <ng-container *nzModalContent>
+    <nz-spin [nzSpinning]="studentDataLoading" [nzTip]="'COMMON.LOADING' | translate">
+      <p class="sp-dlg-lead">
+        <span nz-icon nzType="info-circle" nzTheme="outline"></span>
+        <span>{{ 'CHANGE_REQUEST.DIALOG_HINT' | translate }}</span>
+      </p>
+
+      @if (editableFields.length) {
+        <!-- Three columns: what the field is, what is on file, what it should be.
+             Ticking a field opens its input; below 640px each field is a card. -->
+        <div class="cr-edit">
+          <div class="cr-edit__head" aria-hidden="true">
+            <span>{{ 'CHANGE_REQUEST.FIELD' | translate }}</span>
+            <span>{{ 'CHANGE_REQUEST.CURRENT_VALUE' | translate }}</span>
+            <span>{{ 'CHANGE_REQUEST.NEW_VALUE' | translate }}</span>
+          </div>
+          @for (field of editableFields; track field.fieldName) {
+            <div class="cr-edit__row" [class.cr-edit__row--on]="field.selected">
+              <!-- The name is the checkbox's label, so clicking it ticks the box. -->
+              <label nz-checkbox [(ngModel)]="field.selected" class="cr-edit__check">
+                <span class="cr-edit__name">{{ field.label }}</span>
+              </label>
+              <div class="cr-edit__current">
+                <span class="cr-edit__caption">{{ 'CHANGE_REQUEST.CURRENT_VALUE' | translate }}</span>
+                <bdi [class.cr-edit__empty]="!field.currentValue">{{ field.currentValue || '—' }}</bdi>
+              </div>
+              <div class="cr-edit__input">
+                @switch (field.type) {
+                  @case ('select') {
+                    <nz-select
+                      [(ngModel)]="field.newValue"
+                      [nzDisabled]="!field.selected"
+                      nzShowSearch
+                      [nzPlaceHolder]="field.selected ? ('CHANGE_REQUEST.ENTER_NEW_VALUE' | translate) : ''"
+                      style="width:100%">
+                      @for (opt of field.options; track opt) {
+                        <nz-option
+                          [nzValue]="'' + opt.id"
+                          [nzLabel]="opt | inLanguage:'name'">
+                        </nz-option>
+                      }
+                    </nz-select>
+                  }
+                  @case ('date') {
+                    <!-- The browser's date input always yields yyyy-MM-dd (review R2b). -->
+                    <input nz-input type="date"
+                      [disabled]="!field.selected"
+                      [(ngModel)]="field.newValue"
+                      min="1900-01-01" max="2100-12-31" />
+                  }
+                  @default {
+                    <input nz-input
+                      [disabled]="!field.selected"
+                      [(ngModel)]="field.newValue"
+                      [placeholder]="field.selected ? ('CHANGE_REQUEST.ENTER_NEW_VALUE' | translate) : ''" />
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+      } @else if (studentDataLoading) {
+        <!-- Room for the spinner while the current values load. -->
+        <div class="cr-edit-wait"></div>
+      } @else {
+        <div class="cr-edit-empty">
+          <span nz-icon nzType="edit" nzTheme="outline"></span>
+          {{ 'STUDENT_PORTAL.NO_DATA' | translate }}
+        </div>
+      }
+    </nz-spin>
+  </ng-container>
+
+  <ng-template #submitFooter>
+    <span class="sp-dlg-footer-note">
+      @if (selectedFields.length > 0) {
+        {{ 'CHANGE_REQUEST.SELECTED_COUNT' | translate }}: <strong>{{ selectedFields.length }}</strong>
+      }
+    </span>
+    <button nz-button nzType="default" (click)="showSubmitDialog = false">
+      {{ 'COMMON.CANCEL' | translate }}
+    </button>
+    <button nz-button nzType="primary"
+      [nzLoading]="submitting"
+      [disabled]="selectedFields.length === 0"
+      (click)="submitRequest()">
+      <span nz-icon nzType="check" nzTheme="outline"></span>
+      {{ 'CHANGE_REQUEST.SUBMIT' | translate }}
+    </button>
+  </ng-template>
+
+</nz-modal>

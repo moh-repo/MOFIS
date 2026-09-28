@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    SpotBugs / FindSecBugs exclusions (security plan O-11, 6 Sep 2026).
+
+    Each entry is a finding that was read and judged not to apply here, with the
+    reason. Add to it only after reading the finding; never by pattern. The build
+    fails on High-confidence findings not listed here (pom.xml, threshold=High).
+-->
+<FindBugsFilter>
+    <!-- Lombok-generated equals/hashCode and builders on JPA entities produce
+         EI_EXPOSE_REP-style noise that is not a security finding. -->
+    <Match>
+        <Or>
+            <Bug pattern="EI_EXPOSE_REP"/>
+            <Bug pattern="EI_EXPOSE_REP2"/>
+        </Or>
+    </Match>
+    <!-- FieldAccessService keeps a static handle to the Spring-managed instance on
+         purpose: the Jackson field writer is not constructed by Spring and asks
+         FieldAccessService.current() for the rules (R-18). One instance per JVM. -->
+    <Match>
+        <Class name="com.dilaw.mohe.security.field.FieldAccessService"/>
+        <Bug pattern="ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD"/>
+    </Match>
+    <!-- Test sources are not scanned for security defects. -->
+    <Match>
+        <Class name="~.*Test$"/>
+    </Match>
+</FindBugsFilter>

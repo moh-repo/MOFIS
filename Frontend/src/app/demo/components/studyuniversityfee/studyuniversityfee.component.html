@@ -1,0 +1,895 @@
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>
+
+<!-- One heading, not two. The page had a toolbar carrying the title and the
+     hint above a card carrying a second heading of its own, so it announced
+     itself twice with nothing between them. STUDY_UNIVERSITY_FEE.MANAGEMENT is
+     no longer used. -->
+<div class="card shadow-2 border-round">
+    <!-- Header. `flex-1` on the icon-and-title block, not
+         `justify-content-between`: under `direction: rtl` a flex row already
+         runs right to left, and the global rule in styles.scss reverses every
+         `.flex.justify-content-between` again, which put the heading on the left
+         and the buttons on the right in Arabic. See
+         src/app/demo/components/page-headings.spec.ts. -->
+  <div class="flex align-items-center mb-4 flex-wrap gap-3">
+    <div class="flex align-items-center gap-3 flex-1">
+      <i class="pi pi-money-bill text-primary" style="font-size: 2.5rem"></i>
+      <div>
+        <h2 class="m-0 text-primary">{{ 'STUDY_UNIVERSITY_FEE.TITLE' | translate }}</h2>
+        <p class="text-600 mt-1 mb-0 line-height-3" style="max-width: min(42rem, 92vw);">{{ 'STUDY_UNIVERSITY_FEE.PAGE_HINT' | translate }}</p>
+      </div>
+    </div>
+    <div class="flex gap-2 flex-wrap">
+      <button pButton pRipple [label]="'STUDY_UNIVERSITY_FEE.CLEAR_FILTERS' | translate" icon="pi pi-filter-slash" class="p-button-outlined" (click)="clearFilters()"></button>
+      <button pButton pRipple [label]="'STUDY_UNIVERSITY_FEE.ADD_NEW' | translate" icon="pi pi-plus" class="p-button-success" (click)="openNew()"></button>
+    </div>
+  </div>
+
+  <div class="grid mb-4">
+    <div class="col-12 md:col-4">
+      <span class="p-input-icon-left w-full">
+        <i class="pi pi-search"></i>
+        <input pInputText type="text"
+          [(ngModel)]="globalFilter"
+          (input)="onGlobalFilter(table, $event)"
+          [placeholder]="'STUDY_UNIVERSITY_FEE.SEARCH' | translate"
+          class="w-full"/>
+      </span>
+    </div>
+    <div class="col-12 md:col-4">
+      <p-select [options]="statuses"
+        [(ngModel)]="selectedStatus"
+        (onChange)="onStatusFilter($event)"
+        optionLabel="label"
+        optionValue="value"
+        [placeholder]="'STUDY_UNIVERSITY_FEE.SELECT_STATUS' | translate"
+        [showClear]="true"
+        class="w-full">
+      </p-select>
+    </div>
+    <div class="col-12 md:col-4">
+      <p-datepicker [(ngModel)]="dateRange"
+        selectionMode="range"
+        (onSelect)="onDateFilter($event)"
+        [placeholder]="'STUDY_UNIVERSITY_FEE.SELECT_DATE_RANGE' | translate"
+        [showIcon]="true"
+        class="w-full">
+      </p-datepicker>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto border-round border-1 surface-border">
+    <p-table #dt
+      [value]="fees"
+      [rows]="rows"
+      [totalRecords]="totalElements"
+      [loading]="loading"
+      [paginator]="true"
+      [lazy]="true"
+      [first]="first"
+      [rowsPerPageOptions]="rowsPerPageOptions"
+      [showCurrentPageReport]="true"
+      [currentPageReportTemplate]="('STUDY_UNIVERSITY_FEE.SHOWING_ENTRIES' | translate)"
+      (onLazyLoad)="onLazyLoad($event)"
+      [globalFilterFields]="['studentId','studyUniversityFeeStudentName','studyUniversityFeeYear','studyUniversityFeeAmount','studyUniversityFeeSourceId','studyUniversityCheckPayorTypeId']"
+      styleClass="p-datatable-sm p-datatable-striped min-w-max">
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="studentId">{{'STUDY_UNIVERSITY_FEE.STUDENT_ID' | translate}} <p-sortIcon field="studentId"></p-sortIcon></th>
+          <th pSortableColumn="studyUniversityFeeStudentName">{{'STUDY_UNIVERSITY_FEE.STUDENT_NAME' | translate}} <p-sortIcon field="studyUniversityFeeStudentName"></p-sortIcon></th>
+          <th pSortableColumn="studyUniversityFeeYear">{{'STUDY_UNIVERSITY_FEE.ACADEMIC_YEAR' | translate}} <p-sortIcon field="studyUniversityFeeYear"></p-sortIcon></th>
+          <!-- A student has one row per semester, and a paid and an unpaid row can
+               share a year and an amount: without these two columns those rows
+               looked like duplicates (QA B13, FIN-005). -->
+          <th pSortableColumn="studyUniversityFeeSemesterNumber">{{'STUDY_UNIVERSITY_FEE.SEMESTER_NUMBER' | translate}} <p-sortIcon field="studyUniversityFeeSemesterNumber"></p-sortIcon></th>
+          <th pSortableColumn="studyUniversityFeePayStatus">{{'STUDY_UNIVERSITY_FEE.PAY_STATUS' | translate}} <p-sortIcon field="studyUniversityFeePayStatus"></p-sortIcon></th>
+          <th pSortableColumn="studyUniversityFeeAmount">{{'STUDY_UNIVERSITY_FEE.AMOUNT' | translate}} <p-sortIcon field="studyUniversityFeeAmount"></p-sortIcon></th>
+          <th pSortableColumn="studyUniversityFeeSourceId">{{'STUDY_UNIVERSITY_FEE.FEE_SOURCE' | translate}} <p-sortIcon field="studyUniversityFeeSourceId"></p-sortIcon></th>
+          <th pSortableColumn="studyUniversityCheckPayorTypeId">{{'STUDY_UNIVERSITY_FEE.CHECK_PAYOR_TYPE' | translate}} <p-sortIcon field="studyUniversityCheckPayorTypeId"></p-sortIcon></th>
+          <th style="width: 9rem">{{'STUDY_UNIVERSITY_FEE.ACTIONS' | translate}}</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-fee>
+        <tr>
+          <td>{{fee.studentId}}</td>
+          <td>{{fee.studyUniversityFeeStudentName}}</td>
+          <td>{{fee.studyUniversityFeeYear}}</td>
+          <td>{{semesterLabel(fee.studyUniversityFeeSemesterNumber)}}</td>
+          <td>
+            <p-tag [severity]="getSeverity(fee.studyUniversityFeePayStatus)" styleClass="text-xs"
+              [value]="payStatusLabel(fee.studyUniversityFeePayStatus)"></p-tag>
+          </td>
+          <td>{{fee.studyUniversityFeeAmount | currency:'USD'}}</td>
+          <td>{{feeSourceLabel(fee.studyUniversityFeeSourceId)}}</td>
+          <td>
+            <p-tag [severity]="fee.studyUniversityCheckPayorTypeId === 2 ? 'info' : 'success'"
+              styleClass="text-xs"
+              [value]="checkPayorLabel(fee.studyUniversityCheckPayorTypeId)">
+            </p-tag>
+          </td>
+          <td class="white-space-nowrap">
+            <button pButton pRipple icon="pi pi-eye"    class="p-button-rounded p-button-text p-button-info mr-1"    pTooltip="{{'COMMON.VIEW' | translate}}"   (click)="viewFee(fee)"></button>
+            <button pButton pRipple icon="pi pi-pencil" class="p-button-rounded p-button-text p-button-warning mr-1" pTooltip="{{'COMMON.EDIT' | translate}}"   (click)="editFee(fee)"></button>
+            <button pButton pRipple icon="pi pi-trash"  class="p-button-rounded p-button-text p-button-danger"       pTooltip="{{'COMMON.DELETE' | translate}}" (click)="deleteFee(fee)"></button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="9" class="text-center text-500 py-4">
+            <i class="pi pi-inbox text-4xl mb-2 block"></i>
+            {{'STUDY_UNIVERSITY_FEE.NO_FEES_FOUND' | translate}}
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ ADD / EDIT DIALOG ═══════════════════════════
+
+     Layout (styles: .dv-* in assets/layout/styles/_detail-dialog.scss):
+
+       hero     – student, fee id, academic year, semester, fee source,
+                  status and amount, updated live from the form so the strip
+                  always previews what will be saved.
+       notice   – reminder that saves are queued for workflow approval.
+       sections – "Basic information" (student, fee id, years),
+                  "Fee details" (amounts, currency, source, coverage),
+                  "Payment information" (pay date, status) and
+                  "Check information" (payor, check references, dates, notes).
+-->
+<p-dialog [(visible)]="feeDialog"
+  [breakpoints]="{'960px': '95vw', '640px': '98vw'}"
+  [style]="{width: '860px'}"
+  [draggable]="false"
+  styleClass="dv-dialog"
+  [header]="creatingMode ? ('STUDY_UNIVERSITY_FEE.ADD_FEE' | translate) : ('STUDY_UNIVERSITY_FEE.EDIT_FEE' | translate)"
+  [modal]="true"
+  class="p-fluid">
+  <ng-template pTemplate="content">
+    <div class="dv-form">
+
+      <!-- Hero: live preview of the record -->
+      <div class="dv-hero"
+           [class.dv-hero--new]="creatingMode"
+           [class.dv-hero--success]="!creatingMode && getSeverity(newFee.studyUniversityFeePayStatus) === 'success'"
+           [class.dv-hero--danger]="!creatingMode && getSeverity(newFee.studyUniversityFeePayStatus) === 'danger'"
+           [class.dv-hero--muted]="!creatingMode && getSeverity(newFee.studyUniversityFeePayStatus) === 'info'">
+        <div class="dv-hero__badge" [class.dv-hero__badge--text]="!creatingMode && !!newFee.studyUniversityFeeId">
+          @if (creatingMode) {
+            <i class="pi pi-plus"></i>
+          } @else if (newFee.studyUniversityFeeId) {
+            <span class="dv-hero__badge-prefix">#</span>{{ newFee.studyUniversityFeeId }}
+          } @else {
+            <i class="pi pi-dollar"></i>
+          }
+        </div>
+        <div class="dv-hero__body">
+          <div class="dv-hero__eyebrow">
+            {{ (creatingMode ? 'STUDY_UNIVERSITY_FEE.ADD_FEE' : 'STUDY_UNIVERSITY_FEE.EDIT_FEE') | translate }}
+          </div>
+          <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!newFee.studyUniversityFeeStudentName">
+            {{ newFee.studyUniversityFeeStudentName || ('STUDY_UNIVERSITY_FEE.SEARCH_AND_SELECT_STUDENT' | translate) }}
+          </div>
+          @if (newFee.studentId) {
+            <div class="dv-hero__subtitle">{{ 'STUDY_UNIVERSITY_FEE.STUDENT_ID' | translate }}: {{ newFee.studentId }}</div>
+          }
+          <div class="dv-hero__meta">
+            <span class="dv-chip">
+              <i class="pi pi-calendar"></i>
+              {{ newFee.studyUniversityFeeYear || ('STUDY_UNIVERSITY_FEE.ACADEMIC_YEAR' | translate) }}
+            </span>
+            <span class="dv-chip">
+              <i class="pi pi-hashtag"></i>
+              {{ 'STUDY_UNIVERSITY_FEE.SEMESTER_NUMBER' | translate }}: {{ newFee.studyUniversityFeeSemesterNumber || '—' }}
+            </span>
+            <span class="dv-chip dv-chip--primary">
+              <i class="pi pi-building"></i>
+              {{ feeSourceLabel(newFee.studyUniversityFeeSourceId) }}
+            </span>
+            <p-tag [severity]="getSeverity(newFee.studyUniversityFeePayStatus)"
+                   [rounded]="true"
+                   [value]="payStatusLabel(newFee.studyUniversityFeePayStatus) || ('STUDY_UNIVERSITY_FEE.PAY_STATUS' | translate)">
+            </p-tag>
+          </div>
+        </div>
+        <div class="dv-hero__amount">
+          <div class="dv-hero__amount-label">{{ 'STUDY_UNIVERSITY_FEE.AMOUNT' | translate }}</div>
+          <div class="dv-hero__amount-value">{{ (newFee.studyUniversityFeeAmount | currency:'USD') || '—' }}</div>
+          <div class="dv-hero__amount-sub">
+            {{ currencyLabel(newFee.studyUniversityFeeCurrency) || ('STUDY_UNIVERSITY_FEE.CURRENCY' | translate) }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Saves go through workflow approval -->
+      <div class="dv-notice dv-notice--info">
+        <i class="pi pi-info-circle"></i>
+        <span>{{ 'STUDY_UNIVERSITY_FEE.PAGE_HINT' | translate }}</span>
+      </div>
+
+      <!-- Section: basic information -->
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-user"></i></span>
+          <div>
+            <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE.BASIC_INFORMATION' | translate }}</div>
+          </div>
+        </header>
+
+        <div class="dv-fields dv-fields--cols-3">
+          <!-- Student -->
+          <div class="dv-field dv-field--full">
+            <label for="sufStudent" class="dv-label">
+              {{ 'STUDY_UNIVERSITY_FEE.STUDENT' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <p-autoComplete
+              inputId="sufStudent"
+              [(ngModel)]="selectedStudent"
+              [suggestions]="filteredStudents"
+              (completeMethod)="onStudentSearch($event)"
+              (onSelect)="onStudentSelect($event.value)"
+              (onClear)="onStudentClear()"
+              (onUnselect)="onStudentClear()"
+              optionLabel="studentName"
+              [dropdown]="true"
+              [forceSelection]="true"
+              [placeholder]="'STUDY_UNIVERSITY_FEE.SEARCH_AND_SELECT_STUDENT' | translate"
+              class="w-full"
+              appendTo="body"
+              [class.ng-invalid]="submitted && isStudentSelectionInvalid()">
+              <ng-template let-s pTemplate="item">
+                <div class="flex align-items-center gap-2">
+                  <i class="pi pi-user text-primary"></i>
+                  <div>
+                    <div class="font-semibold">{{ s.studentName }}</div>
+                    <small class="text-500">{{ 'STUDENTS.ID' | translate }}: {{ s.studentId }}</small>
+                  </div>
+                </div>
+              </ng-template>
+            </p-autoComplete>
+            @if (submitted && isStudentSelectionInvalid()) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.STUDENT_SELECTION_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Fee ID -->
+          <div class="dv-field">
+            <label for="sufFeeId" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.FEE_ID' | translate }}</label>
+            <input id="sufFeeId" pInputText [(ngModel)]="newFee.studyUniversityFeeId"
+              [class.ng-invalid]="submitted && !newFee.studyUniversityFeeId"
+              class="w-full" />
+            @if (submitted && !newFee.studyUniversityFeeId) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.FEE_ID_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Academic Year -->
+          <div class="dv-field">
+            <label for="sufYear" class="dv-label">
+              {{ 'STUDY_UNIVERSITY_FEE.ACADEMIC_YEAR' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <p-select inputId="sufYear"
+              [options]="academicYearOptions"
+              [(ngModel)]="newFee.studyUniversityFeeYear"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'STUDY_UNIVERSITY_FEE.SELECT_ACADEMIC_YEAR' | translate"
+              [showClear]="true"
+              appendTo="body"
+              [class.ng-invalid]="submitted && isAcademicYearInvalid()"
+              class="w-full">
+            </p-select>
+            @if (submitted && isAcademicYearInvalid()) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.ACADEMIC_YEAR_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- First Year -->
+          <div class="dv-field">
+            <label for="sufFirstYear" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.FIRST_YEAR' | translate }}</label>
+            <p-select inputId="sufFirstYear"
+              [options]="firstYearOptions"
+              [(ngModel)]="newFee.studyUniversityFeeFirstYear"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'STUDY_UNIVERSITY_FEE.SELECT_FIRST_YEAR' | translate"
+              [showClear]="true"
+              appendTo="body"
+              class="w-full">
+            </p-select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: fee details -->
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-dollar"></i></span>
+          <div>
+            <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE.FEE_DETAILS' | translate }}</div>
+          </div>
+        </header>
+
+        <div class="dv-fields">
+          <!-- Amount -->
+          <div class="dv-field">
+            <label for="sufAmount" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.AMOUNT' | translate }}</label>
+            <p-inputnumber [min]="0" inputId="sufAmount"
+              [(ngModel)]="newFee.studyUniversityFeeAmount"
+              [minFractionDigits]="2" [maxFractionDigits]="2"
+              [class.ng-invalid]="submitted && !newFee.studyUniversityFeeAmount"
+              class="w-full">
+            </p-inputnumber>
+            @if (submitted && !newFee.studyUniversityFeeAmount) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.AMOUNT_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Discount -->
+          <div class="dv-field">
+            <label for="sufDiscount" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.DISCOUNT' | translate }}</label>
+            <p-inputnumber [min]="0" inputId="sufDiscount"
+              [(ngModel)]="newFee.studyUniversityFeeDiscount"
+              [minFractionDigits]="2" [maxFractionDigits]="2"
+              [class.ng-invalid]="submitted && isDiscountInvalid()"
+              class="w-full">
+            </p-inputnumber>
+            @if (submitted && isDiscountInvalid()) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.DISCOUNT_INVALID' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Real Amount -->
+          <div class="dv-field">
+            <label for="sufRealAmount" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.REAL_AMOUNT' | translate }}</label>
+            <!-- Computed: amount less discount, as the server stores it (review F7). -->
+            <p-inputnumber inputId="sufRealAmount"
+              [ngModel]="netFeeAmount" [readonly]="true"
+              [minFractionDigits]="2" [maxFractionDigits]="2"
+              class="w-full">
+            </p-inputnumber>
+            <small class="text-500">{{ 'STUDY_UNIVERSITY_FEE.REAL_AMOUNT_COMPUTED_HINT' | translate }}</small>
+          </div>
+
+          <!-- Currency -->
+          <div class="dv-field">
+            <label for="sufCurrency" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.CURRENCY' | translate }}</label>
+            <p-select inputId="sufCurrency"
+              [options]="currencies"
+              [(ngModel)]="newFee.studyUniversityFeeCurrency"
+              optionLabel="name"
+              optionValue="code"
+              [placeholder]="'STUDY_UNIVERSITY_FEE.SELECT_CURRENCY' | translate"
+              [showClear]="true"
+              appendTo="body"
+              [class.ng-invalid]="submitted && !newFee.studyUniversityFeeCurrency"
+              class="w-full">
+            </p-select>
+            @if (submitted && !newFee.studyUniversityFeeCurrency) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.CURRENCY_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Fee Source -->
+          <div class="dv-field">
+            <label for="sufSource" class="dv-label">
+              {{ 'STUDY_UNIVERSITY_FEE.FEE_SOURCE' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <p-select inputId="sufSource"
+              [options]="feeSources"
+              [(ngModel)]="newFee.studyUniversityFeeSourceId"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'STUDY_UNIVERSITY_FEE.SELECT_FEE_SOURCE' | translate"
+              [showClear]="true"
+              appendTo="body"
+              [class.ng-invalid]="submitted && isFeeSourceInvalid()"
+              class="w-full">
+            </p-select>
+            @if (submitted && isFeeSourceInvalid()) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.SOURCE_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Semester Number -->
+          <div class="dv-field">
+            <label for="sufSemesterNo" class="dv-label">
+              {{ 'STUDY_UNIVERSITY_FEE.SEMESTER_NUMBER' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <p-select inputId="sufSemesterNo"
+              [options]="semesterNumberOptions"
+              [(ngModel)]="newFee.studyUniversityFeeSemesterNumber"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'STUDY_UNIVERSITY_FEE.SELECT_SEMESTER_NUMBER' | translate"
+              [showClear]="true"
+              appendTo="body"
+              [class.ng-invalid]="submitted && isSemesterNumberInvalid()"
+              class="w-full">
+            </p-select>
+            <small class="dv-hint">{{ 'STUDY_UNIVERSITY_FEE.SEMESTER_NUMBER_HINT' | translate }}</small>
+            @if (submitted && isSemesterNumberInvalid()) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.SEMESTER_NUMBER_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Semester Scope -->
+          <div class="dv-field">
+            <label for="sufSemesterScope" class="dv-label">
+              {{ 'STUDY_UNIVERSITY_FEE.PAYMENT_SEMESTER_SCOPE' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <p-select inputId="sufSemesterScope"
+              [options]="semesterScopeOptions"
+              [(ngModel)]="newFee.studyUniversityFeeSemesterScopeId"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'STUDY_UNIVERSITY_FEE.SELECT_SEMESTER_SCOPE' | translate"
+              [showClear]="true"
+              appendTo="body"
+              [class.ng-invalid]="submitted && isSemesterScopeInvalid()"
+              class="w-full">
+            </p-select>
+            @if (submitted && isSemesterScopeInvalid()) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.SEMESTER_SCOPE_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Year Scope -->
+          <div class="dv-field">
+            <label for="sufYearScope" class="dv-label">
+              {{ 'STUDY_UNIVERSITY_FEE.PAYMENT_YEAR_SCOPE' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <p-select inputId="sufYearScope"
+              [options]="yearScopeOptions"
+              [(ngModel)]="newFee.studyUniversityFeeYearScopeId"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'STUDY_UNIVERSITY_FEE.SELECT_YEAR_SCOPE' | translate"
+              [showClear]="true"
+              appendTo="body"
+              [class.ng-invalid]="submitted && isYearScopeInvalid()"
+              class="w-full">
+            </p-select>
+            @if (submitted && isYearScopeInvalid()) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.YEAR_SCOPE_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: payment information -->
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-credit-card"></i></span>
+          <div>
+            <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE.PAYMENT_INFORMATION' | translate }}</div>
+          </div>
+        </header>
+
+        <div class="dv-fields">
+          <!-- Pay Date -->
+          <div class="dv-field">
+            <label for="sufPayDate" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.PAY_DATE' | translate }}</label>
+            <p-datepicker inputId="sufPayDate"
+              [(ngModel)]="newFee.studyUniversityFeePayDate"
+              [showIcon]="true"
+              appendTo="body"
+              [class.ng-invalid]="submitted && !newFee.studyUniversityFeePayDate"
+              class="w-full">
+            </p-datepicker>
+            @if (submitted && !newFee.studyUniversityFeePayDate) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.PAY_DATE_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Pay Status -->
+          <div class="dv-field">
+            <label for="sufPayStatus" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.PAY_STATUS' | translate }}</label>
+            <p-select inputId="sufPayStatus"
+              [options]="statuses"
+              [(ngModel)]="newFee.studyUniversityFeePayStatus"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'STUDY_UNIVERSITY_FEE.SELECT_STATUS' | translate"
+              appendTo="body"
+              [class.ng-invalid]="submitted && isPayStatusInvalid()"
+              class="w-full">
+            </p-select>
+            @if (submitted && isPayStatusInvalid()) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.PAY_STATUS_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: check information -->
+      <section class="dv-section">
+        <header class="dv-section__head">
+          <span class="dv-section__icon dv-section__icon--orange"><i class="pi pi-file"></i></span>
+          <div>
+            <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE.CHECK_INFORMATION' | translate }}</div>
+          </div>
+        </header>
+
+        <div class="dv-fields">
+          <!-- Check Payor Type -->
+          <div class="dv-field dv-field--full">
+            <label for="sufPayor" class="dv-label">
+              {{ 'STUDY_UNIVERSITY_FEE.CHECK_PAYOR_TYPE' | translate }}
+              <span class="dv-required">*</span>
+            </label>
+            <p-select inputId="sufPayor"
+              [options]="checkPayorOptions"
+              [(ngModel)]="newFee.studyUniversityCheckPayorTypeId"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'STUDY_UNIVERSITY_FEE.SELECT_CHECK_PAYOR' | translate"
+              appendTo="body"
+              [class.ng-invalid]="submitted && isCheckPayorInvalid()"
+              class="w-full">
+            </p-select>
+            <small class="dv-hint">{{ 'STUDY_UNIVERSITY_FEE.CHECK_PAYOR_HINT' | translate }}</small>
+            @if (submitted && isCheckPayorInvalid()) {
+              <small class="dv-error">
+                <i class="pi pi-exclamation-circle"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.CHECK_PAYOR_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <!-- Check Number -->
+          <div class="dv-field">
+            <label for="sufCheckNo" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.CHECK_NUMBER' | translate }}</label>
+            <input id="sufCheckNo" pInputText [(ngModel)]="newFee.studyUniversityCheckNo" class="w-full" />
+          </div>
+
+          <!-- Check Date -->
+          <div class="dv-field">
+            <label for="sufCheckDate" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.CHECK_DATE' | translate }}</label>
+            <p-datepicker inputId="sufCheckDate"
+              [(ngModel)]="newFee.studyUniversityCheckDate"
+              [showIcon]="true"
+              appendTo="body"
+              class="w-full">
+            </p-datepicker>
+          </div>
+
+          <!-- Check Form Number -->
+          <div class="dv-field">
+            <label for="sufCheckForm" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.CHECK_FORM_NUMBER' | translate }}</label>
+            <input id="sufCheckForm" pInputText [(ngModel)]="newFee.studyUniversityCheckFormNumber" class="w-full" />
+          </div>
+
+          <!-- MI Date -->
+          <div class="dv-field">
+            <label for="sufMiDate" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.MI_DATE' | translate }}</label>
+            <p-datepicker inputId="sufMiDate"
+              [(ngModel)]="newFee.studyUniversityFeeMidate"
+              [showIcon]="true"
+              appendTo="body"
+              class="w-full">
+            </p-datepicker>
+          </div>
+
+          <!-- Check Notes -->
+          <div class="dv-field dv-field--full">
+            <label for="sufCheckNotes" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.CHECK_NOTES' | translate }}</label>
+            <textarea id="sufCheckNotes" pTextarea [(ngModel)]="newFee.studyUniversityCheckNotes" rows="3" class="w-full"></textarea>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <small class="dv-footer__hint">
+        <span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}
+      </small>
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" icon="pi pi-times" class="p-button-text p-button-secondary"
+          (click)="hideDialog()" [label]="'COMMON.CANCEL' | translate">
+        </button>
+        <button pButton pRipple type="button"
+          [icon]="creatingMode ? 'pi pi-plus' : 'pi pi-check'"
+          (click)="saveFee()" [label]="'COMMON.SAVE' | translate">
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ═══════════════════════════ VIEW DIALOG ═══════════════════════════
+
+     hero  → four KPI tiles (amount / discount / real amount / currency)
+           → "Basic information" + "Fee details" definition lists
+           → "Payment information" + "Check information" definition lists
+           → check notes
+-->
+<p-dialog [(visible)]="viewDialog"
+  [breakpoints]="{'960px': '95vw', '640px': '98vw'}"
+  [style]="{width: '860px'}"
+  [draggable]="false"
+  styleClass="dv-dialog"
+  [header]="'STUDY_UNIVERSITY_FEE.VIEW_FEE_DETAILS' | translate"
+  [modal]="true">
+  <ng-template pTemplate="content">
+    @if (newFee; as fee) {
+      <div class="dv-view">
+
+        <!-- Hero -->
+        <div class="dv-hero"
+             [class.dv-hero--success]="getSeverity(fee.studyUniversityFeePayStatus) === 'success'"
+             [class.dv-hero--danger]="getSeverity(fee.studyUniversityFeePayStatus) === 'danger'"
+             [class.dv-hero--muted]="getSeverity(fee.studyUniversityFeePayStatus) === 'info'">
+          <div class="dv-hero__badge" [class.dv-hero__badge--text]="!!fee.studyUniversityFeeId">
+            @if (fee.studyUniversityFeeId) {
+              <span class="dv-hero__badge-prefix">#</span>{{ fee.studyUniversityFeeId }}
+            } @else {
+              <i class="pi pi-dollar"></i>
+            }
+          </div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'STUDY_UNIVERSITY_FEE.TITLE' | translate }}</div>
+            <div class="dv-hero__title">{{ fee.studyUniversityFeeStudentName || '—' }}</div>
+            <div class="dv-hero__subtitle">{{ 'STUDY_UNIVERSITY_FEE.STUDENT_ID' | translate }}: {{ fee.studentId || '—' }}</div>
+            <div class="dv-hero__meta">
+              <span class="dv-chip">
+                <i class="pi pi-calendar"></i>
+                {{ fee.studyUniversityFeeYear || '—' }}
+              </span>
+              <span class="dv-chip">
+                <i class="pi pi-hashtag"></i>
+                {{ 'STUDY_UNIVERSITY_FEE.SEMESTER_NUMBER' | translate }}: {{ fee.studyUniversityFeeSemesterNumber || '—' }}
+              </span>
+              <span class="dv-chip dv-chip--primary">
+                <i class="pi pi-building"></i>
+                {{ feeSourceLabel(fee.studyUniversityFeeSourceId) }}
+              </span>
+              <p-tag [value]="payStatusLabel(fee.studyUniversityFeePayStatus)"
+                     [severity]="getSeverity(fee.studyUniversityFeePayStatus)"
+                     [rounded]="true">
+              </p-tag>
+              <p-tag [severity]="fee.studyUniversityCheckPayorTypeId === 2 ? 'info' : 'success'"
+                     [rounded]="true"
+                     [value]="checkPayorLabel(fee.studyUniversityCheckPayorTypeId)">
+              </p-tag>
+            </div>
+          </div>
+          <div class="dv-hero__amount">
+            <div class="dv-hero__amount-label">{{ 'STUDY_UNIVERSITY_FEE.AMOUNT' | translate }}</div>
+            <div class="dv-hero__amount-value">{{ (fee.studyUniversityFeeAmount | currency:'USD') || '—' }}</div>
+            <div class="dv-hero__amount-sub">{{ currencyLabel(fee.studyUniversityFeeCurrency) || '—' }}</div>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="dv-kpis dv-kpis--cols-4">
+          <div class="dv-kpi dv-kpi--green">
+            <span class="dv-kpi__icon"><i class="pi pi-wallet"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDY_UNIVERSITY_FEE.AMOUNT' | translate }}</div>
+              <div class="dv-kpi__value">{{ (fee.studyUniversityFeeAmount | currency:'USD') || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--orange">
+            <span class="dv-kpi__icon"><i class="pi pi-percentage"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDY_UNIVERSITY_FEE.DISCOUNT' | translate }}</div>
+              <div class="dv-kpi__value">{{ (fee.studyUniversityFeeDiscount | currency:'USD') || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--blue">
+            <span class="dv-kpi__icon"><i class="pi pi-money-bill"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDY_UNIVERSITY_FEE.REAL_AMOUNT' | translate }}</div>
+              <div class="dv-kpi__value">{{ (fee.studyUniversityRealFeeAmount | currency:'USD') || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--purple">
+            <span class="dv-kpi__icon"><i class="pi pi-globe"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDY_UNIVERSITY_FEE.CURRENCY' | translate }}</div>
+              <div class="dv-kpi__value">{{ currencyLabel(fee.studyUniversityFeeCurrency) || '—' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dv-columns">
+          <!-- Basic information -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-user"></i></span>
+              <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE.BASIC_INFORMATION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.STUDENT_ID' | translate }}</dt>
+                <dd>{{ fee.studentId || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.STUDENT_NAME' | translate }}</dt>
+                <dd>{{ fee.studyUniversityFeeStudentName || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.FEE_ID' | translate }}</dt>
+                <dd>{{ fee.studyUniversityFeeId || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.ACADEMIC_YEAR' | translate }}</dt>
+                <dd>{{ fee.studyUniversityFeeYear || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.FIRST_YEAR' | translate }}</dt>
+                <dd>{{ fee.studyUniversityFeeFirstYear || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Fee details -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-dollar"></i></span>
+              <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE.FEE_DETAILS' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.FEE_SOURCE' | translate }}</dt>
+                <dd>{{ feeSourceLabel(fee.studyUniversityFeeSourceId) }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.PAYMENT_SEMESTER_SCOPE' | translate }}</dt>
+                <dd>{{ semesterScopeLabel(fee.studyUniversityFeeSemesterScopeId) }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.PAYMENT_YEAR_SCOPE' | translate }}</dt>
+                <dd>{{ yearScopeLabel(fee.studyUniversityFeeYearScopeId) }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.SEMESTER_NUMBER' | translate }}</dt>
+                <dd>{{ fee.studyUniversityFeeSemesterNumber || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.CURRENCY' | translate }}</dt>
+                <dd>{{ currencyLabel(fee.studyUniversityFeeCurrency) || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <div class="dv-columns">
+          <!-- Payment information -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-credit-card"></i></span>
+              <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE.PAYMENT_INFORMATION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.PAY_DATE' | translate }}</dt>
+                <dd>{{ (fee.studyUniversityFeePayDate | date:'mediumDate') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.PAY_STATUS' | translate }}</dt>
+                <dd>
+                  <p-tag [value]="payStatusLabel(fee.studyUniversityFeePayStatus)"
+                         [severity]="getSeverity(fee.studyUniversityFeePayStatus)"
+                         [rounded]="true">
+                  </p-tag>
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Check information -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--orange"><i class="pi pi-file"></i></span>
+              <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE.CHECK_INFORMATION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.CHECK_PAYOR_TYPE' | translate }}</dt>
+                <dd>
+                  <p-tag [severity]="fee.studyUniversityCheckPayorTypeId === 2 ? 'info' : 'success'"
+                         [rounded]="true"
+                         [value]="checkPayorLabel(fee.studyUniversityCheckPayorTypeId)">
+                  </p-tag>
+                </dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.CHECK_NUMBER' | translate }}</dt>
+                <dd>{{ fee.studyUniversityCheckNo || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.CHECK_DATE' | translate }}</dt>
+                <dd>{{ (fee.studyUniversityCheckDate | date:'mediumDate') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.CHECK_FORM_NUMBER' | translate }}</dt>
+                <dd>{{ fee.studyUniversityCheckFormNumber || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDY_UNIVERSITY_FEE.MI_DATE' | translate }}</dt>
+                <dd>{{ (fee.studyUniversityFeeMidate | date:'mediumDate') || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <!-- Check notes -->
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-comment"></i></span>
+            <div class="dv-section__title">{{ 'STUDY_UNIVERSITY_FEE.CHECK_NOTES' | translate }}</div>
+          </header>
+          @if (fee.studyUniversityCheckNotes) {
+            <p class="dv-notes">{{ fee.studyUniversityCheckNotes }}</p>
+          } @else {
+            <p class="dv-notes dv-notes--empty">{{ 'COMMON.NO_DATA' | translate }}</p>
+          }
+        </section>
+
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__actions">
+        <button pButton pRipple type="button" icon="pi pi-times" class="p-button-text p-button-secondary"
+          (click)="hideDialog()" [label]="'COMMON.CLOSE' | translate">
+        </button>
+        <button pButton pRipple type="button" icon="pi pi-pencil" class="p-button-outlined p-button-warning"
+          (click)="hideDialog(); editFee(newFee)" [label]="'COMMON.EDIT' | translate">
+        </button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,358 @@
+<!-- [attr.dir], not [class.rtl]: every global rule in the project is keyed on
+     [dir="rtl"], and a page that carries only the class matches none of them. -->
+<div class="profile-container" [attr.dir]="isRtl ? 'rtl' : 'ltr'" [class.rtl]="isRtl">
+
+  @if (loadingProfile) {
+    <div class="loading-container">
+      <p-progressSpinner></p-progressSpinner>
+      <p>{{ 'COMMON.LOADING' | translate }}</p>
+    </div>
+  }
+
+  @if (!loadingProfile && account) {
+    <div class="profile-header">
+      <div class="profile-header-content">
+        <div class="profile-avatar-section">
+          <div class="profile-avatar">
+            <span class="avatar-text">{{ getInitials() }}</span>
+          </div>
+          <div class="profile-basic-info">
+            <h1 class="profile-name">{{ displayName }}</h1>
+            <p class="profile-role">
+              <i class="pi pi-shield"></i>
+              {{ roleName }}
+            </p>
+            <p class="profile-id">
+              <i class="pi pi-user"></i>
+              {{ account.userName }}
+            </p>
+          </div>
+        </div>
+        <!--
+          No Edit button. The login name and the name on the account belong to
+          the administrator (owner's decision, 29 August 2026), and the one
+          action that is the holder's own is on the security card below, where
+          it reads as what it is rather than as a "quick action".
+        -->
+      </div>
+    </div>
+
+    <div class="profile-content">
+      <div class="profile-grid">
+
+        <!-- Personal information — recorded, not editable here -->
+        <div class="profile-card">
+          <div class="card-header">
+            <h3>
+              <i class="pi pi-user"></i>
+              {{ 'PROFILE.PERSONAL_INFORMATION' | translate }}
+            </h3>
+          </div>
+          <div class="card-content">
+            <p class="card-note">
+              <i class="pi pi-info-circle"></i>
+              {{ 'PROFILE.MANAGED_BY_ADMIN' | translate }}
+            </p>
+            <!-- Each field says which field it is. Both name rows used to be
+                 labelled COMMON.PROFILE, which is the "الملف الشخصي appears
+                 twice" in the August review. -->
+            <div class="info-item">
+              <div class="info-label">
+                <i class="pi pi-at"></i>
+                {{ 'PROFILE.USERNAME' | translate }}
+              </div>
+              <div class="info-value">{{ account.userName }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">
+                <i class="pi pi-user"></i>
+                {{ 'PROFILE.FIRST_NAME' | translate }}
+              </div>
+              <div class="info-value">{{ account.firstName || '—' }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">
+                <i class="pi pi-user"></i>
+                {{ 'PROFILE.LAST_NAME' | translate }}
+              </div>
+              <div class="info-value">{{ account.lastName || '—' }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">
+                <i class="pi pi-envelope"></i>
+                {{ 'PROFILE.EMAIL' | translate }}
+              </div>
+              <div class="info-value">{{ account.email || '—' }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">
+                <i class="pi pi-phone"></i>
+                {{ 'PROFILE.PHONE' | translate }}
+              </div>
+              <div class="info-value">{{ account.phone || '—' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account -->
+        <div class="profile-card">
+          <div class="card-header">
+            <h3>
+              <i class="pi pi-shield"></i>
+              {{ 'PROFILE.ACCOUNT_INFORMATION' | translate }}
+            </h3>
+          </div>
+          <div class="card-content">
+            <!-- No "User ID" row: the internal numeric id means nothing to its owner,
+                 and the login name is already in the personal block (QA N13). -->
+            <div class="info-item">
+              <div class="info-label">
+                <i class="pi pi-shield"></i>
+                {{ 'PROFILE.ROLE' | translate }}
+              </div>
+              <div class="info-value">
+                <p-tag [value]="roleName" severity="info"></p-tag>
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">
+                <i class="pi pi-check-circle"></i>
+                {{ 'PROFILE.STATUS' | translate }}
+              </div>
+              <div class="info-value">
+                <p-tag [value]="account.status | codeLabel:'ums-user-status':translationService.getCurrentLanguage()"
+                       [severity]="account.status | codeSeverity:'ums-user-status'"></p-tag>
+              </div>
+            </div>
+            <!-- Real dates from the record. Both of these used to be
+                 new Date() — today, every day, for everyone. -->
+            <div class="info-item">
+              <div class="info-label">
+                <i class="pi pi-calendar"></i>
+                {{ 'PROFILE.MEMBER_SINCE' | translate }}
+              </div>
+              <div class="info-value">{{ (account.createdAt | date:'yyyy-MM-dd') || '—' }}</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">
+                <i class="pi pi-clock"></i>
+                {{ 'PROFILE.LAST_LOGIN' | translate }}
+              </div>
+              <div class="info-value">
+                {{ account.lastLoginAt ? (account.lastLoginAt | date:'yyyy-MM-dd HH:mm') : ('PROFILE.NEVER' | translate) }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!--
+          Security. It used to claim two-factor authentication was "Available"
+          and rate the account's security "High", both with a green tick and
+          neither read from anything: no second factor exists in the system and
+          nothing computes a rating. What is left is a fact and an action.
+        -->
+        <div class="profile-card">
+          <div class="card-header">
+            <h3>
+              <i class="pi pi-lock"></i>
+              {{ 'PROFILE.SECURITY' | translate }}
+            </h3>
+          </div>
+          <div class="card-content">
+            <div class="info-item">
+              <div class="info-label">
+                <i class="pi pi-key"></i>
+                {{ 'PROFILE.PASSWORD_CHANGED_AT' | translate }}
+              </div>
+              <div class="info-value">
+                {{ account.passwordChangedAt ? (account.passwordChangedAt | date:'yyyy-MM-dd HH:mm') : ('PROFILE.NEVER' | translate) }}
+              </div>
+            </div>
+            <!-- O-16: the second factor, read from the server this time. -->
+            <div class="info-item">
+              <div class="info-label">
+                <i class="pi pi-shield"></i>
+                {{ 'PROFILE.MFA.TITLE' | translate }}
+              </div>
+              <div class="info-value">
+                @if (mfa) {
+                  <p-tag [value]="(mfa.enabled ? 'PROFILE.MFA.ENABLED' : 'PROFILE.MFA.DISABLED') | translate"
+                         [severity]="mfa.enabled ? 'success' : (mfa.required ? 'danger' : 'secondary')"></p-tag>
+                  @if (mfa.required && !mfa.enabled) {
+                    <small class="hint">{{ 'PROFILE.MFA.REQUIRED' | translate }}</small>
+                  }
+                  @if (mfa.enabled) {
+                    <small class="hint">{{ 'PROFILE.MFA.CODES_LEFT' | translate:{ count: mfa.recoveryCodesLeft } }}</small>
+                  }
+                } @else {
+                  <span>—</span>
+                }
+              </div>
+            </div>
+            <div class="action-buttons">
+              <!-- p-button-outlined, deliberately: the global filled-button rule
+                   in styles.scss paints an unclassed button's label white, which
+                   is what made the three buttons here invisible against the
+                   card. -->
+              <button pButton pRipple type="button"
+                class="p-button-outlined"
+                icon="pi pi-key"
+                [attr.aria-label]="'PROFILE.CHANGE_PASSWORD' | translate"
+                [label]="'PROFILE.CHANGE_PASSWORD' | translate"
+                (click)="openPasswordDialog()">
+              </button>
+              @if (mfa && !mfa.enabled) {
+                <button pButton pRipple type="button" class="p-button-outlined" icon="pi pi-shield"
+                  [label]="'PROFILE.MFA.ENABLE' | translate" (click)="openMfaEnrol()"></button>
+              }
+              @if (mfa?.enabled) {
+                <button pButton pRipple type="button" class="p-button-outlined" icon="pi pi-refresh"
+                  [label]="'PROFILE.MFA.NEW_CODES' | translate" (click)="openMfaDialog('codes')"></button>
+                @if (!mfa?.required) {
+                  <button pButton pRipple type="button" class="p-button-outlined p-button-danger" icon="pi pi-times"
+                    [label]="'PROFILE.MFA.DISABLE' | translate" (click)="openMfaDialog('disable')"></button>
+                }
+              }
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  }
+
+  @if (!loadingProfile && !account) {
+    <div class="loading-container">
+      <i class="pi pi-exclamation-triangle text-3xl text-500"></i>
+      <p>{{ 'PROFILE.LOAD_ERROR' | translate }}</p>
+    </div>
+  }
+</div>
+
+<p-dialog [(visible)]="passwordDialogVisible"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [style]="{width: '28rem'}"
+  [header]="'PROFILE.CHANGE_PASSWORD' | translate">
+
+  <div class="password-form">
+    @if (passwordChangeRequired) {
+      <p class="password-required" role="status">
+        <i class="pi pi-exclamation-triangle"></i>
+        {{ 'PROFILE.PASSWORD_CHANGE_REQUIRED' | translate }}
+      </p>
+    }
+    <div class="field">
+      <label for="currentPassword">{{ 'PROFILE.CURRENT_PASSWORD' | translate }}</label>
+      <input id="currentPassword" type="password" pInputText class="w-full"
+        autocomplete="current-password"
+        [(ngModel)]="currentPassword" (ngModelChange)="passwordError = null">
+    </div>
+    <div class="field">
+      <label for="newPassword">{{ 'PROFILE.NEW_PASSWORD' | translate }}</label>
+      <input id="newPassword" type="password" pInputText class="w-full"
+        autocomplete="new-password"
+        [(ngModel)]="newPassword" (ngModelChange)="passwordError = null">
+      <small class="hint">{{ 'PROFILE.PASSWORD_RULE' | translate }}</small>
+    </div>
+    <div class="field">
+      <label for="confirmPassword">{{ 'PROFILE.CONFIRM_PASSWORD' | translate }}</label>
+      <input id="confirmPassword" type="password" pInputText class="w-full"
+        autocomplete="new-password"
+        [(ngModel)]="confirmPassword" (ngModelChange)="passwordError = null">
+    </div>
+
+    @if (passwordError) {
+      <p class="password-error" role="alert">
+        <i class="pi pi-times-circle"></i>
+        {{ passwordError | translate }}
+      </p>
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    <button pButton type="button" class="p-button-text"
+      [label]="'COMMON.CANCEL' | translate"
+      [disabled]="changingPassword"
+      (click)="passwordDialogVisible = false"></button>
+    <button pButton type="button"
+      icon="pi pi-check"
+      [label]="'PROFILE.CHANGE_PASSWORD' | translate"
+      [loading]="changingPassword"
+      [disabled]="!canSubmitPassword"
+      (click)="submitPassword()"></button>
+  </ng-template>
+</p-dialog>
+
+<!-- O-16: enrol, disable, or regenerate recovery codes. -->
+<p-dialog [(visible)]="mfaDialogVisible"
+  [modal]="true" [draggable]="false" [resizable]="false"
+  [style]="{width: '30rem'}"
+  [header]="mfaDialogTitle">
+
+  <div class="password-form mfa-form">
+    @if (recoveryCodes.length) {
+      <p class="hint">{{ 'AUTH.MFA.CODES_INTRO' | translate }}</p>
+      <ul class="mfa-recovery-codes">
+        @for (code of recoveryCodes; track code) {
+          <li><code>{{ code }}</code></li>
+        }
+      </ul>
+      <p class="hint"><i class="pi pi-exclamation-triangle"></i> {{ 'AUTH.MFA.CODES_WARNING' | translate }}</p>
+    } @else {
+      @if (mfaMode === 'enrol') {
+        <p class="hint">{{ 'AUTH.MFA.ENROL_INTRO' | translate }}</p>
+        @if (mfaEnrolment) {
+          <div class="mfa-qr">
+            <img [src]="mfaEnrolment.qrPng" width="200" height="200" [alt]="'PROFILE.MFA.ENABLE' | translate">
+            <small>{{ 'AUTH.MFA.SECRET_LABEL' | translate }} <code>{{ mfaEnrolment.secret }}</code></small>
+          </div>
+        } @else if (mfaBusy) {
+          <p class="hint"><i class="pi pi-spin pi-spinner"></i></p>
+        }
+      }
+      @if (mfaMode === 'disable') {
+        <p class="hint">{{ 'PROFILE.MFA.DISABLE_INTRO' | translate }}</p>
+      }
+      @if (mfaMode === 'codes') {
+        <p class="hint">{{ 'PROFILE.MFA.NEW_CODES_INTRO' | translate }}</p>
+      }
+      <div class="field">
+        <label for="mfaCode">{{ 'AUTH.MFA.CODE' | translate }}</label>
+        <input id="mfaCode" type="text" pInputText class="w-full" inputmode="numeric" autocomplete="one-time-code"
+          [placeholder]="'AUTH.MFA.CODE_PLACEHOLDER' | translate"
+          [(ngModel)]="mfaCode" (ngModelChange)="mfaError = null" (keyup.enter)="submitMfa()">
+        @if (mfaMode !== 'enrol') {
+          <small class="hint">{{ 'AUTH.MFA.USE_RECOVERY' | translate }}</small>
+        }
+      </div>
+      @if (mfaError) {
+        <p class="password-error" role="alert">
+          <i class="pi pi-times-circle"></i>
+          {{ mfaError }}
+        </p>
+      }
+    }
+  </div>
+
+  <ng-template pTemplate="footer">
+    @if (recoveryCodes.length) {
+      <button pButton type="button" class="p-button-text" icon="pi pi-copy"
+        [label]="'AUTH.MFA.COPY' | translate" (click)="copyRecoveryCodes()"></button>
+      <button pButton type="button" icon="pi pi-check"
+        [label]="'COMMON.CLOSE' | translate" (click)="mfaDialogVisible = false"></button>
+    } @else {
+      <button pButton type="button" class="p-button-text"
+        [label]="'COMMON.CANCEL' | translate"
+        [disabled]="mfaBusy"
+        (click)="mfaDialogVisible = false"></button>
+      <button pButton type="button"
+        icon="pi pi-check"
+        [label]="'COMMON.CONFIRM' | translate"
+        [loading]="mfaBusy"
+        [disabled]="mfaBusy || !mfaCode || (mfaMode === 'enrol' && !mfaEnrolment)"
+        (click)="submitMfa()"></button>
+    }
+  </ng-template>
+</p-dialog>
+
+<p-toast></p-toast>

@@ -1,0 +1,121 @@
+<p-toast [position]="isRTL() ? 'top-left' : 'top-right'"></p-toast>
+
+<div class="sg-container">
+
+  <!-- Filter Card — always at the top -->
+  <p-card styleClass="sg-filter-card">
+    <ng-template pTemplate="header">
+      <div class="sg-card-header">
+        <div class="sg-card-header-left">
+          <i class="pi pi-sitemap"></i>
+          <div>
+            <span class="sg-card-title">{{ 'STUDENT_GRAPH.TITLE' | translate }}</span>
+            <span class="sg-card-subtitle">{{ 'STUDENT_GRAPH.SUBTITLE' | translate }}</span>
+          </div>
+        </div>
+
+        @if (graphVisible) {
+          <div class="sg-card-header-actions">
+            <button pButton pRipple type="button" icon="pi pi-eye" class="p-button-outlined p-button-sm"
+              [label]="'REPORTS.REPORT_SUBPAGES.PREVIEW_CHARTS_PDF' | translate"
+            (click)="previewGraphPdf()" [disabled]="exporting"></button>
+            <button pButton pRipple type="button" icon="pi pi-print" class="p-button-outlined p-button-sm"
+              [label]="'REPORTS.REPORT_SUBPAGES.PRINT' | translate"
+            (click)="printGraph()" [disabled]="exporting"></button>
+            <button pButton pRipple type="button" icon="pi pi-file-pdf" class="p-button-outlined p-button-sm"
+              [label]="'REPORTS.REPORT_SUBPAGES.EXPORT_PDF' | translate"
+            (click)="downloadGraphPdf()" [disabled]="exporting"></button>
+            <button pButton pRipple type="button" icon="pi pi-image" class="p-button-outlined p-button-sm"
+              [label]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+            (click)="downloadGraphImage()" [disabled]="exporting"></button>
+          </div>
+        }
+      </div>
+    </ng-template>
+
+    <div class="sg-filter-row">
+      <!-- Country Dropdown -->
+      <div class="sg-filter-field">
+        <label>{{ 'STUDENT_GRAPH.SELECT_COUNTRY' | translate }}</label>
+        <p-select
+          [(ngModel)]="selectedCountryId"
+          [options]="countryOptions"
+          [placeholder]="'STUDENT_GRAPH.SELECT_COUNTRY' | translate"
+          [filter]="true"
+          [showClear]="true"
+          appendTo="body"
+          [style]="{'width':'100%'}"
+          (onChange)="onCountryChange()">
+        </p-select>
+      </div>
+
+      <!-- Student Dropdown -->
+      <div class="sg-filter-field">
+        <label>{{ 'STUDENT_GRAPH.SELECT_STUDENT' | translate }}</label>
+        <p-select
+          [(ngModel)]="selectedStudentId"
+          [options]="studentOptions"
+          [placeholder]="loadingStudents ? ('STUDENT_GRAPH.LOADING' | translate) : ('STUDENT_GRAPH.SELECT_STUDENT' | translate)"
+          [filter]="true"
+          [showClear]="true"
+          [disabled]="!selectedCountryId || loadingStudents"
+          appendTo="body"
+          [style]="{'width':'100%'}"
+          (onChange)="onStudentChange()">
+        </p-select>
+      </div>
+
+      <!-- Draw Button -->
+      <div class="sg-filter-action">
+        <label>&nbsp;</label>
+        <p-button
+          [label]="'STUDENT_GRAPH.DRAW_GRAPH' | translate"
+          icon="pi pi-share-alt"
+          [disabled]="!canDraw"
+          [loading]="loadingGraph"
+          (onClick)="drawGraph()">
+        </p-button>
+      </div>
+    </div>
+  </p-card>
+
+  <!-- Loading State -->
+  @if (loadingGraph) {
+    <div class="sg-loading-overlay">
+      <p-progressSpinner strokeWidth="4" animationDuration=".8s"></p-progressSpinner>
+      <p>{{ 'STUDENT_GRAPH.LOADING' | translate }}</p>
+    </div>
+  }
+
+  <!-- Graph Card -->
+  @if (!loadingGraph) {
+    <p-card styleClass="sg-graph-card" id="student-graph-print-area">
+      <!-- Empty state -->
+      @if (!graphVisible) {
+        <div class="sg-empty-state">
+          <i class="pi pi-sitemap sg-empty-icon"></i>
+          <p>{{ 'STUDENT_GRAPH.NO_DATA' | translate }}</p>
+          <small>{{ 'STUDENT_GRAPH.NO_DATA' | translate }}</small>
+        </div>
+      }
+      <!-- Network Container -->
+      <div class="sg-network-wrapper" [class.sg-hidden]="!graphVisible">
+        <div #graphContainer class="sg-graph-canvas"></div>
+        <!-- Legend -->
+        @if (graphVisible) {
+          <div class="sg-legend">
+            <h4>{{ 'STUDENT_GRAPH.LEGEND_TITLE' | translate }}</h4>
+            @for (item of legendItems; track item) {
+              <div class="sg-legend-item">
+                <span class="sg-legend-dot" [style.background]="item.color"></span>
+                <span>{{ item.labelKey | translate }}</span>
+              </div>
+            }
+            <small class="sg-legend-hint">{{ 'STUDENT_GRAPH.LEGEND_HINT' | translate }}</small>
+          </div>
+        }
+      </div>
+    </p-card>
+  }
+
+</div>

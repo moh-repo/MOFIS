@@ -1,0 +1,36 @@
+<!--
+  QA C2 / UI-003. This page used to carry the template's own emblem, labelled
+  "MOFIS logo", above three invented links — an FAQ, a solution centre and a
+  permission manager — none of which exist here; all three pointed at "/". What
+  a reader needs when an address does not resolve is to know it does not
+  resolve, and one way back.
+-->
+<div class="surface-ground flex align-items-center justify-content-center min-h-screen min-w-screen overflow-hidden">
+    <div class="flex flex-column align-items-center justify-content-center">
+        <img [src]="logoUrl" [alt]="'LAYOUT.SYSTEM_NAME' | translate" class="mb-5 w-6rem flex-shrink-0">
+        <div style="border-radius:56px; padding:0.3rem; background: linear-gradient(180deg, rgba(33, 150, 243, 0.4) 10%, rgba(33, 150, 243, 0) 30%);">
+            <div class="w-full surface-card py-8 px-5 sm:px-8 flex flex-column align-items-center" style="border-radius:53px">
+
+                <div class="flex justify-content-center align-items-center bg-blue-500 border-circle mb-4"
+                     style="width:3.2rem; height:3.2rem;">
+                    <i class="pi pi-compass text-white text-2xl"></i>
+                </div>
+
+                <span class="text-blue-500 font-bold text-3xl mb-2" aria-hidden="true">404</span>
+                <h1 class="text-900 font-bold text-3xl lg:text-5xl mb-2 text-center">{{ 'AUTH.NOT_FOUND_TITLE' | translate }}</h1>
+                <p class="text-600 mb-5 text-center">{{ 'AUTH.RESOURCE_NOT_AVAILABLE' | translate }}</p>
+
+                <!--
+                  A link wearing the button's classes rather than pButton: this
+                  page is declared in the root module, which does not import
+                  PrimeNG's ButtonModule, and pulling it in for one control here
+                  would put it in the initial bundle for every page.
+                -->
+                <a [routerLink]="['/']" class="p-button p-button-outlined w-full justify-content-center">
+                    <i class="pi pi-home mr-2" aria-hidden="true"></i>
+                    <span>{{ 'COMMON.GO_TO_DASHBOARD' | translate }}</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

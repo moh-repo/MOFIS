@@ -1,0 +1,192 @@
+<div class="portal-page extensions-page">
+  <div class="sp-intro">
+    <p class="sp-intro__text">{{ 'STUDENT_PORTAL.PAGE_EXTENSIONS_SUB' | translate }}</p>
+  </div>
+
+  <nz-spin [nzSpinning]="loading">
+    @if (errorKey) {
+      <nz-alert nzType="error" [nzMessage]="errorKey | translate" nzShowIcon class="page-alert"></nz-alert>
+    }
+
+    @if (!loading && !errorKey) {
+      @if (list.length > 0) {
+        <div class="sp-toolbar">
+          <nz-input-group [nzPrefix]="searchIcon" class="sp-toolbar__search">
+            <input nz-input [(ngModel)]="search"
+              [placeholder]="'STUDENT_PORTAL.SEARCH_PLACEHOLDER' | translate"
+              [attr.aria-label]="'STUDENT_PORTAL.SEARCH_PLACEHOLDER' | translate" />
+          </nz-input-group>
+          <ng-template #searchIcon><span nz-icon nzType="search" nzTheme="outline"></span></ng-template>
+
+          @if (statusOptions.length > 1) {
+            <nz-select class="sp-toolbar__filter" [(ngModel)]="statusFilter" nzAllowClear
+              [nzPlaceHolder]="'STUDENT_PORTAL.STATUS' | translate">
+              @for (status of statusOptions; track status) {
+                <nz-option [nzValue]="status" [nzLabel]="statusOptionLabel(status)"></nz-option>
+              }
+            </nz-select>
+          }
+
+          <span class="sp-toolbar__count">
+            {{ 'STUDENT_PORTAL.SHOWING_COUNT' | translate:{ shown: filteredList.length, total: list.length } }}
+          </span>
+        </div>
+
+        <!-- sp-stack: below 768px each row becomes a card and every cell states
+             its own label, so ten columns stop being a sideways scroll. -->
+        <div class="portal-table-wrapper sp-stack">
+          <nz-table #tbl [nzData]="filteredList" [nzShowPagination]="false" [nzSize]="'middle'">
+            <thead>
+              <tr>
+                <th>{{ 'STUDENT_PORTAL.EXTENSION_TYPE' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.STATUS' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.EXTENSION_QUARTERS' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.EXTENSION_START' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.EXTENSION_END' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.EXTENSION_REASON' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.EXTENSION_DECISION_NO' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.EXTENSION_DECISION_DATE' | translate }}</th>
+                <th>{{ 'STUDENT_PORTAL.CREATED' | translate }}</th>
+                <th nzWidth="80px">{{ 'STUDENT_PORTAL.ACTIONS' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of tbl.data; track row) {
+                <tr>
+                  <td [attr.data-label]="'STUDENT_PORTAL.EXTENSION_TYPE' | translate">{{ extensionTypeLabel(row) }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.STATUS' | translate">
+                    <nz-tag [nzColor]="statusColor(row)">{{ extensionStatusLabel(row) }}</nz-tag>
+                  </td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.EXTENSION_QUARTERS' | translate">{{ row.extensionQuarters ?? '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.EXTENSION_START' | translate">{{ row.extensionStartDate ? (row.extensionStartDate | localeDate:'mediumDate') : '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.EXTENSION_END' | translate">{{ row.extensionEndDate ? (row.extensionEndDate | localeDate:'mediumDate') : '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.EXTENSION_REASON' | translate">{{ row.extensionReason || '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.EXTENSION_DECISION_NO' | translate">{{ row.extensionDecisionNo || '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.EXTENSION_DECISION_DATE' | translate">{{ row.extensionDecisionDate ? (row.extensionDecisionDate | localeDate:'mediumDate') : '-' }}</td>
+                  <td [attr.data-label]="'STUDENT_PORTAL.CREATED' | translate">{{ row.createdDate ? (row.createdDate | localeDate:'short') : '-' }}</td>
+                  <td>
+                    <button nz-button nzType="link" nzSize="small" (click)="openDetail(row)">
+                      <span nz-icon nzType="eye" nzTheme="outline"></span>
+                      {{ 'STUDENT_PORTAL.VIEW' | translate }}
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </nz-table>
+        </div>
+      }
+
+      <!-- Nothing at all and nothing matching are different situations, and the
+           second one needs a way back. -->
+      @if (filteredEverythingOut) {
+        <div class="sp-state">
+          <span class="sp-state__icon" nz-icon nzType="search" nzTheme="outline"></span>
+          <p class="sp-state__title">{{ 'STUDENT_PORTAL.NO_MATCHES' | translate }}</p>
+          <button nz-button nzType="link" (click)="clearFilters()">{{ 'STUDENT_PORTAL.CLEAR_FILTERS' | translate }}</button>
+        </div>
+      } @else if (list.length === 0) {
+        <div class="sp-state">
+          <span class="sp-state__icon" nz-icon nzType="calendar" nzTheme="outline"></span>
+          <p class="sp-state__title">{{ 'STUDENT_PORTAL.NO_EXTENSIONS' | translate }}</p>
+        </div>
+      }
+    }
+  </nz-spin>
+</div>
+
+<!-- Detail. Laid out by the portal dialog kit (assets/layout/styles/_student-portal-dialog.scss). -->
+<nz-modal [(nzVisible)]="showDetailModal" nzWrapClassName="sp-dialog" nzWidth="640px"
+  [nzTitle]="'STUDENT_PORTAL.EXTENSION_DETAILS' | translate" [nzFooter]="detailFooter" (nzOnCancel)="closeDetail()">
+  <ng-container *nzModalContent>
+    @if (selectedExtension; as e) {
+      <div class="sp-dlg-summary">
+        <span class="sp-dlg-summary__icon"><span nz-icon nzType="calendar" nzTheme="outline"></span></span>
+        <div class="sp-dlg-summary__body">
+          <span class="sp-dlg-summary__eyebrow">{{ 'STUDENT_PORTAL.EXTENSION_TYPE' | translate }}</span>
+          <span class="sp-dlg-summary__headline">{{ extensionTypeLabel(e) }}</span>
+          @if (e.createdDate) {
+            <span class="sp-dlg-summary__meta">
+              <span nz-icon nzType="clock-circle" nzTheme="outline"></span>
+              {{ 'STUDENT_PORTAL.CREATED' | translate }}: {{ e.createdDate | localeDate:'medium' }}
+            </span>
+          }
+        </div>
+        <div class="sp-dlg-summary__status">
+          <nz-tag [nzColor]="statusColor(e)">{{ extensionStatusLabel(e) }}</nz-tag>
+        </div>
+      </div>
+
+      <!-- The period, first to last day, with its length in quarters between. -->
+      <div class="sp-dlg-span">
+        <div class="sp-dlg-span__end">
+          <span class="sp-dlg-span__label">{{ 'STUDENT_PORTAL.EXTENSION_START' | translate }}</span>
+          <span class="sp-dlg-span__value">{{ e.extensionStartDate ? (e.extensionStartDate | localeDate:'mediumDate') : '—' }}</span>
+        </div>
+        <div class="sp-dlg-span__path">
+          @if (e.extensionQuarters != null) {
+            <span class="sp-dlg-span__badge">{{ 'STUDENT_PORTAL.EXTENSION_QUARTERS' | translate }}: {{ e.extensionQuarters }}</span>
+          }
+          <span class="sp-dlg-span__track">
+            <span class="sp-dlg-span__arrow"><span nz-icon nzType="arrow-right" nzTheme="outline"></span></span>
+          </span>
+        </div>
+        <div class="sp-dlg-span__end sp-dlg-span__end--to">
+          <span class="sp-dlg-span__label">{{ 'STUDENT_PORTAL.EXTENSION_END' | translate }}</span>
+          <span class="sp-dlg-span__value">{{ e.extensionEndDate ? (e.extensionEndDate | localeDate:'mediumDate') : '—' }}</span>
+        </div>
+      </div>
+
+      <section class="sp-dlg-section">
+        <h4 class="sp-dlg-section__title">
+          <span nz-icon nzType="question-circle" nzTheme="outline"></span>
+          {{ 'STUDENT_PORTAL.EXTENSION_REASON' | translate }}
+        </h4>
+        <p class="ext-reason" dir="auto">{{ e.extensionReason || '—' }}</p>
+        @if (e.extensionReasonDetails) {
+          <span class="ext-caption">{{ 'STUDENT_PORTAL.REASON_DETAILS' | translate }}</span>
+          <p class="sp-dlg-prose" dir="auto">{{ e.extensionReasonDetails }}</p>
+        }
+      </section>
+
+      <!-- Only once there is one: a pending extension has no decision to show. -->
+      @if (e.extensionDecisionNo || e.extensionDecisionDate || e.approvedBy) {
+        <section class="sp-dlg-section">
+          <h4 class="sp-dlg-section__title">
+            <span nz-icon nzType="safety-certificate" nzTheme="outline"></span>
+            {{ 'STUDENT_PORTAL.DECISION' | translate }}
+          </h4>
+          <dl class="sp-dlg-grid">
+            <div class="sp-dlg-field">
+              <dt>{{ 'STUDENT_PORTAL.EXTENSION_DECISION_NO' | translate }}</dt>
+              <dd><bdi>{{ e.extensionDecisionNo || '—' }}</bdi></dd>
+            </div>
+            <div class="sp-dlg-field">
+              <dt>{{ 'STUDENT_PORTAL.EXTENSION_DECISION_DATE' | translate }}</dt>
+              <dd>{{ e.extensionDecisionDate ? (e.extensionDecisionDate | localeDate:'mediumDate') : '—' }}</dd>
+            </div>
+            @if (e.approvedBy) {
+              <div class="sp-dlg-field sp-dlg-field--wide">
+                <dt>{{ 'STUDENT_PORTAL.APPROVED_BY' | translate }}</dt>
+                <dd>{{ e.approvedBy }}</dd>
+              </div>
+            }
+          </dl>
+        </section>
+      }
+
+      @if (e.notes) {
+        <section class="sp-dlg-section">
+          <h4 class="sp-dlg-section__title">
+            <span nz-icon nzType="form" nzTheme="outline"></span>
+            {{ 'STUDENT_PORTAL.NOTES' | translate }}
+          </h4>
+          <p class="sp-dlg-prose" dir="auto">{{ e.notes }}</p>
+        </section>
+      }
+    }
+  </ng-container>
+</nz-modal>
+<ng-template #detailFooter>
+  <button nz-button (click)="closeDetail()">{{ 'STUDENT_PORTAL.CLOSE' | translate }}</button>
+</ng-template>

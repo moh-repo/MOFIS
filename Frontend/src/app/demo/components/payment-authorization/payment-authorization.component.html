@@ -1,0 +1,685 @@
+<p-toast></p-toast>
+<p-confirmdialog></p-confirmdialog>
+
+<!-- ==================== LIST PAGE ==================== -->
+<div class="page-root" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'" [class.rtl]="translationService.isRTL()">
+
+  <!-- Hero -->
+  <div class="card page-hero mb-3">
+    <div class="flex flex-column lg:flex-row align-items-start justify-content-between gap-4">
+      <div>
+        <span class="inline-flex align-items-center gap-2 text-primary font-semibold text-sm mb-2">
+          <i class="pi pi-file-edit"></i>
+          {{ 'PAYMENT_AUTH.HERO_BADGE' | translate }}
+        </span>
+        <h1 class="text-900 font-bold text-3xl m-0 mb-1">{{ 'PAYMENT_AUTH.TITLE' | translate }}</h1>
+        <p class="text-600 m-0">{{ 'PAYMENT_AUTH.SUBTITLE' | translate }}</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <button pButton pRipple type="button" icon="pi pi-plus"
+          class="p-button-success"
+          [label]="'PAYMENT_AUTH.NEW' | translate"
+        (click)="openNew()" *hasPermission="'PAYMENT_AUTH.ADD'"></button>
+        <button pButton pRipple type="button" icon="pi pi-refresh"
+          class="p-button-action-outlined"
+          [label]="'COMMON.REFRESH' | translate"
+        (click)="loadAll()"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-3">
+    <div class="flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+      <div class="flex align-items-center gap-2">
+        <i class="pi pi-sliders-h text-500"></i>
+        <span class="font-semibold text-700">{{ 'PAYMENT_AUTH.FILTERS' | translate }}</span>
+      </div>
+    </div>
+    <div class="flex gap-3 flex-wrap">
+      <div class="flex-1" style="min-width:220px">
+        <span class="p-input-icon-left w-full">
+          <i class="pi pi-search"></i>
+          <input pInputText type="text" class="w-full"
+            [(ngModel)]="searchTerm"
+            (keyup.enter)="onSearch()"
+            [placeholder]="'PAYMENT_AUTH.SEARCH_PLACEHOLDER' | translate" />
+        </span>
+      </div>
+      <div style="min-width:180px;flex:1">
+        <p-select [options]="statusOptions"
+          [(ngModel)]="selectedStatusFilter"
+          optionLabel="label" optionValue="value"
+          [showClear]="true" appendTo="body"
+          [placeholder]="'PAYMENT_AUTH.ALL_STATUSES' | translate"
+          (onChange)="onSearch()" class="w-full">
+        </p-select>
+      </div>
+      <button pButton pRipple type="button"
+        icon="pi pi-search"
+        class="p-button-search"
+        [label]="'COMMON.SEARCH' | translate"
+      (click)="onSearch()"></button>
+    </div>
+
+    <!-- The list report, rendered by Jasper from the same status filter above.
+         Its masthead, ministry logo and footer come from REPORT_TYPE_SETTINGS;
+         the template has always existed but this page had no way to reach it. -->
+    <div class="flex align-items-center gap-3 flex-wrap mt-3 pt-3 border-top-1 surface-border"
+      *hasPermission="'PAYMENT_AUTH.VIEW'">
+      <app-report-actions
+        [pdfApiPath]="listReportApiPath"
+        [query]="listReportQuery()"
+        baseFilename="payment-auth-report"
+        [disabled]="loading">
+      </app-report-actions>
+      <p-selectButton [options]="reportLangOptions"
+        [(ngModel)]="reportLang" optionLabel="label" optionValue="value">
+      </p-selectButton>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <p-table [value]="records" [loading]="loading"
+      [paginator]="true" [lazy]="true"
+      [rows]="pageSize" [(first)]="first" [totalRecords]="totalElements"
+      [rowsPerPageOptions]="[5,10,25,50]"
+      (onPage)="onPageChange($event)"
+      [rowHover]="true" styleClass="p-datatable-sm"
+      responsiveLayout="scroll">
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="authFormNumber">{{ 'PAYMENT_AUTH.FORM_NUMBER' | translate }} <p-sortIcon field="authFormNumber"></p-sortIcon></th>
+          <th pSortableColumn="authDate">{{ 'PAYMENT_AUTH.DATE' | translate }} <p-sortIcon field="authDate"></p-sortIcon></th>
+          <th pSortableColumn="studentName">{{ 'PAYMENT_AUTH.STUDENT' | translate }} <p-sortIcon field="studentName"></p-sortIcon></th>
+          <th pSortableColumn="originalAmount" class="text-right">{{ 'PAYMENT_AUTH.ORIGINAL_AMOUNT' | translate }} <p-sortIcon field="originalAmount"></p-sortIcon></th>
+          <th pSortableColumn="netAmount" class="text-right">{{ 'PAYMENT_AUTH.NET_AMOUNT' | translate }} <p-sortIcon field="netAmount"></p-sortIcon></th>
+          <th pSortableColumn="authStatus">{{ 'PAYMENT_AUTH.STATUS' | translate }} <p-sortIcon field="authStatus"></p-sortIcon></th>
+          <th style="width:12rem" class="text-center">{{ 'COMMON.ACTIONS' | translate }}</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-rec>
+        <tr>
+          <td><span class="font-semibold text-primary">{{ rec.authFormNumber || '—' }}</span></td>
+          <td class="text-500 text-sm">{{ rec.authDate | date:'dd/MM/yyyy' }}</td>
+          <td>
+            <div class="font-medium text-900">{{ rec.studentName || '—' }}</div>
+            @if (rec.studentId) {
+              <div class="text-400 text-xs">#{{ rec.studentId }}</div>
+            }
+          </td>
+          <td class="text-right font-medium">{{ formatAmount(rec.originalAmount) }}</td>
+          <td class="text-right font-bold text-green-700">{{ formatAmount(rec.netAmount) }}</td>
+          <td>
+            <p-tag [value]="rec.authStatus | codeLabel:'payment-auth-status':currentLanguage"
+            [severity]="rec.authStatus | codeSeverity:'payment-auth-status'"></p-tag>
+          </td>
+          <td class="text-center">
+            <div class="flex justify-content-center gap-1">
+              <button pButton pRipple type="button" icon="pi pi-file-pdf"
+                class="p-button-rounded p-button-text p-button-danger"
+                [pTooltip]="'PAYMENT_AUTH.OPEN_REPORT' | translate" tooltipPosition="top"
+              (click)="openReport(rec)" *hasPermission="'PAYMENT_AUTH.VIEW'"></button>
+              <button pButton pRipple type="button" icon="pi pi-print"
+                class="p-button-rounded p-button-text p-button-info"
+                [pTooltip]="'PAYMENT_AUTH.PRINT' | translate" tooltipPosition="top"
+              (click)="openPrint(rec)" *hasPermission="'PAYMENT_AUTH.VIEW'"></button>
+              <button pButton pRipple type="button" icon="pi pi-eye"
+                class="p-button-rounded p-button-text p-button-info"
+                [pTooltip]="'PAYMENT_AUTH.VIEW' | translate" tooltipPosition="top"
+              (click)="openView(rec)" *hasPermission="'PAYMENT_AUTH.VIEW'"></button>
+              <!-- A draft is edited, deleted or released; a released one is marked paid (F6). -->
+              @if (isDraft(rec)) {
+                <button pButton pRipple type="button" icon="pi pi-check-circle"
+                  class="p-button-rounded p-button-text p-button-success"
+                  [pTooltip]="'PAYMENT_AUTH.AUTHORIZE' | translate" tooltipPosition="top"
+                (click)="confirmAuthorize(rec)" *hasPermission="'PAYMENT_AUTH.APPROVE'"></button>
+                <button pButton pRipple type="button" icon="pi pi-pencil"
+                  class="p-button-rounded p-button-text p-button-warning"
+                  [pTooltip]="'PAYMENT_AUTH.EDIT' | translate" tooltipPosition="top"
+                (click)="openEdit(rec)" *hasPermission="'PAYMENT_AUTH.EDIT'"></button>
+                <button pButton pRipple type="button" icon="pi pi-trash"
+                  class="p-button-rounded p-button-text p-button-danger"
+                  [pTooltip]="'PAYMENT_AUTH.DELETE' | translate" tooltipPosition="top"
+                (click)="confirmDelete(rec)" *hasPermission="'PAYMENT_AUTH.DELETE'"></button>
+              }
+              @if (isApproved(rec)) {
+                <button pButton pRipple type="button" icon="pi pi-wallet"
+                  class="p-button-rounded p-button-text p-button-success"
+                  [pTooltip]="'PAYMENT_AUTH.MARK_PAID' | translate" tooltipPosition="top"
+                (click)="confirmMarkPaid(rec)" *hasPermission="'PAYMENT_AUTH.APPROVE'"></button>
+              }
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="7" class="text-center py-8">
+            <i class="pi pi-inbox text-400 block" style="font-size:3rem"></i>
+            <div class="text-600 font-semibold mt-3">{{ 'PAYMENT_AUTH.NO_RECORDS' | translate }}</div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+</div>
+
+
+<!-- ═══════════════════════ ADD / EDIT DIALOG ═══════════════════════ -->
+<p-dialog [(visible)]="formVisible"
+  [modal]="true" [maximizable]="true" [closable]="true"
+  [style]="{ width: '1000px', maxWidth: '96vw' }"
+  styleClass="pa-form-dialog"
+  (onHide)="resetForm()">
+
+  <ng-template pTemplate="header">
+    <div class="pa-dialog-header-inner">
+      <div class="dialog-icon" [class.edit-mode]="formMode === 'edit'">
+        <i [class]="formMode === 'create' ? 'pi pi-plus' : 'pi pi-pencil'"></i>
+      </div>
+      <div>
+        <div class="dialog-title">
+          {{ formMode === 'create' ? ('PAYMENT_AUTH.NEW' | translate) : ('PAYMENT_AUTH.EDIT' | translate) }}
+        </div>
+        @if (formMode === 'edit' && form.id) {
+          <div class="dialog-subtitle">
+            <i class="pi pi-hashtag"></i>{{ form.authFormNumber || form.id }}
+            @if (form.studentName) {
+              <span class="mx-1">&bull;</span>
+            }
+            {{ form.studentName }}
+          </div>
+        }
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-template pTemplate="content">
+    @if (formVisible) {
+      <div class="pa-form-content">
+        <!-- Live Summary Strip -->
+        <div class="pa-summary-strip">
+          <div class="summary-chip student">
+            <i class="pi pi-user"></i>
+            <div class="chip-body">
+              <span class="chip-label">{{ 'PAYMENT_AUTH.STUDENT' | translate }}</span>
+              <span class="chip-value">{{ getStudentName(form.studentId) }}</span>
+            </div>
+          </div>
+          <div class="summary-chip amount">
+            <i class="pi pi-dollar"></i>
+            <div class="chip-body">
+              <span class="chip-label">{{ 'PAYMENT_AUTH.NET_AMOUNT' | translate }}</span>
+              <span class="chip-value">{{ formatAmount(form.netAmount) }}</span>
+            </div>
+          </div>
+          <div class="summary-chip status">
+            <i class="pi pi-info-circle"></i>
+            <div class="chip-body">
+              <span class="chip-label">{{ 'PAYMENT_AUTH.STATUS' | translate }}</span>
+              <span class="chip-value">{{ form.authStatus | codeLabel:'payment-auth-status':currentLanguage }}</span>
+            </div>
+          </div>
+        </div>
+        <!-- ── Authorization Info ── -->
+        <div class="pa-section-card">
+          <div class="pa-section-header auth">
+            <i class="pi pi-id-card"></i>
+            <span>{{ 'PAYMENT_AUTH.SECTION_AUTH' | translate }}</span>
+          </div>
+          <div class="pa-section-body">
+            <div class="formgrid grid">
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.FORM_NUMBER' | translate }}</label>
+                <input pInputText [(ngModel)]="form.authFormNumber" class="w-full" />
+              </div>
+              <div class="field col-12 md:col-4">
+                <label class="field-label">
+                  {{ 'PAYMENT_AUTH.DATE' | translate }}
+                  <span class="text-red-500 ml-1">*</span>
+                </label>
+                <p-datepicker [(ngModel)]="form.authDate" dateFormat="yy-mm-dd"
+                  [showIcon]="true" appendTo="body" class="w-full"
+                  [class.ng-invalid]="submitted && isDateInvalid()">
+                </p-datepicker>
+                @if (submitted && isDateInvalid()) {
+                  <small class="p-error">{{ 'PAYMENT_AUTH.DATE_REQUIRED' | translate }}</small>
+                }
+              </div>
+              <!-- The status is not typed: a draft is released by the authorize action (F6). -->
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.STATUS' | translate }}</label>
+                <div class="pa-status-readonly">
+                  <p-tag [value]="(form.authStatus || 'DRAFT') | codeLabel:'payment-auth-status':currentLanguage"
+                    [severity]="(form.authStatus || 'DRAFT') | codeSeverity:'payment-auth-status'"></p-tag>
+                </div>
+              </div>
+              <div class="field col-12 mb-0">
+                <label class="field-label">
+                  {{ 'PAYMENT_AUTH.STUDENT' | translate }}
+                  <span class="text-red-500 ml-1">*</span>
+                </label>
+                <p-select [options]="studentsForDropdown"
+                  [(ngModel)]="form.studentId"
+                  optionLabel="label" optionValue="id"
+                  [filter]="true" filterBy="label"
+                  [showClear]="true" appendTo="body"
+                  [resetFilterOnHide]="false"
+                  (onFilter)="onStudentFilter($event)"
+                  [placeholder]="'PAYMENT_AUTH.STUDENT_PLACEHOLDER' | translate"
+                  class="w-full" [class.ng-invalid]="submitted && isStudentInvalid()">
+                </p-select>
+                @if (submitted && isStudentInvalid()) {
+                  <small class="p-error">{{ 'PAYMENT_AUTH.STUDENT_REQUIRED' | translate }}</small>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- ── Payment Details ── -->
+        <div class="pa-section-card">
+          <div class="pa-section-header payment">
+            <i class="pi pi-building"></i>
+            <span>{{ 'PAYMENT_AUTH.SECTION_PAYMENT' | translate }}</span>
+          </div>
+          <div class="pa-section-body">
+            <div class="formgrid grid">
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.MINISTRY' | translate }}</label>
+                <input pInputText [(ngModel)]="form.ministryName" class="w-full" />
+              </div>
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.DEPT' | translate }}</label>
+                <input pInputText [(ngModel)]="form.deptName" class="w-full" />
+              </div>
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.PROVINCE' | translate }}</label>
+                <input pInputText [(ngModel)]="form.provinceName" class="w-full" />
+              </div>
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.BANK' | translate }}</label>
+                <input pInputText [(ngModel)]="form.bankName" class="w-full" />
+              </div>
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.BANK_BRANCH' | translate }}</label>
+                <input pInputText [(ngModel)]="form.bankBranch" class="w-full" />
+              </div>
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.SENT_TO' | translate }}</label>
+                <input pInputText [(ngModel)]="form.sentTo" class="w-full" />
+              </div>
+              <div class="field col-12 mb-0">
+                <label class="field-label">{{ 'PAYMENT_AUTH.PURPOSE' | translate }}</label>
+                <textarea pTextarea [(ngModel)]="form.paymentPurpose"
+                [rows]="2" class="w-full" [autoResize]="true"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- ── Amount Calculation ── -->
+        <div class="pa-section-card">
+          <div class="pa-section-header amounts">
+            <i class="pi pi-calculator"></i>
+            <span>{{ 'PAYMENT_AUTH.SECTION_AMOUNTS' | translate }}</span>
+          </div>
+          <div class="pa-section-body">
+            <div class="formgrid grid">
+              <div class="field col-12">
+                <label class="field-label">{{ 'PAYMENT_AUTH.AMOUNT_SOURCE' | translate }}</label>
+                <div class="flex gap-4 flex-wrap align-items-center mt-1">
+                  @for (src of amountSources; track src) {
+                    <p-checkbox
+                      [(ngModel)]="selectedSources"
+                      [label]="src.label" [value]="src.value">
+                    </p-checkbox>
+                  }
+                </div>
+                <button pButton pRipple type="button"
+                  [label]="'PAYMENT_AUTH.CALCULATE' | translate"
+                  icon="pi pi-refresh"
+                  class="p-button-outlined p-button-sm mt-3"
+                  [loading]="calculatingAmount"
+                  (click)="calculateAmount()">
+                </button>
+                <!-- Breakdown chips -->
+                @if (amountBreakdown) {
+                  <div class="flex gap-2 mt-3 flex-wrap">
+                    @if (amountBreakdown.financeAmount > 0) {
+                      <p-chip
+                        [label]="('PAYMENT_AUTH.AMOUNT_SOURCE_FINANCE' | translate) + ': ' + formatAmount(amountBreakdown.financeAmount)"
+                      icon="pi pi-dollar" styleClass="bg-blue-100 text-blue-800"></p-chip>
+                    }
+                    @if (amountBreakdown.wafarAmount > 0) {
+                      <p-chip
+                        [label]="('PAYMENT_AUTH.AMOUNT_SOURCE_WAFAR' | translate) + ': ' + formatAmount(amountBreakdown.wafarAmount)"
+                      icon="pi pi-percentage" styleClass="bg-orange-100 text-orange-800"></p-chip>
+                    }
+                    @if (amountBreakdown.universityFeeAmount > 0) {
+                      <p-chip
+                        [label]="('PAYMENT_AUTH.AMOUNT_SOURCE_UNI_FEE' | translate) + ': ' + formatAmount(amountBreakdown.universityFeeAmount)"
+                      icon="pi pi-building" styleClass="bg-purple-100 text-purple-800"></p-chip>
+                    }
+                  </div>
+                }
+              </div>
+              <div class="field col-12 md:col-4">
+                <label class="field-label">
+                  {{ 'PAYMENT_AUTH.ORIGINAL_AMOUNT' | translate }}
+                  <span class="text-red-500 ml-1">*</span>
+                </label>
+                <p-inputnumber [min]="0" [(ngModel)]="form.originalAmount"
+                  mode="decimal" [minFractionDigits]="2"
+                  (onInput)="onDeductionChange()" class="w-full"
+                  [class.ng-invalid]="submitted && isOriginalAmountInvalid()">
+                </p-inputnumber>
+                @if (submitted && isOriginalAmountInvalid()) {
+                  <small class="p-error">{{ 'PAYMENT_AUTH.AMOUNT_POSITIVE' | translate }}</small>
+                }
+              </div>
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.DEDUCTIONS' | translate }}</label>
+                <p-inputnumber [min]="0" [(ngModel)]="form.deductions"
+                  mode="decimal" [minFractionDigits]="2"
+                  (onInput)="onDeductionChange()" class="w-full"
+                  [class.ng-invalid]="submitted && isDeductionsInvalid()">
+                </p-inputnumber>
+                @if (submitted && isDeductionsInvalid()) {
+                  <small class="p-error">{{ 'PAYMENT_AUTH.DEDUCTIONS_INVALID' | translate }}</small>
+                }
+              </div>
+              <div class="field col-12 md:col-4 mb-0">
+                <label class="field-label font-bold" style="color:var(--green-700)">{{ 'PAYMENT_AUTH.NET_AMOUNT' | translate }}</label>
+                <div class="pa-net-amount-display">{{ formatAmount(form.netAmount) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- ── Check & Recipient ── -->
+        <div class="pa-section-card">
+          <div class="pa-section-header check">
+            <i class="pi pi-credit-card"></i>
+            <span>{{ 'PAYMENT_AUTH.SECTION_CHECK' | translate }}</span>
+          </div>
+          <div class="pa-section-body">
+            <div class="formgrid grid">
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.CHECK_NUMBER' | translate }}</label>
+                <input pInputText [(ngModel)]="form.checkNumber" class="w-full" />
+              </div>
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.CHECK_DATE' | translate }}</label>
+                <p-datepicker [(ngModel)]="form.checkDate" dateFormat="yy-mm-dd"
+                  [showIcon]="true" appendTo="body" class="w-full">
+                </p-datepicker>
+              </div>
+              <div class="field col-12 md:col-4">
+                <label class="field-label">{{ 'PAYMENT_AUTH.BUDGET_BOOK' | translate }}</label>
+                <input pInputText [(ngModel)]="form.budgetBookNumber" class="w-full" />
+              </div>
+              <div class="field col-12 md:col-6">
+                <label class="field-label">{{ 'PAYMENT_AUTH.RECIPIENT_NAME' | translate }}</label>
+                <input pInputText [(ngModel)]="form.recipientName" class="w-full" />
+              </div>
+              <div class="field col-12 md:col-6">
+                <label class="field-label">{{ 'PAYMENT_AUTH.RECIPIENT_ID' | translate }}</label>
+                <input pInputText [(ngModel)]="form.recipientIdNumber" class="w-full" />
+              </div>
+              <div class="field col-12 mb-0">
+                <label class="field-label">{{ 'COMMON.NOTES' | translate }}</label>
+                <textarea pTextarea [(ngModel)]="form.notes"
+                [rows]="2" class="w-full" [autoResize]="true"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="pa-dialog-footer">
+      <button pButton pRipple type="button"
+        class="p-button-outlined p-button-secondary"
+        icon="pi pi-times"
+        [label]="'COMMON.CANCEL' | translate"
+      (click)="formVisible = false"></button>
+      <button pButton pRipple type="button"
+        class="p-button-primary"
+        icon="pi pi-check"
+        [label]="'COMMON.SAVE' | translate"
+        [loading]="saving"
+      (click)="save()"></button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+
+<!-- ═══════════════════════ VIEW DIALOG ═══════════════════════ -->
+<p-dialog [(visible)]="viewVisible"
+  [modal]="true" [maximizable]="true" [closable]="true"
+  [style]="{ width: '780px', maxWidth: '96vw' }"
+  styleClass="pa-view-dialog"
+  (onHide)="viewRecord = null">
+
+  <ng-template pTemplate="header">
+    <div class="pa-dialog-header-inner">
+      <div class="dialog-icon view-mode">
+        <i class="pi pi-eye"></i>
+      </div>
+      <div>
+        <div class="dialog-title">{{ 'PAYMENT_AUTH.VIEW' | translate }}</div>
+        @if (viewRecord) {
+          <div class="dialog-subtitle">
+            <i class="pi pi-hashtag"></i>{{ viewRecord.authFormNumber || viewRecord.id }}
+          </div>
+        }
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-template pTemplate="content">
+    @if (viewRecord; as r) {
+      <div class="pa-view-content">
+        <!-- Header Card -->
+        <div class="pa-view-header-card">
+          <div class="view-header-badge">
+            <i class="pi pi-file-edit"></i>
+            <span>{{ 'PAYMENT_AUTH.HERO_BADGE' | translate }}</span>
+          </div>
+          <h2 class="view-student-name">{{ r.studentName || '—' }}</h2>
+          <div class="view-header-meta">
+            <span class="record-id-pill"># {{ r.authFormNumber || r.id }}</span>
+            <p-tag [value]="r.authStatus | codeLabel:'payment-auth-status':currentLanguage"
+            [severity]="r.authStatus | codeSeverity:'payment-auth-status'"></p-tag>
+          </div>
+        </div>
+        <!-- Chips -->
+        <div class="pa-view-chips">
+          <div class="view-chip net">
+            <div class="chip-icon"><i class="pi pi-dollar"></i></div>
+            <div class="chip-body">
+              <span class="chip-label">{{ 'PAYMENT_AUTH.NET_AMOUNT' | translate }}</span>
+              <span class="chip-value net-value">{{ formatAmount(r.netAmount) }}</span>
+            </div>
+          </div>
+          <div class="view-chip original">
+            <div class="chip-icon"><i class="pi pi-chart-bar"></i></div>
+            <div class="chip-body">
+              <span class="chip-label">{{ 'PAYMENT_AUTH.ORIGINAL_AMOUNT' | translate }}</span>
+              <span class="chip-value">{{ formatAmount(r.originalAmount) }}</span>
+            </div>
+          </div>
+          <div class="view-chip date">
+            <div class="chip-icon"><i class="pi pi-calendar"></i></div>
+            <div class="chip-body">
+              <span class="chip-label">{{ 'PAYMENT_AUTH.DATE' | translate }}</span>
+              <span class="chip-value">{{ r.authDate | date:'dd/MM/yyyy' }}</span>
+            </div>
+          </div>
+          <div class="view-chip student">
+            <div class="chip-icon"><i class="pi pi-user"></i></div>
+            <div class="chip-body">
+              <span class="chip-label">{{ 'PAYMENT_AUTH.STUDENT' | translate }}</span>
+              <span class="chip-value">{{ r.studentName || '—' }}</span>
+            </div>
+          </div>
+        </div>
+        <!-- Authorization Info -->
+        <div class="pa-section-card">
+          <div class="pa-section-header auth">
+            <i class="pi pi-id-card"></i>
+            <span>{{ 'PAYMENT_AUTH.SECTION_AUTH' | translate }}</span>
+          </div>
+          <div class="pa-section-body">
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.FORM_NUMBER' | translate }}</span>
+                <span class="detail-value font-semibold">{{ r.authFormNumber || '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.DATE' | translate }}</span>
+                <span class="detail-value">{{ r.authDate | date:'dd/MM/yyyy' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.STATUS' | translate }}</span>
+                <span class="detail-value">
+                  <p-tag [value]="r.authStatus | codeLabel:'payment-auth-status':currentLanguage"
+                  [severity]="r.authStatus | codeSeverity:'payment-auth-status'"></p-tag>
+                </span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.STUDENT' | translate }}</span>
+                <span class="detail-value">{{ r.studentName || '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.MINISTRY' | translate }}</span>
+                <span class="detail-value">{{ r.ministryName || '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.PROVINCE' | translate }}</span>
+                <span class="detail-value">{{ r.provinceName || '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.BANK' | translate }}</span>
+                <span class="detail-value">{{ r.bankName || '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.BANK_BRANCH' | translate }}</span>
+                <span class="detail-value">{{ r.bankBranch || '—' }}</span>
+              </div>
+            </div>
+            @if (r.paymentPurpose) {
+              <div class="detail-item mt-3">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.PURPOSE' | translate }}</span>
+                <p class="notes-text mt-1">{{ r.paymentPurpose }}</p>
+              </div>
+            }
+          </div>
+        </div>
+        <!-- Amounts -->
+        <div class="pa-section-card">
+          <div class="pa-section-header amounts">
+            <i class="pi pi-calculator"></i>
+            <span>{{ 'PAYMENT_AUTH.SECTION_AMOUNTS' | translate }}</span>
+          </div>
+          <div class="pa-section-body">
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.ORIGINAL_AMOUNT' | translate }}</span>
+                <span class="detail-value">{{ formatAmount(r.originalAmount) }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.DEDUCTIONS' | translate }}</span>
+                <span class="detail-value text-red-500">{{ formatAmount(r.deductions) }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.NET_AMOUNT' | translate }}</span>
+                <span class="detail-value detail-amount">{{ formatAmount(r.netAmount) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Check & Recipient -->
+        <div class="pa-section-card">
+          <div class="pa-section-header check">
+            <i class="pi pi-credit-card"></i>
+            <span>{{ 'PAYMENT_AUTH.SECTION_CHECK' | translate }}</span>
+          </div>
+          <div class="pa-section-body">
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.CHECK_NUMBER' | translate }}</span>
+                <span class="detail-value">{{ r.checkNumber || '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.CHECK_DATE' | translate }}</span>
+                <span class="detail-value">{{ r.checkDate ? (r.checkDate | date:'dd/MM/yyyy') : '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.BUDGET_BOOK' | translate }}</span>
+                <span class="detail-value">{{ r.budgetBookNumber || '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.RECIPIENT_NAME' | translate }}</span>
+                <span class="detail-value">{{ r.recipientName || '—' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">{{ 'PAYMENT_AUTH.RECIPIENT_ID' | translate }}</span>
+                <span class="detail-value">{{ r.recipientIdNumber || '—' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Notes -->
+        @if (r.notes) {
+          <div class="pa-section-card">
+            <div class="pa-section-header notes">
+              <i class="pi pi-align-left"></i>
+              <span>{{ 'COMMON.NOTES' | translate }}</span>
+            </div>
+            <div class="pa-section-body">
+              <p class="notes-text">{{ r.notes }}</p>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="pa-dialog-footer">
+      <button pButton pRipple type="button"
+        class="p-button-outlined p-button-info"
+        icon="pi pi-print"
+        [label]="'PAYMENT_AUTH.PRINT' | translate"
+      (click)="openPrint(viewRecord!)"></button>
+      @if (viewRecord && isDraft(viewRecord)) {
+        <button pButton pRipple type="button"
+          class="p-button-success"
+          icon="pi pi-check-circle"
+          [label]="'PAYMENT_AUTH.AUTHORIZE' | translate"
+        (click)="confirmAuthorize(viewRecord!)" *hasPermission="'PAYMENT_AUTH.APPROVE'"></button>
+        <button pButton pRipple type="button"
+          class="p-button-warning p-button-outlined"
+          icon="pi pi-pencil"
+          [label]="'PAYMENT_AUTH.EDIT' | translate"
+        (click)="viewVisible = false; openEdit(viewRecord!)" *hasPermission="'PAYMENT_AUTH.EDIT'"></button>
+      }
+      @if (viewRecord && isApproved(viewRecord)) {
+        <button pButton pRipple type="button"
+          class="p-button-success"
+          icon="pi pi-wallet"
+          [label]="'PAYMENT_AUTH.MARK_PAID' | translate"
+        (click)="confirmMarkPaid(viewRecord!)" *hasPermission="'PAYMENT_AUTH.APPROVE'"></button>
+      }
+      <button pButton pRipple type="button"
+        class="p-button-text"
+        icon="pi pi-times"
+        [label]="'COMMON.CLOSE' | translate"
+      (click)="viewVisible = false"></button>
+    </div>
+  </ng-template>
+</p-dialog>

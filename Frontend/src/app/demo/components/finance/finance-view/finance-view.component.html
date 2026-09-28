@@ -1,0 +1,171 @@
+<div class="fin-view-page" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"
+  [class.rtl]="translationService.isRTL()">
+
+  @if (loading) {
+    <div class="fin-loading">
+      <p-progressSpinner strokeWidth="4" [style]="{ width: '48px', height: '48px' }"></p-progressSpinner>
+    </div>
+  }
+
+  @if (loadFailed && !loading) {
+    <div class="card fin-empty">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span class="fin-empty__title">{{ 'FINANCE.RECORD_NOT_FOUND' | translate }}</span>
+      <button pButton pRipple [label]="'FINANCE.BACK_TO_LIST' | translate" icon="pi pi-arrow-left"
+      class="p-button-action-outlined mt-3" (click)="goBack()"></button>
+    </div>
+  }
+
+  @if (!loading && !loadFailed) {
+    <!-- Hero -->
+    <div class="card fin-hero mb-3">
+      <div class="fin-hero__identity">
+        <div class="fin-hero__avatar">{{ avatarInitial }}</div>
+        <div>
+          <h1 class="fin-hero__name">{{ display(model.studentFinName) }}</h1>
+          <div class="fin-hero__meta">
+            <span><i class="pi pi-id-card"></i> {{ 'FINANCE.STUDENT_ID' | translate }}: {{ model.id }}</span>
+            <span><i class="pi pi-hashtag"></i> {{ 'FINANCE.FINANCE_ID' | translate }}:
+          {{ display(model.studentFinId) }}</span>
+          <p-tag [severity]="statusSeverity" [value]="statusName" [rounded]="true"></p-tag>
+        </div>
+      </div>
+    </div>
+    <div class="fin-hero__actions">
+      <button pButton pRipple [label]="'FINANCE.BACK_TO_LIST' | translate" icon="pi pi-arrow-left"
+      class="p-button-action-outlined" (click)="goBack()"></button>
+      <button pButton pRipple [label]="'COMMON.EDIT' | translate" icon="pi pi-pencil"
+      (click)="goToEdit()" *hasPermission="'FINANCE.EDIT'"></button>
+    </div>
+  </div>
+  <!-- Headline figures -->
+  <div class="fin-stats mb-3">
+    <div class="fin-stat fin-stat--green">
+      <span class="fin-stat__label">{{ 'FINANCE.AMOUNT_RECEIVED' | translate }}</span>
+      <span class="fin-stat__value">
+        {{ model.studentFinRecievedAmount | localeNumber:'1.0-2' }}
+        @if (currencyName) {
+          <small>{{ currencyName }}</small>
+        }
+      </span>
+    </div>
+    @if (hasWafar) {
+      <div class="fin-stat fin-stat--amber">
+        <span class="fin-stat__label">{{ 'FINANCE.WAFAR_AMOUNT' | translate }}</span>
+        <span class="fin-stat__value">
+          {{ wafarAmount | localeNumber:'1.0-2' }}
+          @if (currencyName) {
+            <small>{{ currencyName }}</small>
+          }
+        </span>
+      </div>
+    }
+    <!-- Net always shows; with no wafar it simply equals the amount received. -->
+    <div class="fin-stat fin-stat--indigo">
+      <span class="fin-stat__label">{{ 'FINANCE.NET_AMOUNT' | translate }}</span>
+      <span class="fin-stat__value">
+        {{ netAmount | localeNumber:'1.0-2' }}
+        @if (currencyName) {
+          <small>{{ currencyName }}</small>
+        }
+      </span>
+    </div>
+    <div class="fin-stat fin-stat--cyan">
+      <span class="fin-stat__label">{{ 'FINANCE.CHECK_DATE' | translate }}</span>
+      <span class="fin-stat__value">{{ model.studyCheckDate | localeDate:'mediumDate' }}</span>
+    </div>
+  </div>
+  <!-- Detail cards -->
+  <div class="fin-grid">
+    <ng-template #detailCard let-rows="rows">
+      <dl class="fin-dl">
+        @for (row of rows; track row) {
+          <div class="fin-dl__row" [class.fin-dl__row--block]="row.block">
+            <dt>{{ row.label }}</dt>
+            <dd>
+              @if (row.date) {
+                {{ row.value ? (row.value | localeDate:'mediumDate') : display(null) }}
+              } @else {
+                {{ display(row.value) }}
+              }
+            </dd>
+          </div>
+        }
+      </dl>
+    </ng-template>
+    <section class="fin-card">
+      <header class="fin-card__head">
+        <span class="fin-card__icon fin-card__icon--green"><i class="pi pi-dollar"></i></span>
+        <h3 class="fin-card__title">{{ 'FINANCE.SECTION_FINANCIAL' | translate }}</h3>
+      </header>
+      <ng-container *ngTemplateOutlet="detailCard; context: { rows: financialRows }"></ng-container>
+    </section>
+    @if (hasWafar) {
+      <section class="fin-card">
+        <header class="fin-card__head">
+          <span class="fin-card__icon fin-card__icon--amber"><i class="pi pi-percentage"></i></span>
+          <h3 class="fin-card__title">{{ 'FINANCE.HAS_WAFAR' | translate }}</h3>
+        </header>
+        <ng-container *ngTemplateOutlet="detailCard; context: { rows: wafarRows }"></ng-container>
+      </section>
+    }
+    <section class="fin-card">
+      <header class="fin-card__head">
+        <span class="fin-card__icon fin-card__icon--cyan"><i class="pi pi-credit-card"></i></span>
+        <h3 class="fin-card__title">{{ 'FINANCE.SECTION_CHECK' | translate }}</h3>
+      </header>
+      <ng-container *ngTemplateOutlet="detailCard; context: { rows: checkRows }"></ng-container>
+    </section>
+    <section class="fin-card">
+      <header class="fin-card__head">
+        <span class="fin-card__icon fin-card__icon--orange"><i class="pi pi-map-marker"></i></span>
+        <h3 class="fin-card__title">{{ 'FINANCE.SECTION_LOCATION' | translate }}</h3>
+      </header>
+      <ng-container *ngTemplateOutlet="detailCard; context: { rows: locationRows }"></ng-container>
+    </section>
+    <section class="fin-card">
+      <header class="fin-card__head">
+        <span class="fin-card__icon fin-card__icon--purple"><i class="pi pi-building"></i></span>
+        <h3 class="fin-card__title">{{ 'FINANCE.SECTION_BANK' | translate }}</h3>
+      </header>
+      <ng-container *ngTemplateOutlet="detailCard; context: { rows: bankRows }"></ng-container>
+    </section>
+    <section class="fin-card">
+      <header class="fin-card__head">
+        <span class="fin-card__icon fin-card__icon--indigo"><i class="pi pi-users"></i></span>
+        <h3 class="fin-card__title">{{ 'FINANCE.SECTION_RECIPIENT' | translate }}</h3>
+      </header>
+      <ng-container *ngTemplateOutlet="detailCard; context: { rows: recipientRows }"></ng-container>
+    </section>
+    <section class="fin-card">
+      <header class="fin-card__head">
+        <span class="fin-card__icon fin-card__icon--teal"><i class="pi pi-wallet"></i></span>
+        <h3 class="fin-card__title">{{ 'FINANCE.SECTION_ACCOUNT' | translate }}</h3>
+      </header>
+      <ng-container *ngTemplateOutlet="detailCard; context: { rows: accountRows }"></ng-container>
+    </section>
+    <section class="fin-card fin-card--wide">
+      <header class="fin-card__head">
+        <span class="fin-card__icon fin-card__icon--slate"><i class="pi pi-file-edit"></i></span>
+        <h3 class="fin-card__title">{{ 'FINANCE.SECTION_NOTES' | translate }}</h3>
+      </header>
+      <div class="fin-notes">
+        <div class="fin-notes__group">
+          <span class="fin-notes__label">{{ 'FINANCE.STUDY_NOTES' | translate }}</span>
+          <p class="fin-notes__text" [class.fin-notes__text--empty]="!model.studyNote1">
+            {{ model.studyNote1 || ('FINANCE.NO_NOTES_AVAILABLE' | translate) }}
+          </p>
+        </div>
+        <div class="fin-notes__group">
+          <span class="fin-notes__label">{{ 'FINANCE.BANK_NOTES' | translate }}</span>
+          <p class="fin-notes__text" [class.fin-notes__text--empty]="!model.studentBankNotes">
+            {{ model.studentBankNotes || ('FINANCE.NO_BANK_NOTES_AVAILABLE' | translate) }}
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+}
+</div>
+
+<p-toast></p-toast>

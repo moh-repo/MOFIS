@@ -1,0 +1,285 @@
+<div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="mb-3">
+    <button pButton type="button" [label]="'REPORTS.REPORT_SUBPAGES.BACK_TO_FINANCIAL_REPORTS' | translate"
+      [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+      class="p-button-text p-button-sm"
+    routerLink="/reports/financial"></button>
+  </div>
+
+  <!-- Header Section. `flex-1` on the leading block, not
+       `justify-content-between`: under `direction: rtl` a flex row already
+       runs right to left, and the global rule in styles.scss reverses every
+       `.flex.justify-content-between` again, which put the heading back on
+       the left and the actions on the right in Arabic. See
+       src/app/demo/components/page-headings.spec.ts. -->
+  <div class="flex align-items-center mb-4">
+    <h2 class="m-0 flex-1">
+      <i class="pi pi-wallet text-primary mr-2"></i>
+      {{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.TITLE' | translate }}
+    </h2>
+    <div class="flex gap-2">
+      <app-report-actions
+        pdfApiPath="/api/reports/financial/payment-summary/export-report"
+        [query]="reportQuery()"
+        baseFilename="payment-summary">
+      </app-report-actions>
+
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid mb-4">
+    <div class="col-12 md:col-6 lg:col-3">
+      <div class="surface-card shadow-2 border-round p-3">
+        <div class="flex align-items-center justify-content-between mb-2">
+          <div class="text-500">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.TOTAL_PAYMENTS' | translate }}</div>
+          <div class="flex align-items-center justify-content-center bg-blue-100 border-circle" style="width:2.5rem;height:2.5rem">
+            <i class="pi pi-list text-blue-600 text-xl"></i>
+          </div>
+        </div>
+        <div class="text-900 text-2xl font-bold">{{ totalPayments | number }}</div>
+      </div>
+    </div>
+
+    <div class="col-12 md:col-6 lg:col-3">
+      <div class="surface-card shadow-2 border-round p-3">
+        <div class="flex align-items-center justify-content-between mb-2">
+          <div class="text-500">{{ 'REPORTS.COMMON_FIELDS.TOTAL' | translate }} {{ 'REPORTS.COMMON_FIELDS.AMOUNT' | translate }}</div>
+          <div class="flex align-items-center justify-content-center bg-green-100 border-circle" style="width:2.5rem;height:2.5rem">
+            <i class="pi pi-dollar text-green-600 text-xl"></i>
+          </div>
+        </div>
+        <div class="text-900 text-2xl font-bold">{{ totalAmount === null ? '—' : formatCurrency(totalAmount) }}</div>
+      </div>
+    </div>
+
+    <div class="col-12 lg:col-6">
+      <div class="surface-card shadow-2 border-round p-3">
+        <div class="text-500 mb-2">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.AMOUNT_BY_STATUS' | translate }}</div>
+        <div class="flex flex-wrap gap-2">
+          @for (row of amountByStatus; track row.code) {
+            <p-tag [value]="(row.code ? statusLabel(row.code) : ('COMMON.UNSPECIFIED' | translate)) + ': ' + formatCurrency(row.amount)"
+                   [severity]="codeLists.severity('fin-received-status', row.code)"></p-tag>
+          }
+          @if (amountByStatus.length === 0) {
+            <span class="text-500">&mdash;</span>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="card mb-4">
+    <h3 class="mt-0 mb-3">
+      <i class="pi pi-filter text-primary mr-2"></i>
+      {{ 'REPORTS.REPORT_SUBPAGES.FILTERS' | translate }}
+    </h3>
+    <div class="p-fluid grid formgrid">
+      @if (hasMultiCountry) {
+        <div class="field col-12 md:col-3">
+          <label>{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</label>
+          <p-multiselect
+            [options]="allowedCountries"
+            [(ngModel)]="selectedCountryIds"
+            optionLabel="label"
+            optionValue="value"
+            [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_COUNTRIES' | translate"
+            (onChange)="onCountryChange()"
+            appendTo="body">
+          </p-multiselect>
+        </div>
+      }
+      <div class="field col-12 md:col-3">
+        <label for="status">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.PAYMENT_STATUS' | translate }}</label>
+        <p-select
+          id="status"
+          [(ngModel)]="selectedStatus"
+          [options]="metadata.statuses"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_STATUS' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+
+      <div class="field col-12 md:col-3">
+        <label for="type">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.PAYMENT_TYPE' | translate }}</label>
+        <p-select
+          id="type"
+          [(ngModel)]="selectedType"
+          [options]="metadata.types"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.SELECT_TYPE' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+
+      <div class="field col-12 md:col-3">
+        <label for="method">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.PAYMENT_METHOD' | translate }}</label>
+        <p-select
+          id="method"
+          [(ngModel)]="selectedMethod"
+          [options]="methodOptions"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.SELECT_METHOD' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+
+      <div class="field col-12 md:col-3">
+        <label for="quarter">{{ 'REPORTS.COMMON_FIELDS.QUARTER' | translate }}</label>
+        <p-select
+          id="quarter"
+          [(ngModel)]="selectedQuarter"
+          [options]="metadata.quarters"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.SELECT_QUARTER' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+
+      <div class="field col-12 md:col-3">
+        <label for="year">{{ 'REPORTS.COMMON_FIELDS.YEAR' | translate }}</label>
+        <p-select
+          id="year"
+          [(ngModel)]="selectedYear"
+          [options]="metadata.years"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.COMMON_FIELDS.SELECT_YEAR' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+
+      <div class="field col-12 md:col-3">
+        <label for="startDate">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.START_DATE' | translate }}</label>
+        <p-datepicker
+          id="startDate"
+          [(ngModel)]="startDate"
+          [showIcon]="true"
+          [placeholder]="'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.SELECT_START_DATE' | translate"
+          (onSelect)="onFilterChange()">
+        </p-datepicker>
+      </div>
+
+      <div class="field col-12 md:col-3">
+        <label for="endDate">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.END_DATE' | translate }}</label>
+        <p-datepicker
+          id="endDate"
+          [(ngModel)]="endDate"
+          [showIcon]="true"
+          [placeholder]="'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.SELECT_END_DATE' | translate"
+          (onSelect)="onFilterChange()">
+        </p-datepicker>
+      </div>
+
+      <div class="field col-12 md:col-3">
+        <label for="search">{{ 'REPORTS.REPORT_SUBPAGES.SEARCH' | translate }}</label>
+        <input type="text"
+          pInputText
+          id="search"
+          [(ngModel)]="searchText"
+          (input)="onFilterChange()"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.STUDENT_NAME_OR_PASSPORT' | translate">
+      </div>
+    </div>
+    <div class="flex justify-content-end">
+      <button pButton type="button" [label]="'REPORTS.REPORT_SUBPAGES.CLEAR_FILTERS' | translate" icon="pi pi-times" (click)="clearFilters()" class="p-button-outlined"></button>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="card">
+    <p-table
+      [value]="paymentData"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="pageSize"
+      [totalRecords]="totalRecords"
+      [showCurrentPageReport]="true"
+      [currentPageReportTemplate]="'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.SHOWING_PAYMENTS' | translate"
+      [rowsPerPageOptions]="[10, 20, 50, 100]"
+      (onPage)="onPageChange($event)"
+      styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="paymentId">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.PAYMENT_ID' | translate }} <p-sortIcon field="paymentId"></p-sortIcon></th>
+          <th pSortableColumn="studentName">{{ 'REPORTS.INDIVIDUAL_REPORTS.SCHOLARSHIP_TRACKING.STUDENT' | translate }} <p-sortIcon field="studentName"></p-sortIcon></th>
+          <th pSortableColumn="paymentDate">{{ 'REPORTS.COMMON_FIELDS.DATE' | translate }} <p-sortIcon field="paymentDate"></p-sortIcon></th>
+          <th [pSortableColumn]="nameField('paymentType')">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.PAYMENT_TYPE' | translate }} <p-sortIcon [field]="nameField('paymentType')"></p-sortIcon></th>
+          <th pSortableColumn="paymentMethod">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.PAYMENT_METHOD' | translate }} <p-sortIcon field="paymentMethod"></p-sortIcon></th>
+          <th pSortableColumn="paymentAmount">{{ 'REPORTS.COMMON_FIELDS.AMOUNT' | translate }} <p-sortIcon field="paymentAmount"></p-sortIcon></th>
+          <th [pSortableColumn]="nameField('paymentStatus')">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.PAYMENT_STATUS' | translate }} <p-sortIcon [field]="nameField('paymentStatus')"></p-sortIcon></th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.QUARTER_YEAR' | translate }}</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-payment>
+        <tr>
+          <td>{{ payment.paymentId }}</td>
+          <td>
+            <div>{{ payment.studentName }}</div>
+            <small class="text-500">{{ payment.studentPassportNumber }}</small>
+          </td>
+          <td>{{ formatDate(payment.paymentDate) }}</td>
+          <td>{{ localized(payment.paymentType, payment.paymentTypeEn) ?? ('COMMON.UNSPECIFIED' | translate) }}</td>
+          <td>{{ methodLabel(payment.paymentMethod) }}</td>
+          <td class="font-bold">{{ formatCurrency(payment.paymentAmount, payment.paymentCurrency) }}</td>
+          <td>
+            <p-tag [value]="localized(payment.paymentStatus, payment.paymentStatusEn) ?? ('COMMON.UNSPECIFIED' | translate)" [severity]="getStatusSeverity(payment)"></p-tag>
+          </td>
+          <td>{{ localized(payment.quarterName, payment.quarterNameEn) }} / {{ payment.yearName }}</td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="8" class="text-center py-5">
+            <i class="pi pi-info-circle text-4xl text-400 mb-3"></i>
+            <p class="text-600">{{ 'REPORTS.INDIVIDUAL_REPORTS.PAYMENT_SUMMARY.NO_PAYMENT_RECORDS' | translate }}</p>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+
+<!-- PDF Report Viewer -->
+<div class="card mt-3">
+  <!-- Heading leads this row too; see the comment on the page header above. -->
+  <div class="flex align-items-center mb-3 flex-wrap gap-2">
+    <div class="flex align-items-center gap-2 flex-1">
+      <i class="pi pi-file-pdf" style="font-size:1.4rem;color:#6b2737"></i>
+      <h4 class="m-0" style="color:#6b2737">{{ 'REPORTS.VIEWER.GENERATE_REPORT' | translate }}</h4>
+    </div>
+    <div class="flex align-items-center gap-3 flex-wrap">
+      <div class="flex align-items-center gap-2">
+        <span class="font-semibold text-sm">{{ 'REPORTS.VIEWER.LANGUAGE' | translate }}: </span>
+        <p-selectButton [options]="reportLangOptions"
+          [(ngModel)]="selectedLang" optionLabel="label" optionValue="value">
+        </p-selectButton>
+      </div>
+      <p-button icon="pi pi-play"
+        [label]="'REPORTS.VIEWER.GENERATE_REPORT' | translate"
+        [loading]="reportLoading"
+        (onClick)="generateReport()">
+      </p-button>
+    </div>
+  </div>
+  <app-report-viewer [pdfApiPath]="pdfApiPath" [pdfQuery]="pdfQuery" [loadTrigger]="loadTrigger" [loading]="reportLoading" [filename]="'payment-summary.pdf'">
+  </app-report-viewer>
+</div>
+<p-toast></p-toast>
+

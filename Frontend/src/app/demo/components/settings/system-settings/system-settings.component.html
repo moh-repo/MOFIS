@@ -1,0 +1,105 @@
+<div class="system-settings-container" [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+  <p-toast></p-toast>
+
+  <!-- Page header -->
+  <div class="card mb-3">
+    <div class="flex align-items-center gap-3">
+      <i class="pi pi-cog text-primary" style="font-size: 2rem"></i>
+      <div>
+        <h3 class="m-0 text-primary">{{ 'SYSTEM_SETTINGS.TITLE' | translate }}</h3>
+        <p class="text-600 mt-1 mb-0">{{ 'SYSTEM_SETTINGS.DESCRIPTION' | translate }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ── Logo Section ─────────────────────────────────────────────────── -->
+    <div class="col-12 md:col-5">
+      <div class="card h-full">
+        <h5 class="mb-3">
+          <i class="pi pi-image mr-2 text-primary"></i>
+          {{ 'SYSTEM_SETTINGS.LOGO_SECTION' | translate }}
+        </h5>
+
+        <!-- Preview -->
+        @if (logoPreviewUrl) {
+          <div class="logo-preview-box mb-3">
+            <img [src]="logoPreviewUrl" alt="System Logo" class="logo-preview-img"
+              (error)="onLogoError($event)">
+          </div>
+        }
+        @if (!logoPreviewUrl) {
+          <div class="logo-preview-box mb-3 no-logo">
+            <i class="pi pi-image" style="font-size: 3rem; color: #ccc;"></i>
+            <p class="text-500 mt-2">{{ 'SYSTEM_SETTINGS.NO_LOGO' | translate }}</p>
+          </div>
+        }
+
+        <!-- File input -->
+        <div class="flex flex-column gap-2">
+          <label class="font-semibold">{{ 'SYSTEM_SETTINGS.SELECT_LOGO' | translate }}</label>
+          <input
+            type="file"
+            accept="image/*"
+            (change)="onFileSelected($event)"
+            class="p-inputtext w-full"
+            style="padding: 0.4rem;">
+          <small class="text-500">{{ 'SYSTEM_SETTINGS.LOGO_HINT' | translate }}</small>
+        </div>
+
+        <p-button
+          icon="pi pi-upload"
+          [label]="'SYSTEM_SETTINGS.UPLOAD_LOGO' | translate"
+          styleClass="w-full mt-3"
+          severity="primary"
+          [loading]="uploading"
+          [disabled]="!selectedFile || uploading"
+          (onClick)="uploadLogo()">
+        </p-button>
+      </div>
+    </div>
+
+    <!-- ── System Name Section ───────────────────────────────────────────── -->
+    <div class="col-12 md:col-7">
+      <div class="card h-full">
+        <h5 class="mb-3">
+          <i class="pi pi-tag mr-2 text-primary"></i>
+          {{ 'SYSTEM_SETTINGS.NAME_SECTION' | translate }}
+        </h5>
+
+        <div class="grid p-fluid">
+          <div class="col-12">
+            <label class="block mb-2 font-semibold">{{ 'SYSTEM_SETTINGS.NAME_AR' | translate }}</label>
+            <input
+              pInputText
+              [(ngModel)]="settings.sysNameAr"
+              [placeholder]="'SYSTEM_SETTINGS.NAME_AR_PLACEHOLDER' | translate"
+              dir="rtl"
+              class="w-full">
+          </div>
+          <div class="col-12 mt-3">
+            <label class="block mb-2 font-semibold">{{ 'SYSTEM_SETTINGS.NAME_EN' | translate }}</label>
+            <input
+              pInputText
+              [(ngModel)]="settings.sysNameEn"
+              [placeholder]="'SYSTEM_SETTINGS.NAME_EN_PLACEHOLDER' | translate"
+              dir="ltr"
+              class="w-full">
+          </div>
+        </div>
+
+        <div class="flex justify-content-end mt-4">
+          <p-button
+            icon="pi pi-save"
+            [label]="'COMMON.SAVE' | translate"
+            severity="success"
+            [loading]="saving"
+            [disabled]="saving"
+            (onClick)="saveNames()">
+          </p-button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

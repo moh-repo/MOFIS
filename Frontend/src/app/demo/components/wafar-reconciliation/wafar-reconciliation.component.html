@@ -1,0 +1,181 @@
+<div class="grid">
+  <!--
+    Summary. Collapsed on arrival: the figures are a detail of the list below,
+    not the reason for opening the page.
+
+    The cards use the shared band (assets/layout/styles/_summary-cards.scss) —
+    the same one the PrimeNG pages use, so the one ng-zorro screen in this set
+    does not look like a different application. They were three bare nz-cards
+    on a col-4 grid before, with nothing but the value colour to tell them
+    apart and no indication of what the figures were counting.
+  -->
+  <div class="col-12">
+    <p-panel [toggleable]="true" [collapsed]="true">
+      <ng-template pTemplate="header">
+        <div class="flex align-items-center gap-2">
+          <i class="pi pi-chart-bar text-primary"></i>
+          <span class="font-semibold">{{ 'WAFAR_RECONCILIATION.SUMMARY_TITLE' | translate }}</span>
+        </div>
+      </ng-template>
+
+      @if (summaryFailed) {
+        <div class="summary-failed" role="alert">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>{{ 'COMMON.FIGURES_LOAD_FAILED' | translate }}</span>
+          <button nz-button nzType="link" nzSize="small" (click)="loadSummary()">{{ 'COMMON.RETRY' | translate }}</button>
+        </div>
+      } @else {
+      <div class="summary-cards summary-cards--cols-3">
+        <div class="summary-card discrepancy">
+          <div class="summary-icon">
+            <i class="pi pi-exclamation-triangle"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'WAFAR_RECONCILIATION.DISCREPANCIES' | translate }}</span>
+            <span class="summary-value">{{ summary.DISCREPANCY | number }}</span>
+          </div>
+        </div>
+        <div class="summary-card matched">
+          <div class="summary-icon">
+            <i class="pi pi-check-circle"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'WAFAR_RECONCILIATION.MATCHED' | translate }}</span>
+            <span class="summary-value">{{ summary.MATCHED | number }}</span>
+          </div>
+        </div>
+        <div class="summary-card resolved">
+          <div class="summary-icon">
+            <i class="pi pi-verified"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'WAFAR_RECONCILIATION.RESOLVED' | translate }}</span>
+            <span class="summary-value">{{ summary.RESOLVED | number }}</span>
+          </div>
+        </div>
+      </div>
+      }
+    </p-panel>
+  </div>
+
+  <!-- Table -->
+  <div class="col-12">
+    <nz-card>
+      <!-- `flex-1` on the icon-and-title block, not `justify-content-between`:
+           under `direction: rtl` a flex row already runs right to left, and the
+           global rule in styles.scss reverses every
+           `.flex.justify-content-between` again, which put the heading on the
+           left and Run on the right in Arabic. -->
+      <div class="flex align-items-center mb-3 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3 flex-1">
+          <i class="pi pi-calculator text-primary" style="font-size: 2.5rem"></i>
+          <div>
+            <h2 class="m-0 text-primary">{{ 'WAFAR_RECONCILIATION.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0">{{ 'WAFAR_RECONCILIATION.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+        @if (canRun) {
+          <button nz-button nzType="primary" (click)="runReconciliation()" [nzLoading]="running">
+            {{ 'WAFAR_RECONCILIATION.RUN' | translate }}
+          </button>
+        }
+      </div>
+
+      <!--
+        Filter. Shared layout: assets/layout/styles/_filter-bar.scss — the same
+        block the PrimeNG pages use, so the one ng-zorro screen in this set does
+        not look like a different application.
+
+        The status picker used to be an unlabelled 180px box sitting beside Run,
+        which put "narrow the list" and "recompute every row" side by side.
+      -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-4">
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterStatus">
+            <label for="reconStatus">{{ 'WAFAR_RECONCILIATION.STATUS' | translate }}</label>
+            <nz-select
+              nzId="reconStatus"
+              [(ngModel)]="filterStatus"
+              (ngModelChange)="onFilterChange()"
+              nzAllowClear
+              [nzPlaceHolder]="'WAFAR_RECONCILIATION.FILTER_STATUS' | translate">
+              @for (o of statusOptions; track o) {
+                <nz-option [nzValue]="o.value" [nzLabel]="o.label"></nz-option>
+              }
+            </nz-select>
+          </div>
+        </div>
+      </div>
+
+      <nz-table
+        [nzData]="rows"
+        [nzLoading]="loading"
+        [nzTotal]="totalItems"
+        [nzPageSize]="pageSize"
+        [nzPageIndex]="page + 1"
+        (nzPageIndexChange)="onPageChange($event)"
+        nzShowPagination
+        nzFrontPagination="false"
+        nzSize="small"
+        nzBordered>
+        <thead>
+          <tr>
+            <th nzColumnKey="studentId" [nzSortFn]="true" [nzSortOrder]="sortOrderOf('studentId')" (nzSortOrderChange)="onSort('studentId', $event)">{{ 'WAFAR_RECONCILIATION.STUDENT_ID' | translate }}</th>
+            <th nzColumnKey="reconDate" [nzSortFn]="true" [nzSortOrder]="sortOrderOf('reconDate')" (nzSortOrderChange)="onSort('reconDate', $event)">{{ 'WAFAR_RECONCILIATION.RECON_DATE' | translate }}</th>
+            <th nzColumnKey="moheAmount" [nzSortFn]="true" [nzSortOrder]="sortOrderOf('moheAmount')" (nzSortOrderChange)="onSort('moheAmount', $event)">{{ 'WAFAR_RECONCILIATION.MOHE_AMOUNT' | translate }}</th>
+            <th nzColumnKey="wafarAmount" [nzSortFn]="true" [nzSortOrder]="sortOrderOf('wafarAmount')" (nzSortOrderChange)="onSort('wafarAmount', $event)">{{ 'WAFAR_RECONCILIATION.WAFAR_AMOUNT' | translate }}</th>
+            <th nzColumnKey="delta" [nzSortFn]="true" [nzSortOrder]="sortOrderOf('delta')" (nzSortOrderChange)="onSort('delta', $event)">{{ 'WAFAR_RECONCILIATION.DELTA' | translate }}</th>
+            <th nzColumnKey="reconStatus" [nzSortFn]="true" [nzSortOrder]="sortOrderOf('reconStatus')" (nzSortOrderChange)="onSort('reconStatus', $event)">{{ 'WAFAR_RECONCILIATION.STATUS' | translate }}</th>
+            <th>{{ 'COMMON.ACTIONS' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows; track row) {
+            <tr>
+              <td>{{ row.studentId }}</td>
+              <td>{{ row.reconDate | date:'yyyy-MM-dd' }}</td>
+              <td>{{ row.moheAmount | number }}</td>
+              <td>{{ row.wafarAmount | number }}</td>
+              <td [style.color]="row.delta !== 0 ? '#cf1322' : '#3f8600'">
+                {{ row.delta | number }}
+              </td>
+              <td>
+                <nz-tag [nzColor]="statusColor(row.reconStatus)">{{ statusLabel(row.reconStatus) }}</nz-tag>
+              </td>
+              <td>
+                @if (row.reconStatus === 'DISCREPANCY') {
+                  <button
+                    nz-button nzSize="small" nzType="primary"
+                    (click)="openResolve(row)" *hasPermission="'WAFAR.EDIT'">
+                    {{ 'WAFAR_RECONCILIATION.RESOLVE' | translate }}
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+          @if (!loading && rows.length === 0) {
+            <tr>
+              <td colspan="7">
+                <nz-empty></nz-empty>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </nz-table>
+    </nz-card>
+  </div>
+</div>
+
+<!-- Resolve modal -->
+<nz-modal
+  [(nzVisible)]="resolveVisible"
+  [nzTitle]="'WAFAR_RECONCILIATION.RESOLVE_TITLE' | translate"
+  (nzOnCancel)="resolveVisible = false"
+  (nzOnOk)="submitResolve()"
+  [nzOkLoading]="resolving"
+  [nzOkText]="'WAFAR_RECONCILIATION.RESOLVE' | translate">
+  <ng-container *nzModalContent>
+    <label>{{ 'WAFAR_RECONCILIATION.NOTES' | translate }}</label>
+    <textarea nz-input [(ngModel)]="resolveNotes" [nzAutosize]="{ minRows: 3, maxRows: 6 }"></textarea>
+  </ng-container>
+</nz-modal>

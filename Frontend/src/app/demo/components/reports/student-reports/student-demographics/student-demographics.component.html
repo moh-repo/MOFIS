@@ -1,0 +1,363 @@
+<div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <div class="mb-3">
+    <button pButton type="button" [label]="'REPORTS.REPORT_SUBPAGES.BACK_TO_STUDENT_REPORTS' | translate"
+      [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+      class="p-button-text p-button-sm"
+    routerLink="/reports/student"></button>
+  </div>
+
+  <!-- Header Section. `flex-1` on the leading block, not
+       `justify-content-between`: under `direction: rtl` a flex row already
+       runs right to left, and the global rule in styles.scss reverses every
+       `.flex.justify-content-between` again, which put the heading back on
+       the left and the actions on the right in Arabic. See
+       src/app/demo/components/page-headings.spec.ts. -->
+  <div class="flex align-items-center mb-4">
+    <h2 class="m-0 flex-1">
+      <i class="pi pi-users text-primary mr-2"></i>
+      {{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.TITLE' | translate }}
+    </h2>
+    <div class="flex gap-2">
+      <app-report-actions
+        pdfApiPath="/api/reports/student-demographics/export-report"
+        [query]="reportQuery()"
+        baseFilename="student-demographics">
+      </app-report-actions>
+
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="card mb-4">
+    <h3 class="mt-0 mb-3">
+      <i class="pi pi-filter text-primary mr-2"></i>
+      {{ 'REPORTS.REPORT_SUBPAGES.FILTERS' | translate }}
+    </h3>
+    <div class="p-fluid grid formgrid">
+      @if (hasMultiCountry) {
+        <div class="field col-12 md:col-3">
+          <label>{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</label>
+          <p-multiselect
+            [options]="allowedCountries"
+            [(ngModel)]="selectedCountryIds"
+            optionLabel="label"
+            optionValue="value"
+            [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_COUNTRIES' | translate"
+            (onChange)="onCountryChange()"
+            styleClass="w-full"
+            appendTo="body">
+          </p-multiselect>
+        </div>
+      }
+      <div class="field col-12 md:col-3">
+        <label for="gender">{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.GENDER' | translate }}</label>
+        <p-select
+          id="gender"
+          [(ngModel)]="selectedGender"
+          [options]="metadata.genders"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_GENDERS' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="ageRange">{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.AGE_RANGE' | translate }}</label>
+        <p-select
+          id="ageRange"
+          [(ngModel)]="selectedAgeRange"
+          [options]="metadata.ageRanges"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_AGES' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="level">{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.CURRENT_LEVEL' | translate }}</label>
+        <p-select
+          id="level"
+          [(ngModel)]="selectedLevel"
+          [options]="metadata.levels"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_LEVELS' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="studyType">{{ 'REPORTS.COMMON_FIELDS.STUDY_TYPE' | translate }}</label>
+        <p-select
+          id="studyType"
+          [(ngModel)]="selectedStudyType"
+          [options]="metadata.studyTypes"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_STUDY_TYPES' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="degree">{{ 'REPORTS.COMMON_FIELDS.DEGREE' | translate }}</label>
+        <p-select
+          id="degree"
+          [(ngModel)]="selectedDegree"
+          [options]="metadata.degrees"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_DEGREES' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="major">{{ 'REPORTS.COMMON_FIELDS.MAJOR' | translate }}</label>
+        <p-select
+          id="major"
+          [(ngModel)]="selectedMajor"
+          [options]="metadata.majors"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_MAJORS' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+      <div class="field col-12 md:col-3">
+        <label for="status">{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.STUDY_STATUS' | translate }}</label>
+        <p-select
+          id="status"
+          [(ngModel)]="selectedStatus"
+          [options]="metadata.statuses"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'REPORTS.REPORT_SUBPAGES.ALL_STATUSES' | translate"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          appendTo="body">
+        </p-select>
+      </div>
+    </div>
+    <div class="flex justify-content-end mt-3">
+      <p-button [label]="'REPORTS.REPORT_SUBPAGES.CLEAR_FILTERS' | translate" icon="pi pi-times" (onClick)="clearFilters()" styleClass="p-button-outlined"></p-button>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="grid mb-4">
+    <div class="col-12 md:col-3">
+      <div class="surface-card border-round p-3 shadow-1">
+        <div class="flex align-items-center">
+          <div class="flex-1">
+            <div class="text-500 text-sm">{{ 'REPORTS.REPORT_SUBPAGES.TOTAL_STUDENTS' | translate }}</div>
+            <div class="text-900 text-2xl font-bold">{{ totalStudents | number }}</div>
+          </div>
+          <div class="flex-shrink-0">
+            <i class="pi pi-users text-3xl text-primary"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 md:col-3">
+      <div class="surface-card border-round p-3 shadow-1">
+        <div class="flex align-items-center">
+          <div class="flex-1">
+            <div class="text-500 text-sm">{{ 'REPORTS.REPORT_SUBPAGES.COUNTRIES' | translate }}</div>
+            <div class="text-900 text-2xl font-bold">{{ metadata.countries.length | number }}</div>
+          </div>
+          <div class="flex-shrink-0">
+            <i class="pi pi-globe text-3xl text-orange-500"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 md:col-3">
+      <div class="surface-card border-round p-3 shadow-1">
+        <div class="flex align-items-center">
+          <div class="flex-1">
+            <div class="text-500 text-sm">{{ 'REPORTS.REPORT_SUBPAGES.MAJORS' | translate }}</div>
+            <div class="text-900 text-2xl font-bold">{{ metadata.majors.length | number }}</div>
+          </div>
+          <div class="flex-shrink-0">
+            <i class="pi pi-book text-3xl text-purple-500"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 md:col-3">
+      <div class="surface-card border-round p-3 shadow-1">
+        <div class="flex align-items-center">
+          <div class="flex-1">
+            <div class="text-500 text-sm">{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.DEGREES' | translate }}</div>
+            <div class="text-900 text-2xl font-bold">{{ metadata.degrees.length | number }}</div>
+          </div>
+          <div class="flex-shrink-0">
+            <i class="pi pi-graduation-cap text-3xl text-green-500"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gender Distribution -->
+  <div class="card mb-4">
+    <h3 class="mt-0 mb-3">
+      <i class="pi pi-chart-pie text-primary mr-2"></i>
+      {{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.GENDER_DISTRIBUTION' | translate }}
+    </h3>
+    <div class="grid">
+      @for (gender of genderDistribution; track gender.label) {
+        <div class="col-12 md:col-6">
+          <div class="surface-card border-round p-3 shadow-1">
+            <div class="flex align-items-center justify-content-between">
+              <div>
+                <div class="text-500 text-sm">{{ gender.label }}</div>
+                <div class="text-900 text-xl font-bold">{{ gender.value | number }}</div>
+              </div>
+              <div class="flex-shrink-0">
+                <i class="pi pi-user text-2xl" [class]="isMale(gender.label) ? 'text-blue-500' : (isFemale(gender.label) ? 'text-pink-500' : 'text-gray-500')"></i>
+              </div>
+            </div>
+            <div class="mt-2">
+              <div class="w-full bg-gray-200 rounded-full h-2">
+                <div class="h-2 rounded-full"
+                  [class]="isMale(gender.label) ? 'bg-blue-500' : (isFemale(gender.label) ? 'bg-pink-500' : 'bg-gray-500')"
+                  [style.width.%]="totalStudents > 0 ? (gender.value / totalStudents) * 100 : 0">
+                </div>
+              </div>
+              <div class="text-xs text-500 mt-1">
+                {{ totalStudents > 0 ? ((gender.value / totalStudents) * 100).toFixed(1) : 0 }}%
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Display Options -->
+  <div class="card mb-4">
+    <div class="flex align-items-center gap-3 mb-3">
+      <h3 class="m-0">{{ 'REPORTS.REPORT_SUBPAGES.DISPLAY_OPTIONS' | translate }}</h3>
+      <p-divider layout="vertical"></p-divider>
+      <div class="flex align-items-center gap-2">
+        <label for="groupBy">{{ 'REPORTS.REPORT_SUBPAGES.GROUP_BY' | translate }}:</label>
+        <p-select
+          id="groupBy"
+          [(ngModel)]="groupBy"
+          [options]="groupByOptions"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body">
+        </p-select>
+      </div>
+      <p-divider layout="vertical"></p-divider>
+      <div class="flex align-items-center gap-2">
+        <p-checkbox [(ngModel)]="showChart" [binary]="true" inputId="showChart"></p-checkbox>
+        <label for="showChart">{{ 'REPORTS.REPORT_SUBPAGES.SHOW_CHART' | translate }}</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="card">
+    <p-table
+      [value]="demographicsData"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="20"
+      [showCurrentPageReport]="true"
+      [currentPageReportTemplate]="'REPORTS.REPORT_SUBPAGES.SHOWING_ENTRIES' | translate"
+      [rowsPerPageOptions]="[10, 20, 50]"
+      styleClass="p-datatable-sm">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.STUDENT_ID' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.NAME' | translate }}</th>
+          <th>{{ 'REPORTS.COMMON_FIELDS.COUNTRY' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.GENDER' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.AGE' | translate }}</th>
+          <th>{{ 'REPORTS.INDIVIDUAL_REPORTS.STUDENT_DEMOGRAPHICS.LEVEL' | translate }}</th>
+          <th>{{ 'REPORTS.COMMON_FIELDS.STUDY_TYPE' | translate }}</th>
+          <th>{{ 'REPORTS.COMMON_FIELDS.DEGREE' | translate }}</th>
+          <th>{{ 'REPORTS.COMMON_FIELDS.MAJOR' | translate }}</th>
+          <th>{{ 'REPORTS.COMMON_FIELDS.STATUS' | translate }}</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-item>
+        <tr>
+          <td>{{ item.studentId }}</td>
+          <td>{{ item.studentName }}</td>
+          <td>{{ item.studentCountryName }}</td>
+          <td>
+            <p-tag
+              [value]="item.studentGenderName"
+              [severity]="getGenderSeverity(item.studentGenderName)">
+            </p-tag>
+          </td>
+          <td>{{ item.studentAge }}</td>
+          <td>{{ item.studentCurrentLevelName }}</td>
+          <td>{{ item.studentStudyTypeName }}</td>
+          <td>{{ item.studentDegreeName }}</td>
+          <td>{{ item.studentMajorName }}</td>
+          <td>
+            <p-tag
+              [value]="item.studentStudyStatusName"
+              [severity]="getStatusSeverity(item.studentStudyStatusId)">
+            </p-tag>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="10" class="text-center">
+            <div class="flex flex-column align-items-center gap-2 py-4">
+              <i class="pi pi-info-circle text-4xl text-400"></i>
+              <span class="text-500">{{ 'REPORTS.REPORT_SUBPAGES.NO_DATA_FOUND' | translate }}</span>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <!-- PDF Report Viewer -->
+  <div class="card mt-3">
+    <!-- Heading leads this row too; see the comment on the page header above. -->
+    <div class="flex align-items-center mb-3 flex-wrap gap-2">
+      <div class="flex align-items-center gap-2 flex-1">
+        <i class="pi pi-file-pdf" style="font-size:1.4rem;color:#6b2737"></i>
+        <h4 class="m-0" style="color:#6b2737">{{ 'REPORTS.VIEWER.GENERATE_REPORT' | translate }}</h4>
+      </div>
+      <div class="flex align-items-center gap-3 flex-wrap">
+        <div class="flex align-items-center gap-2">
+          <span class="font-semibold text-sm">{{ 'REPORTS.VIEWER.LANGUAGE' | translate }}: </span>
+          <p-selectButton [options]="reportLangOptions"
+            [(ngModel)]="selectedLang" optionLabel="label" optionValue="value">
+          </p-selectButton>
+        </div>
+        <p-button icon="pi pi-play"
+          [label]="'REPORTS.VIEWER.GENERATE_REPORT' | translate"
+          [loading]="reportLoading"
+          (onClick)="generateReport()">
+        </p-button>
+      </div>
+    </div>
+    <app-report-viewer [pdfApiPath]="pdfApiPath" [pdfQuery]="pdfQuery" [loadTrigger]="loadTrigger" [loading]="reportLoading" [filename]="'student-demographics.pdf'">
+    </app-report-viewer>
+  </div>
+  <p-toast></p-toast>
+</div>

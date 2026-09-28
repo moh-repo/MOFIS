@@ -1,0 +1,800 @@
+<!-- Toast for Messages -->
+<p-toast></p-toast>
+
+<!-- Confirmation Dialog -->
+<p-confirmdialog></p-confirmdialog>
+
+<!-- Main Card with Filters -->
+<p-card styleClass="student-extension-card" [attr.dir]="translation.isRTL() ? 'rtl' : 'ltr'">
+  <ng-template pTemplate="header">
+    <div class="card-header">
+      <!-- The icon leads the heading, as it does on every other page. It is a
+           sibling of the title block rather than a child of the h2, so the text
+           wraps under itself rather than under the glyph. -->
+      <div class="card-heading">
+        <i class="pi pi-calendar-plus card-heading__icon"></i>
+        <div>
+          <h2 class="title">{{ 'STUDENT_EXTENSION.TITLE' | translate }}</h2>
+          <p class="subtitle">{{ 'STUDENT_EXTENSION.SUBTITLE' | translate }}</p>
+        </div>
+      </div>
+      <div class="card-actions">
+        <p-button
+          icon="pi pi-refresh"
+          [label]="'COMMON.REFRESH' | translate"
+          [loading]="loading"
+          (onClick)="loadExtensions()"
+          styleClass="p-button-action-outlined">
+        </p-button>
+        <p-button
+          icon="pi pi-plus"
+          [label]="'STUDENT_EXTENSION.ACTIONS.ADD' | translate"
+          severity="success"
+          (onClick)="openCreate()">
+        </p-button>
+      </div>
+    </div>
+  </ng-template>
+
+  <!--
+    Filters.
+
+    A grid rather than a wrapping flex row: every control used to carry its own
+    pixel width (120/160/200/180/160), so they could not share the row evenly
+    and the two buttons were left to wrap wherever there happened to be space.
+    The columns are declared at three breakpoints instead, and each control
+    fills the one it is given.
+  -->
+  <form [formGroup]="filtersForm" (ngSubmit)="applyFilters(true)" class="ext-filters">
+    <div class="ext-filters__grid">
+      <div class="ext-filters__field" [class.ext-filters__field--active]="filtersForm.value.filterStudentId">
+        <label for="idFilter">{{ 'STUDENT_EXTENSION.FILTERS.STUDENT_ID' | translate }}</label>
+        <span class="p-input-icon-left">
+          <i class="pi pi-hashtag"></i>
+          <input id="idFilter" pInputText formControlName="filterStudentId"
+            [placeholder]="'STUDENT_EXTENSION.FILTERS.STUDENT_ID' | translate" />
+        </span>
+      </div>
+      <div class="ext-filters__field" [class.ext-filters__field--active]="filtersForm.value.passport">
+        <label for="passportFilter">{{ 'STUDENT_EXTENSION.FILTERS.PASSPORT' | translate }}</label>
+        <span class="p-input-icon-left">
+          <i class="pi pi-id-card"></i>
+          <input id="passportFilter" pInputText formControlName="passport"
+            [placeholder]="'STUDENT_EXTENSION.FILTERS.PASSPORT' | translate" />
+        </span>
+      </div>
+      <div class="ext-filters__field ext-filters__field--wide"
+        [class.ext-filters__field--active]="filtersForm.value.studentId">
+        <label for="studentFilter">{{ 'STUDENT_EXTENSION.FILTERS.STUDENT' | translate }}</label>
+        <p-select
+          inputId="studentFilter"
+          [options]="studentOptions"
+          formControlName="studentId"
+          optionLabel="name"
+          optionValue="id"
+          [placeholder]="'STUDENT_EXTENSION.FILTERS.ALL_STUDENTS' | translate"
+          [showClear]="true"
+          [filter]="true"
+          filterBy="name">
+        </p-select>
+      </div>
+      <div class="ext-filters__field" [class.ext-filters__field--active]="filtersForm.value.extensionType">
+        <label for="typeFilter">{{ 'STUDENT_EXTENSION.FILTERS.EXTENSION_TYPE' | translate }}</label>
+        <p-select
+          inputId="typeFilter"
+          [options]="extensionTypeOptions"
+          formControlName="extensionType"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'STUDENT_EXTENSION.FILTERS.ALL_TYPES' | translate"
+          [showClear]="true"
+          [filter]="true"
+          filterBy="label">
+        </p-select>
+      </div>
+      <div class="ext-filters__field" [class.ext-filters__field--active]="filtersForm.value.status">
+        <label for="statusFilter">{{ 'STUDENT_EXTENSION.FILTERS.STATUS' | translate }}</label>
+        <p-select
+          inputId="statusFilter"
+          [options]="statusOptions"
+          formControlName="status"
+          optionLabel="label"
+          optionValue="value"
+          [placeholder]="'STUDENT_EXTENSION.FILTERS.ALL_STATUSES' | translate"
+          [showClear]="true"
+          [filter]="true"
+          filterBy="label">
+        </p-select>
+      </div>
+    </div>
+
+    <!-- No "بحث" button: the filters search as they change, like the other
+         student lists (review S10). -->
+    <div class="ext-filters__actions">
+      <p-button
+        icon="pi pi-times"
+        [label]="'COMMON.CLEAR' | translate"
+        (onClick)="clearFilters()"
+        styleClass="p-button-action-outlined">
+      </p-button>
+    </div>
+  </form>
+
+  <!-- Summary statistics, collapsed until asked for. -->
+  @if (summary.total > 0) {
+    <p-panel
+      [toggleable]="true"
+      [collapsed]="true"
+      styleClass="summary-panel mt-3">
+      <ng-template pTemplate="header">
+        <div class="flex align-items-center gap-2">
+          <i class="pi pi-chart-bar text-primary"></i>
+          <span class="font-semibold">{{ 'STUDENT_EXTENSION.SUMMARY.TITLE' | translate }}</span>
+          <p-tag [value]="summary.total.toString()" severity="info" styleClass="ml-2"></p-tag>
+        </div>
+      </ng-template>
+      <div class="summary-cards summary-cards--cols-5">
+        <div class="summary-card total">
+          <div class="summary-icon">
+            <i class="pi pi-users"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'STUDENT_EXTENSION.SUMMARY.TOTAL' | translate }}</span>
+            <span class="summary-value">{{ summary.total }}</span>
+            @if (summary.lastUpdated) {
+              <span class="summary-meta">
+                {{ 'STUDENT_EXTENSION.SUMMARY.UPDATED' | translate }} {{ summary.lastUpdated | date:'short' }}
+              </span>
+            }
+          </div>
+        </div>
+        <div class="summary-card approved">
+          <div class="summary-icon">
+            <i class="pi pi-check-circle"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'STUDENT_EXTENSION.SUMMARY.APPROVED' | translate }}</span>
+            <span class="summary-value">{{ summary.approved }}</span>
+          </div>
+        </div>
+        <div class="summary-card pending">
+          <div class="summary-icon">
+            <i class="pi pi-clock"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'STUDENT_EXTENSION.SUMMARY.PENDING' | translate }}</span>
+            <span class="summary-value">{{ summary.pending }}</span>
+          </div>
+        </div>
+        <div class="summary-card rejected">
+          <div class="summary-icon">
+            <i class="pi pi-times-circle"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'STUDENT_EXTENSION.SUMMARY.REJECTED' | translate }}</span>
+            <span class="summary-value">{{ summary.rejected }}</span>
+          </div>
+        </div>
+        <div class="summary-card average">
+          <div class="summary-icon">
+            <i class="pi pi-chart-line"></i>
+          </div>
+          <div class="summary-content">
+            <span class="summary-label">{{ 'STUDENT_EXTENSION.SUMMARY.AVG_QUARTERS' | translate }}</span>
+            <span class="summary-value">{{ summary.averageQuarters }}</span>
+            <span class="summary-meta">{{ 'STUDENT_EXTENSION.SUMMARY.IN_PROGRESS' | translate }}: {{ summary.inProgress }}</span>
+          </div>
+        </div>
+      </div>
+    </p-panel>
+  }
+</p-card>
+
+<!-- Data Table -->
+<p-card styleClass="table-card">
+  <p-table
+    [value]="extensions"
+    [loading]="loading"
+    [paginator]="true"
+    [rows]="10"
+    [(first)]="first"
+    [rowsPerPageOptions]="[10, 25, 50]"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="{{ 'COMMON.SHOWING' | translate }} {first} {{ 'COMMON.TO' | translate }} {last} {{ 'COMMON.OF' | translate }} {totalRecords}"
+    [globalFilterFields]="['studentName', 'extensionType', 'extensionStatus']"
+    responsiveLayout="scroll"
+    styleClass="p-datatable-sm p-datatable-striped">
+
+    <ng-template pTemplate="header">
+      <tr>
+        <th pSortableColumn="studentName">
+          {{ 'STUDENT_EXTENSION.TABLE.STUDENT' | translate }}
+          <p-sortIcon field="studentName"></p-sortIcon>
+        </th>
+        <th pSortableColumn="extensionType">
+          {{ 'STUDENT_EXTENSION.TABLE.EXTENSION_TYPE' | translate }}
+          <p-sortIcon field="extensionType"></p-sortIcon>
+        </th>
+        <th pSortableColumn="extensionStatus">
+          {{ 'STUDENT_EXTENSION.TABLE.STATUS' | translate }}
+          <p-sortIcon field="extensionStatus"></p-sortIcon>
+        </th>
+        <th pSortableColumn="extensionQuarters">
+          {{ 'STUDENT_EXTENSION.TABLE.QUARTERS' | translate }}
+          <p-sortIcon field="extensionQuarters"></p-sortIcon>
+        </th>
+        <th pSortableColumn="extensionStartDate">
+          {{ 'STUDENT_EXTENSION.TABLE.START_DATE' | translate }}
+          <p-sortIcon field="extensionStartDate"></p-sortIcon>
+        </th>
+        <th pSortableColumn="extensionEndDate">
+          {{ 'STUDENT_EXTENSION.TABLE.END_DATE' | translate }}
+          <p-sortIcon field="extensionEndDate"></p-sortIcon>
+        </th>
+        <th>{{ 'STUDENT_EXTENSION.TABLE.DECISION' | translate }}</th>
+        <th>{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="body" let-extension>
+      <tr>
+        <td>
+          <div class="student-info">
+            <div class="student-name">{{ extension.studentName || ('COMMON.NOT_AVAILABLE' | translate) }}</div>
+            <small class="text-muted">ID: {{ extension.studentId }}</small>
+          </div>
+        </td>
+        <td>{{ typeDisplay(extension) }}</td>
+        <td>
+          <p-tag
+            [value]="statusDisplay(extension)"
+            [severity]="getStatusSeverity(extension.extensionStatus)">
+          </p-tag>
+        </td>
+        <td>{{ extension.extensionQuarters ?? 0 }}</td>
+        <td>{{ extension.extensionStartDate ? (extension.extensionStartDate | date:'mediumDate') : ('COMMON.NOT_AVAILABLE' | translate) }}</td>
+        <td>{{ extension.extensionEndDate ? (extension.extensionEndDate | date:'mediumDate') : ('COMMON.NOT_AVAILABLE' | translate) }}</td>
+        <td>
+          @if (extension.extensionDecisionNo) {
+            <div>
+              <div class="decision-number">{{ extension.extensionDecisionNo }}</div>
+              <small class="text-muted">{{ extension.extensionDecisionDate ? (extension.extensionDecisionDate | date:'mediumDate') : '' }}</small>
+            </div>
+          } @else {
+            <span class="text-muted">{{ 'COMMON.NOT_AVAILABLE' | translate }}</span>
+          }
+        </td>
+        <td>
+          <div class="table-actions">
+            <p-button
+              icon="pi pi-eye"
+              [pTooltip]="'STUDENT_EXTENSION.ACTIONS.VIEW' | translate"
+              severity="info"
+              [rounded]="true"
+              [text]="true"
+              (onClick)="openView(extension)">
+            </p-button>
+            <p-button
+              icon="pi pi-pencil"
+              [pTooltip]="'STUDENT_EXTENSION.ACTIONS.EDIT' | translate"
+              severity="warn"
+              [rounded]="true"
+              [text]="true"
+              (onClick)="openEdit(extension)">
+            </p-button>
+            <p-button
+              icon="pi pi-trash"
+              [pTooltip]="'STUDENT_EXTENSION.ACTIONS.DELETE' | translate"
+              severity="danger"
+              [rounded]="true"
+              [text]="true"
+              [loading]="deletingIds.has(extension.extensionId)"
+              (onClick)="deleteExtension(extension)">
+            </p-button>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="8" class="empty-message">
+          <div class="empty-state">
+            <i class="pi pi-inbox" style="font-size: 3rem; color: var(--text-color-secondary);"></i>
+            <p>{{ 'STUDENT_EXTENSION.TABLE_EMPTY' | translate }}</p>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</p-card>
+
+<!-- Add/Edit Dialog -->
+<p-dialog
+  [header]="modalTitle"
+  [(visible)]="modalVisible"
+  [modal]="true"
+  [style]="{width: '90vw', maxWidth: '1100px'}"
+  [draggable]="false"
+  [resizable]="false"
+  [maximizable]="true"
+  styleClass="extension-dialog-compact"
+  [attr.dir]="translation.isRTL() ? 'rtl' : 'ltr'"
+  (onHide)="closeModal()">
+
+  <form [formGroup]="extensionForm" (ngSubmit)="submitForm()">
+    <!-- Single compact grid layout -->
+    <div class="compact-form-grid">
+      <!-- Row 1: Basic Info -->
+      <div class="form-section">
+        <div class="section-header">
+          <i class="pi pi-user"></i>
+          <span>{{ 'STUDENT_EXTENSION.FORM.SECTION_PRIMARY' | translate }}</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label for="student">{{ 'STUDENT_EXTENSION.FORM.STUDENT' | translate }} <span class="required">*</span></label>
+            <p-select
+              inputId="student"
+              [options]="studentOptions"
+              formControlName="studentId"
+              optionLabel="name"
+              optionValue="id"
+              [placeholder]="'STUDENT_EXTENSION.FORM.SELECT_STUDENT' | translate"
+              [filter]="true"
+              filterBy="name"
+              appendTo="body">
+            </p-select>
+            @if (extensionForm.get('studentId')?.invalid && extensionForm.get('studentId')?.touched) {
+              <small class="p-error">
+                {{ 'STUDENT_EXTENSION.VALIDATION.REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="form-col">
+            <label for="extensionType">{{ 'STUDENT_EXTENSION.FORM.EXTENSION_TYPE' | translate }} <span class="required">*</span></label>
+            <p-select
+              inputId="extensionType"
+              [options]="extensionTypeOptions"
+              formControlName="extensionType"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'STUDENT_EXTENSION.FORM.SELECT_EXTENSION_TYPE' | translate"
+              [filter]="true"
+              filterBy="label"
+              appendTo="body">
+            </p-select>
+            @if (extensionForm.get('extensionType')?.invalid && extensionForm.get('extensionType')?.touched) {
+              <small class="p-error">
+                {{ 'STUDENT_EXTENSION.VALIDATION.REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="form-col">
+            <label for="status">{{ 'STUDENT_EXTENSION.FORM.STATUS' | translate }} <span class="required">*</span></label>
+            <p-select
+              inputId="status"
+              [options]="statusOptions"
+              formControlName="extensionStatus"
+              optionLabel="label"
+              optionValue="value"
+              [placeholder]="'STUDENT_EXTENSION.FORM.SELECT_STATUS' | translate"
+              [filter]="true"
+              filterBy="label"
+              appendTo="body">
+            </p-select>
+            @if (extensionForm.get('extensionStatus')?.invalid && extensionForm.get('extensionStatus')?.touched) {
+              <small class="p-error">
+                {{ 'STUDENT_EXTENSION.VALIDATION.REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+
+          <div class="form-col">
+            <label for="quarters">{{ 'STUDENT_EXTENSION.FORM.QUARTERS' | translate }}</label>
+            <p-inputnumber
+              inputId="quarters"
+              formControlName="extensionQuarters"
+              [min]="0"
+              [showButtons]="true"
+              buttonLayout="horizontal"
+              incrementButtonIcon="pi pi-plus"
+              decrementButtonIcon="pi pi-minus"
+              styleClass="quarters-input">
+            </p-inputnumber>
+            @if (extensionForm.get('extensionQuarters')?.invalid && extensionForm.get('extensionQuarters')?.touched) {
+              <small class="p-error">
+                {{ 'STUDENT_EXTENSION.VALIDATION.NEGATIVE_QUARTERS' | translate }}
+              </small>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Dates & Decision -->
+      <div class="form-section">
+        <div class="section-header">
+          <i class="pi pi-calendar"></i>
+          <span>{{ 'STUDENT_EXTENSION.FORM.SECTION_DATES' | translate }} & {{ 'STUDENT_EXTENSION.FORM.SECTION_DECISION' | translate }}</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label for="startDate">{{ 'STUDENT_EXTENSION.FORM.START_DATE' | translate }}</label>
+            <p-datepicker
+              inputId="startDate"
+              formControlName="extensionStartDate"
+              [showIcon]="true"
+              dateFormat="yy-mm-dd"
+              appendTo="body">
+            </p-datepicker>
+          </div>
+
+          <div class="form-col">
+            <label for="endDate">{{ 'STUDENT_EXTENSION.FORM.END_DATE' | translate }}</label>
+            <p-datepicker
+              inputId="endDate"
+              formControlName="extensionEndDate"
+              [showIcon]="true"
+              dateFormat="yy-mm-dd"
+              appendTo="body">
+            </p-datepicker>
+          </div>
+
+          <div class="form-col">
+            <label for="decisionNo">{{ 'STUDENT_EXTENSION.FORM.DECISION_NO' | translate }}</label>
+            <input
+              pInputText
+              id="decisionNo"
+              formControlName="extensionDecisionNo">
+          </div>
+
+          <div class="form-col">
+            <label for="decisionDate">{{ 'STUDENT_EXTENSION.FORM.DECISION_DATE' | translate }}</label>
+            <p-datepicker
+              inputId="decisionDate"
+              formControlName="extensionDecisionDate"
+              [showIcon]="true"
+              dateFormat="yy-mm-dd"
+              appendTo="body">
+            </p-datepicker>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col full-width">
+            <label for="approvedBy">{{ 'STUDENT_EXTENSION.FORM.APPROVED_BY' | translate }}</label>
+            <input
+              pInputText
+              id="approvedBy"
+              formControlName="approvedBy">
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Notes (Compact) -->
+      <div class="form-section">
+        <div class="section-header">
+          <i class="pi pi-comment"></i>
+          <span>{{ 'STUDENT_EXTENSION.FORM.SECTION_NOTES' | translate }}</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label for="reason">{{ 'STUDENT_EXTENSION.FORM.REASON' | translate }}</label>
+            <textarea
+              pTextarea
+              id="reason"
+              formControlName="extensionReason"
+              rows="2"
+              [autoResize]="true">
+            </textarea>
+          </div>
+
+          <div class="form-col">
+            <label for="reasonDetails">{{ 'STUDENT_EXTENSION.FORM.REASON_DETAILS' | translate }}</label>
+            <textarea
+              pTextarea
+              id="reasonDetails"
+              formControlName="extensionReasonDetails"
+              rows="2"
+              [autoResize]="true">
+            </textarea>
+          </div>
+
+          <div class="form-col">
+            <label for="notes">{{ 'STUDENT_EXTENSION.FORM.NOTES' | translate }}</label>
+            <textarea
+              pTextarea
+              id="notes"
+              formControlName="notes"
+              rows="2"
+              [autoResize]="true">
+            </textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="dialog-footer-compact">
+      <p-button
+        [label]="'COMMON.CANCEL' | translate"
+        icon="pi pi-times"
+        severity="secondary"
+        (onClick)="closeModal()"
+        styleClass="p-button-outlined">
+      </p-button>
+      <p-button
+        [label]="'COMMON.SAVE' | translate"
+        icon="pi pi-check"
+        type="submit"
+        [loading]="modalSubmitting"
+        [disabled]="extensionForm.invalid">
+      </p-button>
+    </div>
+  </form>
+</p-dialog>
+
+<!-- ═══════════════════════════ VIEW DIALOG ═══════════════════════════
+
+     hero  → three KPI tiles (start / end / decision date)
+           → "Primary Details" list (student, id, type, quarters)
+           → "Decision Details" list (decision no / date, approved by, status)
+           → reason & notes
+           → timeline | audit trail
+-->
+<p-dialog
+  [(visible)]="drawerVisible"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [maximizable]="true"
+  [style]="{width: '860px', maxWidth: '95vw'}"
+  [header]="'STUDENT_EXTENSION.VIEW.TITLE' | translate"
+  styleClass="dv-dialog"
+  [attr.dir]="translation.isRTL() ? 'rtl' : 'ltr'"
+  (onHide)="closeDrawer()">
+
+  <ng-template pTemplate="content">
+    @if (viewingExtension; as ext) {
+      <div class="dv-view">
+
+        <!-- Hero -->
+        <div [class]="'dv-hero ' + statusHeroClass(ext.extensionStatus)">
+          <div class="dv-hero__badge">
+            <span class="dv-hero__badge-prefix">#</span>{{ ext.extensionId }}
+          </div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ typeDisplay(ext) }}</div>
+            <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!ext.studentName">
+              {{ ext.studentName || ('COMMON.NOT_AVAILABLE' | translate) }}
+            </div>
+            <div class="dv-hero__subtitle">
+              {{ 'STUDENT_EXTENSION.TABLE.STUDENT_ID' | translate }}: {{ ext.studentId ?? '—' }}
+            </div>
+            <div class="dv-hero__meta">
+              @if (ext.extensionStartDate || ext.extensionEndDate) {
+                <span class="dv-chip">
+                  <i class="pi pi-calendar"></i>
+                  {{ (ext.extensionStartDate | date:'mediumDate') || '—' }} – {{ (ext.extensionEndDate | date:'mediumDate') || '—' }}
+                </span>
+              }
+              @if (ext.extensionDecisionNo) {
+                <span class="dv-chip dv-chip--blue">
+                  <i class="pi pi-file"></i>
+                  {{ 'STUDENT_EXTENSION.FORM.DECISION_NO' | translate }}: {{ ext.extensionDecisionNo }}
+                </span>
+              }
+              @if (ext.extensionStatus) {
+                <p-tag
+                  [value]="statusDisplay(ext)"
+                  [severity]="getStatusSeverity(ext.extensionStatus)"
+                  [rounded]="true">
+                </p-tag>
+              }
+            </div>
+          </div>
+          <div class="dv-hero__amount">
+            <div class="dv-hero__amount-label">{{ 'STUDENT_EXTENSION.FORM.QUARTERS' | translate }}</div>
+            <div class="dv-hero__amount-value dv-hero__amount-value--blue">{{ ext.extensionQuarters ?? 0 }}</div>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="dv-kpis dv-kpis--cols-3">
+          <div class="dv-kpi dv-kpi--blue">
+            <span class="dv-kpi__icon"><i class="pi pi-calendar"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_EXTENSION.FORM.START_DATE' | translate }}</div>
+              <div class="dv-kpi__value">{{ (ext.extensionStartDate | date:'mediumDate') || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--orange">
+            <span class="dv-kpi__icon"><i class="pi pi-flag"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_EXTENSION.FORM.END_DATE' | translate }}</div>
+              <div class="dv-kpi__value">{{ (ext.extensionEndDate | date:'mediumDate') || '—' }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--green">
+            <span class="dv-kpi__icon"><i class="pi pi-check-circle"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_EXTENSION.FORM.DECISION_DATE' | translate }}</div>
+              <div class="dv-kpi__value">{{ (ext.extensionDecisionDate | date:'mediumDate') || '—' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dv-columns">
+          <!-- Primary details -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-user"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_EXTENSION.FORM.SECTION_PRIMARY' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_EXTENSION.FORM.STUDENT' | translate }}</dt>
+                <dd>{{ ext.studentName || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_EXTENSION.TABLE.STUDENT_ID' | translate }}</dt>
+                <dd>{{ ext.studentId ?? '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_EXTENSION.TABLE.EXTENSION_TYPE' | translate }}</dt>
+                <dd>{{ typeDisplay(ext) }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_EXTENSION.TABLE.QUARTERS' | translate }}</dt>
+                <dd class="dv-dl__blue">{{ ext.extensionQuarters ?? 0 }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Decision details -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-file"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_EXTENSION.FORM.SECTION_DECISION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_EXTENSION.FORM.DECISION_NO' | translate }}</dt>
+                <dd>{{ ext.extensionDecisionNo || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_EXTENSION.FORM.DECISION_DATE' | translate }}</dt>
+                <dd>{{ (ext.extensionDecisionDate | date:'mediumDate') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_EXTENSION.FORM.APPROVED_BY' | translate }}</dt>
+                <dd>{{ ext.approvedBy || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_EXTENSION.TABLE.STATUS' | translate }}</dt>
+                <dd>
+                  @if (ext.extensionStatus) {
+                    <p-tag
+                      [value]="statusDisplay(ext)"
+                      [severity]="getStatusSeverity(ext.extensionStatus)"
+                      [rounded]="true">
+                    </p-tag>
+                  } @else {
+                    —
+                  }
+                </dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <!-- Reason & notes -->
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-comment"></i></span>
+            <div class="dv-section__title">{{ 'STUDENT_EXTENSION.FORM.SECTION_NOTES' | translate }}</div>
+          </header>
+          <dl class="dv-dl">
+            <div class="dv-dl__row dv-dl__row--stack">
+              <dt>{{ 'STUDENT_EXTENSION.FORM.REASON' | translate }}</dt>
+              <dd [class.dv-dl__muted]="!ext.extensionReason">{{ ext.extensionReason || '—' }}</dd>
+            </div>
+            <div class="dv-dl__row dv-dl__row--stack">
+              <dt>{{ 'STUDENT_EXTENSION.FORM.REASON_DETAILS' | translate }}</dt>
+              <dd [class.dv-dl__muted]="!ext.extensionReasonDetails">{{ ext.extensionReasonDetails || '—' }}</dd>
+            </div>
+            <div class="dv-dl__row dv-dl__row--stack">
+              <dt>{{ 'STUDENT_EXTENSION.FORM.NOTES' | translate }}</dt>
+              <dd>
+                @if (ext.notes) {
+                  <p class="dv-notes font-normal">{{ ext.notes }}</p>
+                } @else {
+                  <p class="dv-notes dv-notes--empty font-normal">{{ 'COMMON.NOT_AVAILABLE' | translate }}</p>
+                }
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <div class="dv-columns">
+          <!-- Timeline -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--purple"><i class="pi pi-history"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_EXTENSION.TIMELINE.TITLE' | translate }}</div>
+            </header>
+            <p-timeline [value]="timelineItems" [align]="translation.isRTL() ? 'right' : 'left'">
+              <ng-template pTemplate="content" let-item>
+                <div class="pb-2">
+                  <div class="text-700 font-medium text-sm">{{ item.label }}</div>
+                  <div class="text-600 text-sm">{{ item.value }}</div>
+                </div>
+              </ng-template>
+              <ng-template pTemplate="marker" let-item>
+                <i [class]="timelineMarkerClass(item.icon)" [style.color]="item.color"></i>
+              </ng-template>
+            </p-timeline>
+          </section>
+
+          <!-- Audit trail -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-clock"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_EXTENSION.FORM.SECTION_AUDIT' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row dv-dl__row--stack">
+                <dt>{{ 'STUDENT_EXTENSION.TABLE.CREATED' | translate }}</dt>
+                <dd>
+                  {{ (ext.createdDate | date:'short') || '—' }}
+                  @if (ext.createdBy) {
+                    <span class="text-500 font-normal">({{ ext.createdBy }})</span>
+                  }
+                </dd>
+              </div>
+              <div class="dv-dl__row dv-dl__row--stack">
+                <dt>{{ 'STUDENT_EXTENSION.TABLE.MODIFIED' | translate }}</dt>
+                <dd>
+                  {{ (ext.modifiedDate | date:'short') || '—' }}
+                  @if (ext.modifiedBy) {
+                    <span class="text-500 font-normal">({{ ext.modifiedBy }})</span>
+                  }
+                </dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint">
+        @if (viewingExtension?.modifiedDate; as modified) {
+          <i class="pi pi-clock"></i>
+          <span>{{ 'STUDENT_EXTENSION.TABLE.MODIFIED' | translate }}: {{ modified | date:'short' }}</span>
+        }
+      </div>
+      <div class="dv-footer__actions">
+        <p-button
+          icon="pi pi-times"
+          [label]="'COMMON.CLOSE' | translate"
+          severity="secondary"
+          [text]="true"
+          (onClick)="closeDrawer()">
+        </p-button>
+        <p-button
+          icon="pi pi-pencil"
+          [label]="'STUDENT_EXTENSION.ACTIONS.EDIT' | translate"
+          (onClick)="editFromView()">
+        </p-button>
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>

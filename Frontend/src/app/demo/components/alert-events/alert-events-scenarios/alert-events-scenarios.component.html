@@ -1,0 +1,486 @@
+<div class="alert-scenarios-container" [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+  <p-toast></p-toast>
+  <p-confirmdialog></p-confirmdialog>
+
+  <!-- Header -->
+  <div class="card mb-3">
+    <!--
+      The heading block takes the free space rather than the row carrying
+      justify-content-between: styles.scss reverses that class again for RTL,
+      which put the title on the left and the buttons on the right in Arabic.
+    -->
+    <div class="flex align-items-center flex-wrap gap-2">
+      <div class="flex align-items-center gap-3 flex-1">
+        <i class="pi pi-sliders-h text-primary" style="font-size: 2rem"></i>
+        <div>
+          <h3 class="m-0 text-primary">{{ 'ALERT_EVENTS.SCENARIOS_TITLE' | translate }}</h3>
+          <p class="text-600 mt-1 mb-0">{{ 'ALERT_EVENTS.SCENARIOS_DESC' | translate }}</p>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <p-button [icon]="isRtl ? 'pi pi-arrow-right' : 'pi pi-arrow-left'" [label]="'ALERT_EVENTS.BACK_TO_CASES' | translate"
+          styleClass="p-button-outlined p-button-secondary"
+        [routerLink]="['../cases']"></p-button>
+        <!-- Writes are ALERT_SCENARIOS_MANAGE on the server; reading the list is not. -->
+        <ng-container *hasPermission="'ALERT_SCENARIOS.MANAGE'">
+          <p-button icon="pi pi-plus" [label]="'ALERT_EVENTS.ADD_SCENARIO' | translate"
+          (onClick)="openAdd()"></p-button>
+        </ng-container>
+        <p-button icon="pi pi-refresh" [label]="'COMMON.REFRESH' | translate"
+          styleClass="p-button-action-outlined"
+        (onClick)="loadScenarios()"></p-button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <p-table [value]="scenarios" [loading]="loading"
+      [customSort]="true" (sortFunction)="sortTable($event)"
+      styleClass="p-datatable-gridlines p-datatable-sm" dataKey="scenarioId">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="scenario">{{ 'ALERT_EVENTS.COL.SCENARIO' | translate }} <p-sortIcon field="scenario"></p-sortIcon></th>
+          <th style="width: 9rem" pSortableColumn="severity">{{ 'ALERT_EVENTS.COL.SEVERITY' | translate }} <p-sortIcon field="severity"></p-sortIcon></th>
+          <th style="width: 12rem" pSortableColumn="thresholdDays">{{ 'ALERT_EVENTS.COL.THRESHOLD_DAYS' | translate }} <p-sortIcon field="thresholdDays"></p-sortIcon></th>
+          <th style="width: 8rem" pSortableColumn="isActive">{{ 'COMMON.ACTIVE' | translate }} <p-sortIcon field="isActive"></p-sortIcon></th>
+          <th style="width: 10rem">{{ 'COMMON.ACTIONS' | translate }}</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-s>
+        <tr>
+          <td>
+            <div class="font-medium">{{ scenarioName(s) }}</div>
+            <div class="text-500 text-sm mt-1">{{ isRtl ? s.descriptionAr : s.descriptionEn }}</div>
+            <div class="text-400 text-xs mt-1 font-mono">{{ s.scenarioCode }}</div>
+          </td>
+          <td>
+            <p-tag [value]="s.severity | codeLabel:'alert-severity':currentLanguage" [severity]="s.severity | codeSeverity:'alert-severity'"></p-tag>
+          </td>
+          <td>
+            @if (s.thresholdDays !== null && s.thresholdDays !== undefined) {
+              <div
+                class="flex align-items-center gap-2">
+                <p-inputnumber [(ngModel)]="s.thresholdDays" [min]="1" [max]="365"
+                  [showButtons]="false" inputStyleClass="w-5rem text-center"
+                  [disabled]="!canManage"
+                (onBlur)="saveThreshold(s)"></p-inputnumber>
+                <span class="text-600 text-sm">{{ 'ALERT_EVENTS.DAYS' | translate }}</span>
+                <ng-container *hasPermission="'ALERT_SCENARIOS.MANAGE'">
+                  <p-button icon="pi pi-save" styleClass="p-button-sm p-button-text"
+                    [loading]="savingId === s.scenarioId"
+                    (onClick)="saveThreshold(s)"
+                  [pTooltip]="'COMMON.SAVE' | translate"></p-button>
+                </ng-container>
+              </div>
+            } @else {
+              <span class="text-400">—</span>
+            }
+          </td>
+          <td>
+            <p-toggleswitch [(ngModel)]="s.isActive"
+              [disabled]="savingId === s.scenarioId || !canManage"
+            (onChange)="toggleActive(s)"></p-toggleswitch>
+          </td>
+          <td>
+            <div class="flex gap-1">
+              <!-- Reading is open to everyone who can see the list; writes stay behind the permission. -->
+              <p-button icon="pi pi-eye"
+                styleClass="p-button-sm p-button-text p-button-secondary"
+                (onClick)="openView(s)"
+              [pTooltip]="'COMMON.VIEW' | translate"></p-button>
+              <ng-container *hasPermission="'ALERT_SCENARIOS.MANAGE'">
+                <p-button icon="pi pi-pencil"
+                  styleClass="p-button-sm p-button-text p-button-info"
+                  (onClick)="openEdit(s)"
+                [pTooltip]="'COMMON.EDIT' | translate"></p-button>
+                <p-button icon="pi pi-trash"
+                  styleClass="p-button-sm p-button-text p-button-danger"
+                  [loading]="savingId === s.scenarioId"
+                  (onClick)="confirmDelete(s)"
+                [pTooltip]="'COMMON.DELETE' | translate"></p-button>
+              </ng-container>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5" class="text-center text-500 py-4">
+            {{ 'COMMON.NO_DATA' | translate }}
+          </td>
+        </tr>
+      </ng-template>
+
+    </p-table>
+  </div>
+
+  <!-- ═══════════════════════════ ADD / EDIT ═══════════════════════════
+
+       Layout (styles: .dv-* in assets/layout/styles/_detail-dialog.scss, the
+       vocabulary every record's Add/Edit dialog shares):
+
+         hero     → a live preview: the name as typed, code, severity,
+                    threshold and active state
+         notice   → add: the code is fixed once created
+         section  → identity: names, code, severity, threshold
+         section  → descriptions, both languages
+         section  → settings: active
+         footer   → cancel; add / save
+  -->
+  <p-dialog [(visible)]="dialogVisible" [modal]="true" [header]="dialogHeader"
+    [style]="{width: '860px', maxWidth: '96vw'}"
+    [closable]="!dialogSaving" [draggable]="false" [resizable]="false"
+    styleClass="dv-dialog"
+    [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+
+    <ng-template pTemplate="content">
+      <div class="dv-form">
+
+        <!-- Hero: what is about to be saved -->
+        <div [class]="'dv-hero ' + formHeroClass">
+          <div class="dv-hero__badge">
+            @if (dialogMode === 'edit') {
+              <i class="pi pi-sliders-h"></i>
+            } @else {
+              <i class="pi pi-plus"></i>
+            }
+          </div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">
+              @if (dialogMode === 'edit') {
+                <span class="font-mono">{{ form.scenarioCode }}</span>
+              } @else {
+                {{ 'ALERT_EVENTS.NEW_SCENARIO' | translate }}
+              }
+            </div>
+            <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!formPreviewName">
+              {{ formPreviewName || ('ALERT_EVENTS.COL.SCENARIO' | translate) }}
+            </div>
+            @if (formPreviewOtherName) {
+              <div class="dv-hero__subtitle">{{ formPreviewOtherName }}</div>
+            }
+            <div class="dv-hero__meta">
+              <p-tag [value]="form.severity | codeLabel:'alert-severity':currentLanguage"
+                [severity]="form.severity | codeSeverity:'alert-severity'" [rounded]="true"></p-tag>
+              <span class="dv-chip">
+                <i class="pi pi-clock"></i>
+                {{ thresholdText(form.thresholdDays) }}
+              </span>
+              <p-tag [value]="form.isActive ? t('COMMON.ACTIVE') : t('COMMON.INACTIVE')"
+                [severity]="form.isActive ? 'success' : 'secondary'" [rounded]="true"></p-tag>
+            </div>
+          </div>
+        </div>
+
+        @if (dialogMode === 'add') {
+          <div class="dv-notice dv-notice--info">
+            <i class="pi pi-info-circle"></i>
+            <span>{{ 'ALERT_EVENTS.NEW_SCENARIO_HINT' | translate }}</span>
+          </div>
+        }
+
+        <!-- Identity -->
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+            <div class="dv-section__title">{{ 'ALERT_EVENTS.SECTION.IDENTITY' | translate }}</div>
+          </header>
+          <div class="dv-fields">
+            <div class="dv-field">
+              <label for="asNameEn" class="dv-label">
+                {{ 'ALERT_EVENTS.FIELD.NAME_EN' | translate }}
+                <span class="dv-required">*</span>
+              </label>
+              <input id="asNameEn" pInputText [(ngModel)]="form.scenarioNameEn" class="w-full"
+                [placeholder]="'ALERT_EVENTS.FIELD.NAME_EN_PH' | translate"
+                [ngClass]="{'ng-invalid ng-dirty': submitted && !form.scenarioNameEn?.trim()}" />
+              @if (submitted && !form.scenarioNameEn?.trim()) {
+                <small class="dv-error">
+                  <i class="pi pi-exclamation-circle"></i>
+                  {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              }
+            </div>
+            <div class="dv-field">
+              <label for="asNameAr" class="dv-label">
+                {{ 'ALERT_EVENTS.FIELD.NAME_AR' | translate }}
+                <span class="dv-required">*</span>
+              </label>
+              <input id="asNameAr" pInputText [(ngModel)]="form.scenarioNameAr" class="w-full" dir="rtl"
+                [placeholder]="'ALERT_EVENTS.FIELD.NAME_AR_PH' | translate"
+                [ngClass]="{'ng-invalid ng-dirty': submitted && !form.scenarioNameAr?.trim()}" />
+              @if (submitted && !form.scenarioNameAr?.trim()) {
+                <small class="dv-error">
+                  <i class="pi pi-exclamation-circle"></i>
+                  {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              }
+            </div>
+            <div class="dv-field">
+              <label for="asCode" class="dv-label">
+                {{ 'ALERT_EVENTS.FIELD.CODE' | translate }}
+                <span class="dv-required">*</span>
+                @if (dialogMode === 'edit') {
+                  <i class="pi pi-lock dv-label__lock" [pTooltip]="'ALERT_EVENTS.CODE_LOCKED' | translate"></i>
+                }
+              </label>
+              <input id="asCode" pInputText [(ngModel)]="form.scenarioCode" class="w-full font-mono"
+                placeholder="PASSPORT_EXPIRY_SOON" [disabled]="dialogMode === 'edit'"
+                [ngClass]="{'ng-invalid ng-dirty': submitted && !form.scenarioCode?.trim()}" />
+              @if (dialogMode === 'edit') {
+                <small class="dv-hint">{{ 'ALERT_EVENTS.CODE_LOCKED' | translate }}</small>
+              } @else if (submitted && !form.scenarioCode?.trim()) {
+                <small class="dv-error">
+                  <i class="pi pi-exclamation-circle"></i>
+                  {{ 'COMMON.REQUIRED_FIELD' | translate }}
+                </small>
+              } @else {
+                <small class="dv-hint">{{ 'ALERT_EVENTS.FIELD.CODE_HINT' | translate }}</small>
+              }
+            </div>
+            <div class="dv-field">
+              <label for="asSeverity" class="dv-label">
+                {{ 'ALERT_EVENTS.COL.SEVERITY' | translate }}
+                <span class="dv-required">*</span>
+              </label>
+              <p-select inputId="asSeverity" [options]="severityOptions" [(ngModel)]="form.severity"
+                optionLabel="label" optionValue="value" appendTo="body" class="w-full"></p-select>
+            </div>
+            <div class="dv-field">
+              <label for="asThreshold" class="dv-label">{{ 'ALERT_EVENTS.FIELD.THRESHOLD' | translate }}</label>
+              <p-inputnumber inputId="asThreshold" [(ngModel)]="form.thresholdDays" [min]="1" [max]="365"
+                [placeholder]="'ALERT_EVENTS.FIELD.THRESHOLD_PH' | translate"
+                class="w-full" inputStyleClass="w-full"></p-inputnumber>
+              <small class="dv-hint">{{ 'ALERT_EVENTS.FIELD.THRESHOLD_HINT' | translate }}</small>
+            </div>
+          </div>
+        </section>
+
+        <!-- Descriptions -->
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-align-left"></i></span>
+            <div class="dv-section__title">{{ 'ALERT_EVENTS.SECTION.DESCRIPTIONS' | translate }}</div>
+          </header>
+          <div class="dv-fields">
+            <div class="dv-field">
+              <label for="asDescEn" class="dv-label">{{ 'ALERT_EVENTS.FIELD.DESC_EN' | translate }}</label>
+              <textarea id="asDescEn" pTextarea [(ngModel)]="form.descriptionEn" rows="3" class="w-full"
+                [placeholder]="'ALERT_EVENTS.FIELD.DESC_EN_PH' | translate" [autoResize]="false"></textarea>
+            </div>
+            <div class="dv-field">
+              <label for="asDescAr" class="dv-label">{{ 'ALERT_EVENTS.FIELD.DESC_AR' | translate }}</label>
+              <textarea id="asDescAr" pTextarea [(ngModel)]="form.descriptionAr" rows="3" class="w-full" dir="rtl"
+                [placeholder]="'ALERT_EVENTS.FIELD.DESC_AR_PH' | translate" [autoResize]="false"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- Settings -->
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-cog"></i></span>
+            <div class="dv-section__title">{{ 'ALERT_EVENTS.SECTION.SETTINGS' | translate }}</div>
+          </header>
+          <div class="flex align-items-center gap-3">
+            <p-toggleswitch inputId="asActive" [(ngModel)]="form.isActive"></p-toggleswitch>
+            <div class="flex-1">
+              <label for="asActive" class="dv-label">{{ 'COMMON.ACTIVE' | translate }}</label>
+              <div class="dv-hint">{{ 'ALERT_EVENTS.ACTIVE_HINT' | translate }}</div>
+            </div>
+            <p-tag [value]="form.isActive ? t('COMMON.ACTIVE') : t('COMMON.INACTIVE')"
+              [severity]="form.isActive ? 'success' : 'secondary'"></p-tag>
+          </div>
+        </section>
+      </div>
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="dv-footer">
+        <div class="dv-footer__hint">
+          @if (dialogMode === 'edit' && editingId) {
+            <i class="pi pi-hashtag"></i>
+            <span>{{ editingId }}</span>
+          }
+        </div>
+        <div class="dv-footer__actions">
+          <p-button [label]="'COMMON.CANCEL' | translate" icon="pi pi-times"
+            severity="secondary" [text]="true"
+            (onClick)="dialogVisible = false" [disabled]="dialogSaving"></p-button>
+          <p-button [label]="dialogMode === 'add' ? t('ALERT_EVENTS.ADD_SCENARIO') : t('COMMON.SAVE')"
+            [icon]="dialogMode === 'add' ? 'pi pi-plus' : 'pi pi-check'" severity="success"
+            (onClick)="saveDialog()" [loading]="dialogSaving"></p-button>
+        </div>
+      </div>
+    </ng-template>
+  </p-dialog>
+
+  <!-- ═══════════════════════════ VIEW ═══════════════════════════
+
+       One scenario, read-only. Same vocabulary:
+
+         hero     → id, code, name in both languages; severity, threshold,
+                    active chips, coloured by severity (grey when inactive)
+         kpis     → severity / threshold / active
+         columns  → identity | descriptions
+         section  → history: created, updated
+         footer   → close; edit for those who may
+  -->
+  <p-dialog [(visible)]="viewVisible" [modal]="true" [maximizable]="true"
+    [style]="{width: '860px', maxWidth: '96vw'}"
+    [header]="'ALERT_EVENTS.VIEW_SCENARIO' | translate"
+    [draggable]="false" [resizable]="false"
+    styleClass="dv-dialog"
+    [attr.dir]="isRtl ? 'rtl' : 'ltr'">
+
+    <ng-template pTemplate="content">
+      @if (viewing; as s) {
+        <div class="dv-view">
+
+          <!-- Hero -->
+          <div [class]="'dv-hero ' + heroClassFor(s)">
+            <div class="dv-hero__badge">
+              <span class="dv-hero__badge-prefix">#</span>{{ s.scenarioId }}
+            </div>
+            <div class="dv-hero__body">
+              <div class="dv-hero__eyebrow font-mono">{{ s.scenarioCode }}</div>
+              <div class="dv-hero__title">{{ scenarioName(s) }}</div>
+              <div class="dv-hero__subtitle">{{ otherName(s) }}</div>
+              <div class="dv-hero__meta">
+                <p-tag [value]="s.severity | codeLabel:'alert-severity':currentLanguage"
+                  [severity]="s.severity | codeSeverity:'alert-severity'" [rounded]="true"></p-tag>
+                <span class="dv-chip">
+                  <i class="pi pi-clock"></i>
+                  {{ thresholdText(s.thresholdDays) }}
+                </span>
+                <p-tag [value]="s.isActive ? t('COMMON.ACTIVE') : t('COMMON.INACTIVE')"
+                  [severity]="s.isActive ? 'success' : 'secondary'" [rounded]="true"></p-tag>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPIs -->
+          <div class="dv-kpis dv-kpis--cols-3">
+            <div [class]="severityKpiClass(s)">
+              <span class="dv-kpi__icon"><i class="pi pi-flag"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'ALERT_EVENTS.COL.SEVERITY' | translate }}</div>
+                <div class="dv-kpi__value">{{ s.severity | codeLabel:'alert-severity':currentLanguage }}</div>
+              </div>
+            </div>
+            <div class="dv-kpi dv-kpi--blue">
+              <span class="dv-kpi__icon"><i class="pi pi-clock"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'ALERT_EVENTS.COL.THRESHOLD_DAYS' | translate }}</div>
+                <div class="dv-kpi__value">{{ thresholdText(s.thresholdDays) }}</div>
+                <div class="dv-kpi__sub">{{ 'ALERT_EVENTS.FIELD.THRESHOLD_HINT' | translate }}</div>
+              </div>
+            </div>
+            <div [class]="'dv-kpi ' + (s.isActive ? 'dv-kpi--green' : 'dv-kpi--gray')">
+              <span class="dv-kpi__icon"><i class="pi pi-power-off"></i></span>
+              <div class="dv-kpi__body">
+                <div class="dv-kpi__label">{{ 'COMMON.ACTIVE' | translate }}</div>
+                <div class="dv-kpi__value">{{ s.isActive ? t('COMMON.ACTIVE') : t('COMMON.INACTIVE') }}</div>
+                <div class="dv-kpi__sub">{{ 'ALERT_EVENTS.ACTIVE_HINT' | translate }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dv-columns">
+            <!-- Identity -->
+            <section class="dv-section">
+              <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+                <div class="dv-section__title">{{ 'ALERT_EVENTS.SECTION.IDENTITY' | translate }}</div>
+              </header>
+              <dl class="dv-dl">
+                <div class="dv-dl__row">
+                  <dt>{{ 'ALERT_EVENTS.FIELD.NAME_EN' | translate }}</dt>
+                  <dd>{{ s.scenarioNameEn || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'ALERT_EVENTS.FIELD.NAME_AR' | translate }}</dt>
+                  <dd dir="rtl">{{ s.scenarioNameAr || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'ALERT_EVENTS.FIELD.CODE' | translate }}</dt>
+                  <dd class="font-mono">{{ s.scenarioCode }}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <!-- Descriptions -->
+            <section class="dv-section">
+              <header class="dv-section__head">
+                <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-align-left"></i></span>
+                <div class="dv-section__title">{{ 'ALERT_EVENTS.SECTION.DESCRIPTIONS' | translate }}</div>
+              </header>
+              <dl class="dv-dl">
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'ALERT_EVENTS.FIELD.DESC_EN' | translate }}</dt>
+                  <dd>
+                    @if (s.descriptionEn) {
+                      <p class="dv-notes font-normal">{{ s.descriptionEn }}</p>
+                    } @else {
+                      <p class="dv-notes dv-notes--empty font-normal">{{ 'COMMON.NOT_AVAILABLE' | translate }}</p>
+                    }
+                  </dd>
+                </div>
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'ALERT_EVENTS.FIELD.DESC_AR' | translate }}</dt>
+                  <dd>
+                    @if (s.descriptionAr) {
+                      <p class="dv-notes font-normal" dir="rtl">{{ s.descriptionAr }}</p>
+                    } @else {
+                      <p class="dv-notes dv-notes--empty font-normal">{{ 'COMMON.NOT_AVAILABLE' | translate }}</p>
+                    }
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          </div>
+
+          <!-- History -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-history"></i></span>
+              <div class="dv-section__title">{{ 'ALERT_EVENTS.SECTION.TIMESTAMPS' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'ALERT_EVENTS.FIELD.CREATED_AT' | translate }}</dt>
+                <dd [class.dv-dl__muted]="!s.createdAt">{{ (s.createdAt | date:'medium') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'ALERT_EVENTS.FIELD.UPDATED_AT' | translate }}</dt>
+                <dd [class.dv-dl__muted]="!s.updatedAt">{{ (s.updatedAt | date:'medium') || '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      }
+    </ng-template>
+
+    <ng-template pTemplate="footer">
+      <div class="dv-footer">
+        <div class="dv-footer__hint">
+          @if (viewing?.updatedAt; as updatedAt) {
+            <i class="pi pi-clock"></i>
+            <span>{{ 'ALERT_EVENTS.FIELD.UPDATED_AT' | translate }}: {{ updatedAt | date:'short' }}</span>
+          }
+        </div>
+        <div class="dv-footer__actions">
+          <p-button [label]="'COMMON.CLOSE' | translate" icon="pi pi-times"
+            severity="secondary" [text]="true" (onClick)="viewVisible = false"></p-button>
+          <ng-container *hasPermission="'ALERT_SCENARIOS.MANAGE'">
+            <p-button [label]="'COMMON.EDIT' | translate" icon="pi pi-pencil" (onClick)="editFromView()"></p-button>
+          </ng-container>
+        </div>
+      </div>
+    </ng-template>
+  </p-dialog>
+</div>

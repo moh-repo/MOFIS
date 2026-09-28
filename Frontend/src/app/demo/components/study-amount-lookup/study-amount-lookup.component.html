@@ -1,0 +1,229 @@
+<p-toast></p-toast>
+<div class="grid">
+    <div class="col-12">
+        <div class="card">
+            <!-- `flex-1` on the heading, not `justify-content-between`: see the
+                 comment on study-years-lookup and page-headings.spec.ts. -->
+            <div class="flex align-items-center mb-4 flex-wrap gap-3">
+                <div class="flex align-items-center gap-3 flex-1">
+                    <i class="pi pi-money-bill text-primary" style="font-size: 2.5rem"></i>
+                    <h2 class="m-0 text-primary">{{ 'NAVIGATION.STUDY_AMOUNT_LOOKUP' | translate }}</h2>
+                </div>
+                <button pButton type="button" icon="pi pi-plus" [label]="'COMMON.NEW' | translate"
+                    class="p-button-success" (click)="openNew()"></button>
+            </div>
+
+            <!-- Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+                 The rows hold ids and the labels are looked up, so a text search
+                 would find nothing; the two lists the rows are keyed by do the
+                 narrowing. -->
+            <div class="filter-bar">
+                <div class="filter-bar__grid filter-bar__grid--cols-2">
+                    <div class="filter-bar__field" [class.filter-bar__field--active]="filterDegree !== null">
+                        <label for="saDegree">{{ 'STUDENT_ADD.STUDENT_DEGREE' | translate }}</label>
+                        <p-select inputId="saDegree" [options]="degreeOptions" [(ngModel)]="filterDegree"
+                            optionLabel="name" optionValue="value" [showClear]="true" [placeholder]="'COMMON.ALL' | translate"
+                            appendTo="body" (onChange)="dt.filter(filterDegree, 'studentDegreeId', 'equals')"></p-select>
+                    </div>
+                    <div class="filter-bar__field" [class.filter-bar__field--active]="filterAgency !== null">
+                        <label for="saAgency">{{ 'STUDENT_ADD.AGENCY_TYPE' | translate }}</label>
+                        <p-select inputId="saAgency" [options]="agencyTypeOptions" [(ngModel)]="filterAgency"
+                            optionLabel="name" optionValue="value" [showClear]="true" [placeholder]="'COMMON.ALL' | translate"
+                            appendTo="body" (onChange)="dt.filter(filterAgency, 'studentAgencyTypeId', 'equals')"></p-select>
+                    </div>
+                </div>
+                <div class="filter-bar__actions">
+                    <button pButton type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+                        [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters(dt)"></button>
+                    <span class="filter-bar__hint filter-bar__actions-spacer">{{ 'COMMON.TOTAL' | translate }}: {{ (dt.filteredValue || items).length }}</span>
+                </div>
+            </div>
+
+            <p-table #dt [value]="items" [loading]="loading" [paginator]="true" [rows]="10"
+                styleClass="p-datatable-sm p-datatable-striped">
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th pSortableColumn="studentDegreeId">{{ 'STUDENT_ADD.STUDENT_DEGREE' | translate }} <p-sortIcon field="studentDegreeId"></p-sortIcon></th>
+                        <th pSortableColumn="studentAgencyTypeId">{{ 'STUDENT_ADD.AGENCY_TYPE' | translate }} <p-sortIcon field="studentAgencyTypeId"></p-sortIcon></th>
+                        <th pSortableColumn="amount">{{ 'STUDENT_ADD.AMOUNT' | translate }} <p-sortIcon field="amount"></p-sortIcon></th>
+                        <th pSortableColumn="currencyId">{{ 'STUDY_UNIVERSITY_FEE.CURRENCY' | translate }} <p-sortIcon field="currencyId"></p-sortIcon></th>
+                        <th pSortableColumn="studyCountryInId" style="width:200px">{{ 'STUDY_LOOKUP.ATTACHE' | translate }} <p-sortIcon field="studyCountryInId"></p-sortIcon></th>
+                        <th style="width:120px">{{ 'COMMON.ACTIONS' | translate }}</th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-item>
+                    <tr>
+                        <td>{{ degreeLabel(item.studentDegreeId) }}</td>
+                        <td>{{ agencyLabel(item.studentAgencyTypeId) }}</td>
+                        <td>{{ item.amount }}</td>
+                        <td>{{ currencyLabel(item.currencyId) }}</td>
+                        <td>
+                            <span [class.text-color-secondary]="!item.studyCountryInId">
+                                {{ countryLabel(item.studyCountryInId) }}
+                            </span>
+                        </td>
+                        <td>
+                            <button pButton type="button" icon="pi pi-eye"
+                                class="p-button-rounded p-button-text mx-1"
+                                (click)="viewItem(item)"
+                    [pTooltip]="'COMMON.VIEW' | translate" [attr.aria-label]="'COMMON.VIEW' | translate"></button>
+                            <button pButton type="button" icon="pi pi-pencil"
+                                class="p-button-rounded p-button-text p-button-warning mx-1"
+                                (click)="editItem(item)"
+                    [pTooltip]="'COMMON.EDIT' | translate" [attr.aria-label]="'COMMON.EDIT' | translate"></button>
+                            <button pButton type="button" icon="pi pi-trash"
+                                class="p-button-rounded p-button-text p-button-danger"
+                                (click)="confirmDelete(item)"
+                    [pTooltip]="'COMMON.DELETE' | translate" [attr.aria-label]="'COMMON.DELETE' | translate"></button>
+                        </td>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                    <tr><td colspan="6" class="text-center">{{ (hasFilters ? 'COMMON.NO_MATCH' : 'COMMON.NO_DATA') | translate }}</td></tr>
+                </ng-template>
+            </p-table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Dialog. Shared vocabulary: assets/layout/styles/_detail-dialog.scss. -->
+<p-dialog [(visible)]="dialogVisible" [modal]="true" [style]="{ width: '600px', maxWidth: '96vw' }"
+    [header]="(editMode ? 'COMMON.EDIT' : 'COMMON.NEW') | translate" [closable]="true"
+    [draggable]="false" [dismissableMask]="false" styleClass="dv-dialog">
+    <ng-template pTemplate="content">
+        <div class="dv-form">
+            <div class="dv-hero" [class.dv-hero--new]="!editMode">
+                <div class="dv-hero__badge">
+                    @if (editMode) { <i class="pi pi-pencil"></i> } @else { <i class="pi pi-plus"></i> }
+                </div>
+                <div class="dv-hero__body">
+                    <div class="dv-hero__eyebrow">{{ 'NAVIGATION.STUDY_AMOUNT_LOOKUP' | translate }}</div>
+                    <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!current.studentDegreeId">
+                        {{ current.studentDegreeId ? degreeLabel(current.studentDegreeId) : ('STUDENT_ADD.STUDENT_DEGREE' | translate) }}
+                    </div>
+                    <div class="dv-hero__meta">
+                        @if (current.studentAgencyTypeId) { <span class="dv-chip"><i class="pi pi-building"></i> {{ agencyLabel(current.studentAgencyTypeId) }}</span> }
+                    </div>
+                </div>
+                @if (current.amount) {
+                    <div class="dv-hero__amount">
+                        <div class="dv-hero__amount-label">{{ 'STUDENT_ADD.AMOUNT' | translate }}</div>
+                        <div class="dv-hero__amount-value">{{ current.amount | number:'1.0-2' }} {{ currencyLabel(current.currencyId) }}</div>
+                    </div>
+                }
+            </div>
+
+            <section class="dv-section">
+                <header class="dv-section__head">
+                    <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+                    <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+                </header>
+                <div class="dv-fields">
+                    <div class="dv-field">
+                        <label for="saFormDegree" class="dv-label">{{ 'STUDENT_ADD.STUDENT_DEGREE' | translate }} <span class="dv-required">*</span></label>
+                        <p-select inputId="saFormDegree" [options]="degreeOptions" [(ngModel)]="current.studentDegreeId"
+                            optionLabel="name" optionValue="value" appendTo="body" class="w-full"
+                            [ngClass]="{'ng-invalid ng-dirty': submitted && !current.studentDegreeId}"></p-select>
+                        @if (submitted && !current.studentDegreeId) {
+                            <small class="dv-error"><i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+                        }
+                    </div>
+                    <div class="dv-field">
+                        <label for="saFormAgency" class="dv-label">{{ 'STUDENT_ADD.AGENCY_TYPE' | translate }} <span class="dv-required">*</span></label>
+                        <p-select inputId="saFormAgency" [options]="agencyTypeOptions" [(ngModel)]="current.studentAgencyTypeId"
+                            optionLabel="name" optionValue="value" appendTo="body" class="w-full"
+                            [ngClass]="{'ng-invalid ng-dirty': submitted && !current.studentAgencyTypeId}"></p-select>
+                        @if (submitted && !current.studentAgencyTypeId) {
+                            <small class="dv-error"><i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+                        }
+                    </div>
+                    <div class="dv-field">
+                        <label for="saFormAmount" class="dv-label">{{ 'STUDENT_ADD.AMOUNT' | translate }} <span class="dv-required">*</span></label>
+                        <p-inputnumber inputId="saFormAmount" [(ngModel)]="current.amount" [min]="0" [minFractionDigits]="0" [maxFractionDigits]="2" class="w-full"
+                            [ngClass]="{'ng-invalid ng-dirty': submitted && !current.amount}"></p-inputnumber>
+                        @if (submitted && !current.amount) {
+                            <small class="dv-error"><i class="pi pi-exclamation-circle"></i> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+                        }
+                    </div>
+                    <div class="dv-field">
+                        <label for="saFormCurrency" class="dv-label">{{ 'STUDY_UNIVERSITY_FEE.CURRENCY' | translate }}</label>
+                        <p-select inputId="saFormCurrency" [options]="currencyOptions" [(ngModel)]="current.currencyId"
+                            optionLabel="name" optionValue="value" [showClear]="true" appendTo="body" class="w-full"></p-select>
+                    </div>
+                    <div class="dv-field dv-field--full">
+                        <label for="saFormCountry" class="dv-label">{{ 'STUDY_LOOKUP.ATTACHE' | translate }}</label>
+                        <p-select inputId="saFormCountry" [options]="countryOptions" [(ngModel)]="current.studyCountryInId"
+                            optionLabel="name" optionValue="value" [filter]="true" filterBy="name"
+                            [showClear]="canSetSharedDefault" appendTo="body" class="w-full"
+                            [placeholder]="'STUDY_LOOKUP.ALL_ATTACHES' | translate"></p-select>
+                        <small class="dv-hint">{{ 'STUDY_LOOKUP.ATTACHE_HINT' | translate }}</small>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </ng-template>
+    <ng-template pTemplate="footer">
+        <div class="dv-footer">
+            <small class="dv-footer__hint"><span class="dv-required">*</span> {{ 'COMMON.REQUIRED_FIELD' | translate }}</small>
+            <div class="dv-footer__actions">
+                <button pButton type="button" [label]="'COMMON.CANCEL' | translate" icon="pi pi-times"
+                    class="p-button-text p-button-secondary" (click)="dialogVisible=false"></button>
+                <button pButton type="button" [label]="'COMMON.SAVE' | translate" icon="pi pi-check"
+                    (click)="save()"></button>
+            </div>
+        </div>
+    </ng-template>
+</p-dialog>
+
+<p-dialog [(visible)]="deleteDialogVisible" [modal]="true" [style]="{width:'350px'}"
+    [header]="'COMMON.CONFIRM' | translate">
+    <div class="flex align-items-center gap-3">
+        <i class="pi pi-exclamation-triangle text-3xl text-orange-500"></i>
+        <span>{{ 'COMMON.DELETE_CONFIRM' | translate }}</span>
+    </div>
+    <ng-template pTemplate="footer">
+        <button pButton type="button" [label]="'COMMON.CANCEL' | translate" icon="pi pi-times"
+            class="p-button-text" (click)="deleteDialogVisible=false"></button>
+        <button pButton type="button" [label]="'COMMON.DELETE' | translate" icon="pi pi-trash"
+            class="p-button-danger" (click)="deleteItem()"></button>
+    </ng-template>
+</p-dialog>
+
+<!-- The detail view. This page had only a pencil and a trash can; a row was
+     never readable on its own, and the labels here are resolved the same way
+     the table resolves them. -->
+<p-dialog [(visible)]="viewVisible"
+  [header]="'STUDY_AMOUNT_LOOKUP.VIEW' | translate"
+  [modal]="true" [style]="{ width: '560px', maxWidth: '96vw' }" [draggable]="false"
+  styleClass="dv-dialog">
+  <ng-template pTemplate="content">
+    @if (viewing; as v) {
+      <div class="dv-view">
+        <div class="dv-hero">
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'STUDY_AMOUNT_LOOKUP.AMOUNT' | translate }}</div>
+            <div class="dv-hero__title">{{ v.amount }}</div>
+          </div>
+        </div>
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+            <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+          </header>
+          <dl class="dv-dl">
+                        <div class="dv-dl__row"><dt>{{ 'STUDY_AMOUNT_LOOKUP.DEGREE' | translate }}</dt><dd>{{ degreeLabel(v.studentDegreeId) }}</dd></div>
+                        <div class="dv-dl__row"><dt>{{ 'STUDY_AMOUNT_LOOKUP.AGENCY_TYPE' | translate }}</dt><dd>{{ agencyLabel(v.studentAgencyTypeId) }}</dd></div>
+                        <div class="dv-dl__row"><dt>{{ 'STUDY_AMOUNT_LOOKUP.AMOUNT' | translate }}</dt><dd>{{ v.amount }}</dd></div>
+                        <div class="dv-dl__row"><dt>{{ 'STUDY_AMOUNT_LOOKUP.COUNTRY' | translate }}</dt><dd>{{ countryLabel(v.studyCountryInId) }}</dd></div>
+          </dl>
+        </section>
+      </div>
+    }
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <button pButton pRipple type="button" [label]="'COMMON.CLOSE' | translate"
+      class="p-button-text" (click)="viewVisible = false"></button>
+    <button pButton pRipple type="button" [label]="'COMMON.EDIT' | translate" icon="pi pi-pencil"
+      (click)="viewVisible = false; editItem(viewing!)"></button>
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,827 @@
+<div class="fin-form-page" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'"
+  [class.rtl]="translationService.isRTL()">
+
+  <!-- Page hero -->
+  <div class="card fin-hero mb-3">
+    <div class="fin-hero__text">
+      <span class="fin-hero__badge">
+        <i class="pi pi-dollar"></i> {{ 'FINANCE.TITLE' | translate }}
+      </span>
+      <h1 class="fin-hero__title">
+        {{ (creatingMode ? 'FINANCE.ADD_NEW_FINANCE_TITLE' : 'FINANCE.EDIT_FINANCE_TITLE') | translate }}
+      </h1>
+      <p class="fin-hero__subtitle">
+        {{ (creatingMode ? 'FINANCE.ADD_PAGE_SUBTITLE' : 'FINANCE.EDIT_PAGE_SUBTITLE') | translate }}
+      </p>
+    </div>
+    <button pButton pRipple [label]="'FINANCE.BACK_TO_LIST' | translate" icon="pi pi-arrow-left"
+    class="p-button-action-outlined" (click)="goBack()"></button>
+  </div>
+
+  @if (loading) {
+    <div class="fin-loading">
+      <p-progressSpinner strokeWidth="4" [style]="{ width: '48px', height: '48px' }"></p-progressSpinner>
+    </div>
+  }
+
+  @if (loadFailed && !loading) {
+    <div class="card fin-empty">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span class="fin-empty__title">{{ 'FINANCE.RECORD_NOT_FOUND' | translate }}</span>
+      <button pButton pRipple [label]="'FINANCE.BACK_TO_LIST' | translate" icon="pi pi-arrow-left"
+      class="p-button-action-outlined mt-3" (click)="goBack()"></button>
+    </div>
+  }
+
+  <!-- A request is already awaiting a decision; a second one would be rejected. -->
+  @if (pendingApproval && !loading && !loadFailed) {
+    <div class="fin-pending">
+      <i class="pi pi-clock"></i>
+      <div class="fin-pending__text">
+        <strong>{{ 'FINANCE.PENDING_APPROVAL_TITLE' | translate }}</strong>
+        <span>{{ (creatingMode ? 'FINANCE.PENDING_EXISTS_FOR_STUDENT' : 'FINANCE.PENDING_APPROVAL_MESSAGE') | translate }}</span>
+        <small>
+          {{ 'FINANCE.PENDING_REQUEST_NUMBER' | translate }}: #{{ pendingApproval.id }}
+          @if (pendingApproval.requestedAt) {
+            &middot; {{ 'FINANCE.PENDING_APPROVAL_REQUESTED' | translate }}:
+            {{ pendingApproval.requestedAt | localeDate:'medium' }}
+          }
+          @if (pendingApproval.requesterFullName) {
+            &mdash; {{ pendingApproval.requesterFullName }}
+          }
+        </small>
+      </div>
+      <button pButton pRipple type="button" class="p-button-action-outlined p-button-sm fin-pending__action"
+        icon="pi pi-eye" [label]="'FINANCE.VIEW_PENDING_REQUEST' | translate"
+        (click)="pendingDialogVisible = true"
+        *hasPermission="['APPROVALS.VIEW', 'APP_PENDING.VIEW', 'APP_PENDING.APPROVE', 'APP_PENDING.REJECT']">
+      </button>
+    </div>
+  }
+
+  <!-- One finance record per student: the one on file is edited, not added again. -->
+  @if (creatingMode && existingRecordId && !loading) {
+    <div class="fin-pending">
+      <i class="pi pi-info-circle"></i>
+      <div class="fin-pending__text">
+        <strong>{{ 'FINANCE.RECORD_EXISTS_TITLE' | translate }}</strong>
+        <span>{{ 'FINANCE.RECORD_EXISTS_MESSAGE' | translate }}</span>
+      </div>
+      <button pButton pRipple type="button" class="p-button-action-outlined p-button-sm fin-pending__action"
+        icon="pi pi-pencil" [label]="'FINANCE.OPEN_EXISTING_RECORD' | translate"
+        (click)="openExistingRecord()">
+      </button>
+    </div>
+  }
+
+  @if (!loading && !loadFailed) {
+    <form #financeForm="ngForm" (ngSubmit)="save()" class="p-fluid"
+      [class.fin-form--locked]="pendingApproval">
+      <!-- Basic information -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--primary"><i class="pi pi-user"></i></span>
+          <div>
+            <h3 class="fin-section__title">{{ 'FINANCE.SECTION_BASIC' | translate }}</h3>
+            <span class="fin-section__subtitle">{{ 'FINANCE.SECTION_BASIC_HINT' | translate }}</span>
+          </div>
+        </div>
+        <div class="formgrid grid">
+          <div class="field col-12 md:col-6">
+            <label for="id" class="fin-label">
+              {{ 'FINANCE.STUDENT_ID' | translate }} <span class="required">*</span>
+            </label>
+            <!-- Set by the student picker below; typing an id named students the picker never offered. -->
+            <p-inputnumber inputId="id" [(ngModel)]="model.id" name="id" [useGrouping]="false"
+              [readonly]="true" [placeholder]="'FINANCE.STUDENT_ID_FROM_PICKER' | translate"
+              [class.ng-invalid]="submitted && !model.id">
+            </p-inputnumber>
+            @if (submitted && !model.id) {
+              <small class="p-error">
+                {{ 'FINANCE.STUDENT_ID_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="studentFinId" class="fin-label">
+              {{ 'FINANCE.FINANCE_ID' | translate }}
+              @if (creatingMode) {
+                <span class="required">*</span>
+              }
+            </label>
+            <input id="studentFinId" pInputText [(ngModel)]="model.studentFinId" name="studentFinId"
+              [placeholder]="'FINANCE.ENTER_FINANCE_ID' | translate"
+              [class.ng-invalid]="submitted && isFinanceIdMissingForSubmit()" />
+            @if (submitted && isFinanceIdMissingForSubmit()) {
+              <small class="p-error">
+                {{ 'FINANCE.FINANCE_ID_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+          <div class="field col-12">
+            <label for="selectedStudent" class="fin-label">
+              {{ 'FINANCE.STUDENT_NAME' | translate }} <span class="required">*</span>
+            </label>
+            <p-autoComplete inputId="selectedStudent" name="selectedStudent" [(ngModel)]="selectedStudent"
+              [suggestions]="filteredStudents" (completeMethod)="onStudentSearch($event)"
+              (onSelect)="onStudentSelect($event.value)" (onClear)="onStudentClear()"
+              optionLabel="studentName" [disabled]="!creatingMode"
+              [placeholder]="'FINANCE.SEARCH_AND_SELECT_STUDENT' | translate" [dropdown]="true"
+              [forceSelection]="true" [class.ng-invalid]="submitted && isStudentSelectionInvalid()">
+              <ng-template let-student pTemplate="item">
+                <div class="fin-student-option">
+                  <span class="fin-student-option__name">{{ student.studentName }}</span>
+                  <span class="fin-student-option__id">
+                    {{ 'FINANCE.STUDENT_ID' | translate }}: {{ student.studentId }}
+                  </span>
+                </div>
+              </ng-template>
+            </p-autoComplete>
+            @if (submitted && isStudentSelectionInvalid()) {
+              <small class="p-error">
+                {{ 'FINANCE.STUDENT_SELECTION_REQUIRED' | translate }}
+              </small>
+            }
+            <input type="hidden" [(ngModel)]="model.studentFinName" name="studentFinName" />
+          </div>
+        </div>
+      </div>
+      <!-- Financial details -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--green"><i class="pi pi-dollar"></i></span>
+          <div>
+            <h3 class="fin-section__title">{{ 'FINANCE.SECTION_FINANCIAL' | translate }}</h3>
+            <span class="fin-section__subtitle">{{ 'FINANCE.SECTION_FINANCIAL_HINT' | translate }}</span>
+          </div>
+        </div>
+        <div class="formgrid grid">
+          <div class="field col-12 md:col-4">
+            <label for="amount" class="fin-label">
+              {{ 'FINANCE.AMOUNT_RECEIVED' | translate }} <span class="required">*</span>
+            </label>
+            <p-inputnumber inputId="amount" [(ngModel)]="model.studentFinRecievedAmount"
+              name="studentFinRecievedAmount" mode="decimal" [min]="0" [maxFractionDigits]="0"
+              [class.ng-invalid]="submitted && isAmountInvalid()">
+            </p-inputnumber>
+            @if (submitted && isAmountInvalid()) {
+              <small class="p-error">
+                {{ 'FINANCE.AMOUNT_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+          <div class="field col-12 md:col-4">
+            <label for="studyCurrencyInId" class="fin-label">{{ 'FINANCE.CURRENCY' | translate }}</label>
+            <p-select inputId="studyCurrencyInId" [options]="lookups.currencies"
+              [(ngModel)]="model.studyCurrencyInId" name="studyCurrencyInId" optionLabel="name"
+              optionValue="id" [placeholder]="'FINANCE.SELECT_CURRENCY' | translate" [showClear]="true"
+              [filter]="true" filterBy="name">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-4">
+            <label for="studyCheckDate" class="fin-label">
+              {{ 'FINANCE.CHECK_DATE' | translate }}
+              <!-- Required only once the status says money moved (H2). -->
+              @if (checkDateRequired()) {
+                <span class="required">*</span>
+              }
+            </label>
+            <p-datepicker inputId="studyCheckDate" [(ngModel)]="model.studyCheckDate" name="studyCheckDate"
+              dateFormat="dd/mm/yy" [showIcon]="true" [placeholder]="'FINANCE.SELECT_DATE' | translate"
+              [class.ng-invalid]="submitted && isCheckDateInvalid()">
+            </p-datepicker>
+            @if (submitted && isCheckDateInvalid()) {
+              <small class="p-error">
+                {{ 'FINANCE.CHECK_DATE_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+          <div class="field col-12 md:col-4">
+            <label for="receivedYear" class="fin-label">{{ 'FINANCE.RECEIVED_YEAR' | translate }}</label>
+            <p-inputnumber inputId="receivedYear" [(ngModel)]="model.studentFinRecievedYear"
+              name="studentFinRecievedYear" [min]="1900" [max]="2100" [useGrouping]="false"
+              (ngModelChange)="syncYearMonth()">
+            </p-inputnumber>
+          </div>
+          <div class="field col-12 md:col-4">
+            <label for="receivedMonth" class="fin-label">{{ 'FINANCE.RECEIVED_MONTH' | translate }}</label>
+            <p-inputnumber inputId="receivedMonth" [(ngModel)]="model.studentFinRecievedMonth"
+              name="studentFinRecievedMonth" [min]="1" [max]="12" [useGrouping]="false"
+              (ngModelChange)="syncYearMonth()">
+            </p-inputnumber>
+          </div>
+          <div class="field col-12 md:col-4">
+            <label for="receivedYearMonth" class="fin-label">{{ 'FINANCE.YEAR_MONTH' | translate }}</label>
+            <!-- Derived: YEAR*10 + MONTH (the V038 rule); typed by nobody. -->
+            <p-inputnumber inputId="receivedYearMonth" [(ngModel)]="model.studentFinRecievedYearMonth"
+              name="studentFinRecievedYearMonth" [useGrouping]="false" [readonly]="true">
+            </p-inputnumber>
+          </div>
+          <div class="field col-12">
+            <label for="studyFinRecievedStatus" class="fin-label">
+              {{ 'FINANCE.FINANCE_RECEIVED_STATUS' | translate }} <span class="required">*</span>
+            </label>
+            <p-select inputId="studyFinRecievedStatus" [options]="lookups.finReceivedStatuses"
+              [(ngModel)]="model.studyFinRecievedStatus" name="studyFinRecievedStatus"
+              optionLabel="studyFinReceivedStatusName" optionValue="id"
+              [placeholder]="'FINANCE.SELECT_STATUS' | translate"
+              [class.ng-invalid]="submitted && isFinReceivedStatusInvalid()">
+            </p-select>
+            @if (submitted && isFinReceivedStatusInvalid()) {
+              <small class="p-error">
+                {{ 'FINANCE.STATUS_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+          <!-- Wafar -->
+          <div class="field col-12">
+            <div class="fin-toggle">
+              <p-checkbox [(ngModel)]="hasWafar" name="hasWafar" [binary]="true" inputId="hasWafar">
+              </p-checkbox>
+              <label for="hasWafar">{{ 'FINANCE.HAS_WAFAR' | translate }}</label>
+            </div>
+          </div>
+          @if (hasWafar) {
+            <div class="field col-12 md:col-4">
+              <label for="wafarAmount" class="fin-label">{{ 'FINANCE.WAFAR_AMOUNT' | translate }}</label>
+              <p-inputnumber inputId="wafarAmount" [(ngModel)]="wafarAmount" name="wafarAmount"
+                mode="decimal" [min]="0" [maxFractionDigits]="0"
+                [class.ng-invalid]="submitted && isWafarAmountInvalid()">
+              </p-inputnumber>
+              @if (submitted && isWafarAmountInvalid()) {
+                <small class="p-error">{{ 'FINANCE.WAFAR_AMOUNT_INVALID' | translate }}</small>
+              }
+            </div>
+            <div class="field col-12 md:col-4">
+              <label for="wafarTypeId" class="fin-label">{{ 'FINANCE.WAFAR_TYPE' | translate }}</label>
+              <p-select inputId="wafarTypeId" [options]="lookups.wafarTypes" [(ngModel)]="wafarTypeId"
+                name="wafarTypeId" optionLabel="wafarName" optionValue="id"
+                [placeholder]="'FINANCE.SELECT_WAFAR_TYPE' | translate" [showClear]="true">
+              </p-select>
+            </div>
+            <div class="field col-12">
+              <label for="wafarNotes" class="fin-label">{{ 'FINANCE.WAFAR_NOTES' | translate }}</label>
+              <textarea id="wafarNotes" pTextarea [(ngModel)]="wafarNotes" name="wafarNotes" [rows]="2"
+              [placeholder]="'FINANCE.ENTER_WAFAR_NOTES' | translate"></textarea>
+            </div>
+          }
+          <!--
+          Outside the wafar block on purpose: net is what the student receives
+          whether or not there is a wafar, and with none it simply equals the
+          amount above. Stays driven by the local getter so it tracks live as
+          the amount and wafar are typed, before anything is saved.
+          -->
+          <div class="field col-12 md:col-4">
+            <label class="fin-label">{{ 'FINANCE.NET_AMOUNT' | translate }}</label>
+            <div class="fin-computed">
+              <i class="pi pi-calculator"></i>
+              <span>{{ netAmount | localeNumber:'1.0-2' }}</span>
+              @if (currencyName) {
+                <small>{{ currencyName }}</small>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Check information -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--cyan"><i class="pi pi-credit-card"></i></span>
+          <div>
+            <h3 class="fin-section__title">{{ 'FINANCE.SECTION_CHECK' | translate }}</h3>
+            <span class="fin-section__subtitle">{{ 'FINANCE.SECTION_CHECK_HINT' | translate }}</span>
+          </div>
+        </div>
+        <div class="formgrid grid">
+          <div class="field col-12 md:col-6">
+            <label for="studyCheckId" class="fin-label">{{ 'FINANCE.CHECK_NUMBER' | translate }}</label>
+            <input id="studyCheckId" pInputText [(ngModel)]="model.studyCheckId" name="studyCheckId"
+              [placeholder]="'FINANCE.ENTER_CHECK_ID' | translate" />
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="studyCheckFormNumber" class="fin-label">
+              {{ 'FINANCE.CHECK_FORM_NUMBER' | translate }}
+            </label>
+            <input id="studyCheckFormNumber" pInputText [(ngModel)]="model.studyCheckFormNumber"
+              name="studyCheckFormNumber"
+              [placeholder]="'FINANCE.ENTER_CHECK_FORM_NUMBER' | translate" />
+          </div>
+          <div class="field col-12">
+            <label for="studyCheckDetails" class="fin-label">{{ 'FINANCE.CHECK_DETAILS' | translate }}</label>
+            <textarea id="studyCheckDetails" pTextarea [(ngModel)]="model.studyCheckDetails"
+              name="studyCheckDetails" [rows]="3"
+            [placeholder]="'FINANCE.ENTER_CHECK_DETAILS' | translate"></textarea>
+          </div>
+        </div>
+      </div>
+      <!-- Location -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--orange"><i class="pi pi-map-marker"></i></span>
+          <div>
+            <h3 class="fin-section__title">{{ 'FINANCE.SECTION_LOCATION' | translate }}</h3>
+            <span class="fin-section__subtitle">{{ 'FINANCE.SECTION_LOCATION_HINT' | translate }}</span>
+          </div>
+        </div>
+        <div class="formgrid grid">
+          <div class="field col-12 md:col-6">
+            <label for="studyCountryInId" class="fin-label">
+              {{ 'FINANCE.STUDY_COUNTRY' | translate }} <span class="required">*</span>
+            </label>
+            <p-select inputId="studyCountryInId" [options]="lookups.studyCountries"
+              [(ngModel)]="model.studyCountryInId" name="studyCountryInId" optionLabel="studyCountryInName"
+              optionValue="id" [placeholder]="'FINANCE.SELECT_STUDY_COUNTRY' | translate" [filter]="true"
+              filterBy="studyCountryInName" (onChange)="onStudyCountryChange()"
+              [class.ng-invalid]="submitted && isCountryInvalid()">
+            </p-select>
+            @if (submitted && isCountryInvalid()) {
+              <small class="p-error">
+                {{ 'FINANCE.COUNTRY_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="studyGovInId" class="fin-label">{{ 'FINANCE.STUDY_GOVERNMENT' | translate }}</label>
+            <p-select inputId="studyGovInId" [options]="studyGovernments" [(ngModel)]="model.studyGovInId"
+              name="studyGovInId" optionLabel="studyGovInName" optionValue="id"
+              [placeholder]="'FINANCE.SELECT_STUDY_GOVERNMENT' | translate" [showClear]="true"
+              [filter]="true" filterBy="studyGovInName" [disabled]="!model.studyCountryInId">
+            </p-select>
+          </div>
+        </div>
+      </div>
+      <!-- Bank -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--purple"><i class="pi pi-building"></i></span>
+          <div>
+            <h3 class="fin-section__title">{{ 'FINANCE.SECTION_BANK' | translate }}</h3>
+            <span class="fin-section__subtitle">{{ 'FINANCE.SECTION_BANK_HINT' | translate }}</span>
+          </div>
+        </div>
+        <div class="formgrid grid">
+          <div class="field col-12 md:col-6">
+            <label for="studyFinanceBankeId" class="fin-label">{{ 'FINANCE.FINANCE_BANK' | translate }}</label>
+            <p-select inputId="studyFinanceBankeId" [options]="studyFinanceBanks"
+              [(ngModel)]="model.studyFinanceBankeId" name="studyFinanceBankeId"
+              optionLabel="studyFinanceBankeName" optionValue="id"
+              [placeholder]="'FINANCE.SELECT_FINANCE_BANK' | translate" [showClear]="true" [filter]="true"
+              filterBy="studyFinanceBankeName" (onChange)="onStudyFinanceBankChange()"
+              [disabled]="!model.studyCountryInId">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="studyFinanceBankBranchId" class="fin-label">
+              {{ 'FINANCE.BANK_BRANCH' | translate }}
+            </label>
+            <p-select inputId="studyFinanceBankBranchId" [options]="studyFinanceBankBranches"
+              [(ngModel)]="model.studyFinanceBankBranchId" name="studyFinanceBankBranchId"
+              optionLabel="studyFinanceBankBranchName" optionValue="id"
+              [placeholder]="'FINANCE.SELECT_BANK_BRANCH' | translate" [showClear]="true" [filter]="true"
+              filterBy="studyFinanceBankBranchName" [disabled]="!model.studyFinanceBankeId">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="studyFinanceDofId" class="fin-label">{{ 'FINANCE.FINANCE_DOF' | translate }}</label>
+            <p-select inputId="studyFinanceDofId" [options]="lookups.studyFinanceDofs"
+              [(ngModel)]="model.studyFinanceDofId" name="studyFinanceDofId"
+              optionLabel="studyFinanceDofName" optionValue="id"
+              [placeholder]="'FINANCE.SELECT_FINANCE_DOF' | translate" [showClear]="true">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="studyFinanceMidate" class="fin-label">
+              {{ 'FINANCE.FINANCE_MI_DATE' | translate }}
+            </label>
+            <p-datepicker inputId="studyFinanceMidate" [(ngModel)]="model.studyFinanceMidate"
+              name="studyFinanceMidate" dateFormat="dd/mm/yy" [showIcon]="true"
+              [placeholder]="'FINANCE.SELECT_DATE' | translate">
+            </p-datepicker>
+          </div>
+        </div>
+      </div>
+      <!-- Recipient -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--indigo"><i class="pi pi-users"></i></span>
+          <div>
+            <h3 class="fin-section__title">{{ 'FINANCE.SECTION_RECIPIENT' | translate }}</h3>
+            <span class="fin-section__subtitle">{{ 'FINANCE.SECTION_RECIPIENT_HINT' | translate }}</span>
+          </div>
+        </div>
+        <div class="formgrid grid">
+          <div class="field col-12 md:col-6">
+            <label for="studyReceivedWhomStatusId" class="fin-label">
+              {{ 'FINANCE.RECEIVED_WHOM_STATUS' | translate }}
+            </label>
+            <p-select inputId="studyReceivedWhomStatusId" [options]="lookups.receivedWhomStatuses"
+              [(ngModel)]="model.studyReceivedWhomStatusId" name="studyReceivedWhomStatusId"
+              optionLabel="studyReceivedWhomStatusName" optionValue="id"
+              [placeholder]="'FINANCE.SELECT_RECEIVED_WHOM_STATUS' | translate" [showClear]="true"
+              (onChange)="onReceivedWhomStatusChange($event.value)">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="studyReceivedWhomId" class="fin-label">{{ 'FINANCE.RECEIVED_WHOM' | translate }}</label>
+            <div class="p-inputgroup">
+              <p-select inputId="studyReceivedWhomId" [options]="lookups.finReceivedWhoms"
+                [(ngModel)]="model.studyReceivedWhomId" name="studyReceivedWhomId"
+                optionLabel="finReceivedName" optionValue="id"
+                [placeholder]="'FINANCE.SELECT_RECEIVED_WHOM' | translate" [showClear]="true"
+                [filter]="true" filterBy="finReceivedName">
+              </p-select>
+              <button pButton pRipple icon="pi pi-pencil" type="button"
+                class="p-button-outlined p-button-info"
+                [pTooltip]="'FIN_RECEIVED_WHOM.OPEN_FORM' | translate"
+                [disabled]="!model.studyReceivedWhomId" (click)="openSelectedRecipient()">
+              </button>
+              <button pButton pRipple icon="pi pi-plus" type="button"
+                class="p-button-outlined p-button-success"
+                [pTooltip]="'FIN_RECEIVED_WHOM.NEW' | translate" (click)="openNewRecipient()">
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Student bank account -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--teal"><i class="pi pi-wallet"></i></span>
+          <div>
+            <h3 class="fin-section__title">{{ 'FINANCE.SECTION_ACCOUNT' | translate }}</h3>
+            <span class="fin-section__subtitle">{{ 'FINANCE.SECTION_ACCOUNT_HINT' | translate }}</span>
+          </div>
+        </div>
+        <div class="formgrid grid">
+          <div class="field col-12 md:col-6">
+            <label for="studentBankId" class="fin-label">{{ 'FINANCE.STUDENT_BANK' | translate }}</label>
+            <p-select inputId="studentBankId" [options]="lookups.studyFinanceBanks"
+              [(ngModel)]="model.studentBankId" name="studentBankId" optionLabel="studyFinanceBankeName"
+              optionValue="id" [placeholder]="'FINANCE.SELECT_STUDENT_BANK' | translate" [showClear]="true"
+              [filter]="true" filterBy="studyFinanceBankeName">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="studentAccountNumber" class="fin-label">
+              {{ 'FINANCE.ACCOUNT_NUMBER' | translate }}
+            </label>
+            <input id="studentAccountNumber" pInputText [(ngModel)]="model.studentAccountNumber"
+              name="studentAccountNumber" [placeholder]="'FINANCE.ENTER_ACCOUNT_NUMBER' | translate" />
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="studentAccountEnglishName" class="fin-label">
+              {{ 'FINANCE.ACCOUNT_ENGLISH_NAME' | translate }}
+            </label>
+            <input id="studentAccountEnglishName" pInputText [(ngModel)]="model.studentAccountEnglishName"
+              name="studentAccountEnglishName"
+              [placeholder]="'FINANCE.ENTER_ACCOUNT_ENGLISH_NAME' | translate" />
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="studentAccountEndDate" class="fin-label">
+              {{ 'FINANCE.ACCOUNT_END_DATE' | translate }}
+            </label>
+            <p-datepicker inputId="studentAccountEndDate" [(ngModel)]="accountEndDate"
+              name="studentAccountEndDate" dateFormat="dd/mm/yy" [showIcon]="true" [showClear]="true"
+              [placeholder]="'FINANCE.SELECT_DATE' | translate">
+            </p-datepicker>
+          </div>
+        </div>
+      </div>
+      <!-- Notes -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--slate"><i class="pi pi-file-edit"></i></span>
+          <div>
+            <h3 class="fin-section__title">{{ 'FINANCE.SECTION_NOTES' | translate }}</h3>
+            <span class="fin-section__subtitle">{{ 'FINANCE.SECTION_NOTES_HINT' | translate }}</span>
+          </div>
+        </div>
+        <div class="formgrid grid">
+          <div class="field col-12">
+            <label for="studyNote1" class="fin-label">{{ 'FINANCE.STUDY_NOTES' | translate }}</label>
+            <textarea id="studyNote1" pTextarea [(ngModel)]="model.studyNote1" name="studyNote1"
+            [rows]="3" [placeholder]="'FINANCE.ENTER_STUDY_NOTES' | translate"></textarea>
+          </div>
+          <div class="field col-12">
+            <label for="studentBankNotes" class="fin-label">{{ 'FINANCE.BANK_NOTES' | translate }}</label>
+            <textarea id="studentBankNotes" pTextarea [(ngModel)]="model.studentBankNotes"
+              name="studentBankNotes" [rows]="3"
+            [placeholder]="'FINANCE.ENTER_BANK_NOTES' | translate"></textarea>
+          </div>
+        </div>
+      </div>
+      <!-- Actions -->
+      <div class="fin-actions">
+        <button pButton pRipple type="button" [label]="'COMMON.CANCEL' | translate" icon="pi pi-times"
+        class="p-button-outlined" (click)="goBack()"></button>
+        <button pButton pRipple type="submit"
+          [label]="(creatingMode ? 'COMMON.ADD' : 'COMMON.SAVE') | translate" icon="pi pi-check"
+          [loading]="saving" [disabled]="!!pendingApproval || (creatingMode && !!existingRecordId)"
+          [pTooltip]="pendingApproval ? ('FINANCE.PENDING_APPROVAL_MESSAGE' | translate) : ''"
+        tooltipPosition="top"></button>
+      </div>
+    </form>
+  }
+</div>
+
+<!-- What the pending request would change -->
+<p-dialog [(visible)]="pendingDialogVisible" [modal]="true" [draggable]="false"
+  [style]="{ width: '860px', maxWidth: '95vw' }"
+  [header]="('FINANCE.PENDING_REQUEST_NUMBER' | translate) + ' #' + (pendingApproval?.id ?? '')">
+  @if (pendingDialogVisible && pendingApproval) {
+    <app-approval-changes [requestId]="pendingApproval.id"></app-approval-changes>
+  }
+</p-dialog>
+
+<!-- Recipient (STUDY_FIN_RECEIVED_WHOM) form -->
+<p-dialog [(visible)]="recipientDialogVisible" [modal]="true" [draggable]="false" [maximizable]="true"
+  [style]="{ width: '920px', maxWidth: '95vw' }" styleClass="fin-recipient-dialog"
+  [header]="(recipientDialogMode === 'create' ? 'FIN_RECEIVED_WHOM.NEW' : 'FIN_RECEIVED_WHOM.EDIT') | translate">
+  <ng-template pTemplate="content">
+    <div class="fin-recipient" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+      <!-- Recipient identity -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--indigo"><i class="pi pi-user"></i></span>
+          <h3 class="fin-section__title">{{ 'FIN_RECEIVED_WHOM.SECTION_RECIPIENT' | translate }}</h3>
+        </div>
+        <div class="formgrid grid p-fluid">
+          <div class="field col-12 md:col-6">
+            <label for="finReceivedName" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.NAME' | translate }} <span class="required">*</span>
+            </label>
+            <input id="finReceivedName" pInputText [(ngModel)]="recipient.finReceivedName"
+              name="finReceivedName"
+              [class.ng-invalid]="recipientSubmitted && isRecipientNameInvalid()" />
+            @if (recipientSubmitted && isRecipientNameInvalid()) {
+              <small class="p-error">
+                {{ 'FINANCE.MESSAGES.NAME_REQUIRED' | translate }}
+              </small>
+            }
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="finReceivedRelationship" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.RELATIONSHIP' | translate }}
+            </label>
+            <p-select inputId="finReceivedRelationship" [options]="relationshipOptions"
+              [(ngModel)]="recipient.finReceivedRelationship" name="finReceivedRelationship"
+              optionLabel="label" optionValue="value"
+              [placeholder]="'FIN_RECEIVED_WHOM.SELECT_RELATIONSHIP' | translate" [showClear]="true">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="finReceivedReason" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.FIN_RECEIVED_REASON' | translate }}
+            </label>
+            <p-select inputId="finReceivedReason" [options]="reasonOptions"
+              [(ngModel)]="recipient.finReceivedReason" name="finReceivedReason" optionLabel="label"
+              optionValue="value" [placeholder]="'FIN_RECEIVED_WHOM.SELECT_REASON' | translate"
+              [showClear]="true">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="finRecievedStatus" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.STATUS' | translate }}
+            </label>
+            <p-select inputId="finRecievedStatus" [options]="lookups.finReceivedStatuses"
+              [(ngModel)]="recipient.finRecievedStatus" name="finRecievedStatus"
+              optionLabel="studyFinReceivedStatusName" optionValue="id"
+              [placeholder]="'FINANCE.SELECT_STATUS' | translate" [showClear]="true">
+            </p-select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Passport -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--cyan"><i class="pi pi-id-card"></i></span>
+          <h3 class="fin-section__title">{{ 'FIN_RECEIVED_WHOM.SECTION_PASSPORT' | translate }}</h3>
+        </div>
+        <div class="formgrid grid p-fluid">
+          <div class="field col-12 md:col-6">
+            <label for="finReceivedPassportNumber" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.PASSPORT_NUMBER' | translate }}
+            </label>
+            <input id="finReceivedPassportNumber" pInputText
+              [(ngModel)]="recipient.finReceivedPassportNumber" name="finReceivedPassportNumber" />
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="finReceivedIssueCountry" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.ISSUE_COUNTRY' | translate }}
+            </label>
+            <p-select inputId="finReceivedIssueCountry" [options]="allCountryOptions"
+              [(ngModel)]="recipient.finReceivedIssueCountry" name="finReceivedIssueCountry"
+              optionLabel="name" optionValue="id"
+              [placeholder]="'FIN_RECEIVED_WHOM.SELECT_COUNTRY' | translate" [showClear]="true"
+              [filter]="true" filterBy="name">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="passportIssueDate" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.PASSPORT_ISSUE_DATE' | translate }}
+            </label>
+            <p-datepicker inputId="passportIssueDate" [(ngModel)]="recipientPassportIssueDate"
+              name="passportIssueDate" dateFormat="dd/mm/yy" [showIcon]="true" [showClear]="true">
+            </p-datepicker>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="passportExpireDate" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.PASSPORT_EXPIRE_DATE' | translate }}
+            </label>
+            <p-datepicker inputId="passportExpireDate" [(ngModel)]="recipientPassportExpireDate"
+              name="passportExpireDate" dateFormat="dd/mm/yy" [showIcon]="true" [showClear]="true">
+            </p-datepicker>
+          </div>
+        </div>
+      </div>
+
+      <!-- Amount received -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--green"><i class="pi pi-dollar"></i></span>
+          <h3 class="fin-section__title">{{ 'FIN_RECEIVED_WHOM.SECTION_FINANCE' | translate }}</h3>
+        </div>
+        <div class="formgrid grid p-fluid">
+          <div class="field col-12 md:col-3">
+            <label for="finRecievedAmount" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.AMOUNT' | translate }}
+            </label>
+            <p-inputnumber inputId="finRecievedAmount" [(ngModel)]="recipient.finRecievedAmount"
+              name="finRecievedAmount" mode="decimal" [min]="0" [maxFractionDigits]="0">
+            </p-inputnumber>
+          </div>
+          <div class="field col-12 md:col-3">
+            <label for="finRecievedYear" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.RECEIVED_YEAR' | translate }}
+            </label>
+            <p-inputnumber inputId="finRecievedYear" [(ngModel)]="recipient.finRecievedYear"
+              name="finRecievedYear" [min]="1900" [max]="2100" [useGrouping]="false"
+              (ngModelChange)="syncRecipientYearMonth()">
+            </p-inputnumber>
+          </div>
+          <div class="field col-12 md:col-3">
+            <label for="finRecievedMonth" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.RECEIVED_MONTH' | translate }}
+            </label>
+            <p-inputnumber inputId="finRecievedMonth" [(ngModel)]="recipient.finRecievedMonth"
+              name="finRecievedMonth" [min]="1" [max]="12" [useGrouping]="false"
+              (ngModelChange)="syncRecipientYearMonth()">
+            </p-inputnumber>
+          </div>
+          <div class="field col-12 md:col-3">
+            <label for="finRecievedYearMonth" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.YEAR_MONTH' | translate }}
+            </label>
+            <!-- Derived: YEAR*10 + MONTH (the V038 rule); typed by nobody. -->
+            <p-inputnumber inputId="finRecievedYearMonth" [(ngModel)]="recipient.finRecievedYearMonth"
+              name="finRecievedYearMonth" [useGrouping]="false" [readonly]="true">
+            </p-inputnumber>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bank / location -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--purple"><i class="pi pi-building"></i></span>
+          <h3 class="fin-section__title">{{ 'FIN_RECEIVED_WHOM.SECTION_LOCATION' | translate }}</h3>
+        </div>
+        <div class="formgrid grid p-fluid">
+          <div class="field col-12 md:col-6">
+            <label for="financeCountryId" class="fin-label">
+              {{ 'FINANCE.STUDY_COUNTRY' | translate }}
+            </label>
+            <p-select inputId="financeCountryId" [options]="lookups.studyCountries"
+              [(ngModel)]="recipient.financeCountryId" name="financeCountryId"
+              optionLabel="studyCountryInName" optionValue="id"
+              [placeholder]="'FINANCE.SELECT_STUDY_COUNTRY' | translate" [showClear]="true"
+              [filter]="true" filterBy="studyCountryInName" (onChange)="onRecipientCountryChange()">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="financeGovId" class="fin-label">
+              {{ 'FINANCE.STUDY_GOVERNMENT' | translate }}
+            </label>
+            <p-select inputId="financeGovId" [options]="recipientCascades.governments"
+              [(ngModel)]="recipient.financeGovId" name="financeGovId" optionLabel="studyGovInName"
+              optionValue="id" [placeholder]="'FINANCE.SELECT_STUDY_GOVERNMENT' | translate"
+              [showClear]="true" [filter]="true" filterBy="studyGovInName"
+              [disabled]="!recipient.financeCountryId">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="financeBankeId" class="fin-label">{{ 'FINANCE.FINANCE_BANK' | translate }}</label>
+            <p-select inputId="financeBankeId" [options]="recipientCascades.banks"
+              [(ngModel)]="recipient.financeBankeId" name="financeBankeId"
+              optionLabel="studyFinanceBankeName" optionValue="id"
+              [placeholder]="'FINANCE.SELECT_FINANCE_BANK' | translate" [showClear]="true"
+              [filter]="true" filterBy="studyFinanceBankeName" (onChange)="onRecipientBankChange()"
+              [disabled]="!recipient.financeCountryId">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="financeBankBranchId" class="fin-label">
+              {{ 'FINANCE.BANK_BRANCH' | translate }}
+            </label>
+            <p-select inputId="financeBankBranchId" [options]="recipientCascades.branches"
+              [(ngModel)]="recipient.financeBankBranchId" name="financeBankBranchId"
+              optionLabel="studyFinanceBankBranchName" optionValue="id"
+              [placeholder]="'FINANCE.SELECT_BANK_BRANCH' | translate" [showClear]="true"
+              [filter]="true" filterBy="studyFinanceBankBranchName"
+              [disabled]="!recipient.financeBankeId">
+            </p-select>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="financeDofId" class="fin-label">{{ 'FINANCE.FINANCE_DOF' | translate }}</label>
+            <p-select inputId="financeDofId" [options]="lookups.studyFinanceDofs"
+              [(ngModel)]="recipient.financeDofId" name="financeDofId"
+              optionLabel="studyFinanceDofName" optionValue="id"
+              [placeholder]="'FINANCE.SELECT_FINANCE_DOF' | translate" [showClear]="true">
+            </p-select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Check -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--cyan"><i class="pi pi-credit-card"></i></span>
+          <h3 class="fin-section__title">{{ 'FIN_RECEIVED_WHOM.SECTION_CHECK' | translate }}</h3>
+        </div>
+        <div class="formgrid grid p-fluid">
+          <div class="field col-12 md:col-4">
+            <label for="checkId" class="fin-label">{{ 'FIN_RECEIVED_WHOM.CHECK_ID' | translate }}</label>
+            <input id="checkId" pInputText [(ngModel)]="recipient.checkId" name="checkId" />
+          </div>
+          <div class="field col-12 md:col-4">
+            <label for="recipientCheckDate" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.CHECK_DATE' | translate }}
+            </label>
+            <p-datepicker inputId="recipientCheckDate" [(ngModel)]="recipientCheckDate"
+              name="recipientCheckDate" dateFormat="dd/mm/yy" [showIcon]="true" [showClear]="true">
+            </p-datepicker>
+          </div>
+          <div class="field col-12 md:col-4">
+            <label for="checkFormNumber" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.CHECK_FORM_NUMBER' | translate }}
+            </label>
+            <input id="checkFormNumber" pInputText [(ngModel)]="recipient.checkFormNumber"
+              name="checkFormNumber" />
+          </div>
+          <div class="field col-12">
+            <label for="checkDetails" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.CHECK_DETAILS' | translate }}
+            </label>
+            <textarea id="checkDetails" pTextarea [(ngModel)]="recipient.checkDetails"
+            name="checkDetails" [rows]="2"></textarea>
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="finManualFormNumber" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.MANUAL_FORM_NUMBER' | translate }}
+            </label>
+            <input id="finManualFormNumber" pInputText [(ngModel)]="recipient.finManualFormNumber"
+              name="finManualFormNumber" />
+          </div>
+          <div class="field col-12 md:col-6">
+            <label for="finManualFormDate" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.MANUAL_FORM_DATE' | translate }}
+            </label>
+            <p-datepicker inputId="finManualFormDate" [(ngModel)]="recipientManualFormDate"
+              name="finManualFormDate" dateFormat="dd/mm/yy" [showIcon]="true" [showClear]="true">
+            </p-datepicker>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="fin-section">
+        <div class="fin-section__header">
+          <span class="fin-section__icon fin-section__icon--slate"><i class="pi pi-file-edit"></i></span>
+          <h3 class="fin-section__title">{{ 'FIN_RECEIVED_WHOM.SECTION_NOTES' | translate }}</h3>
+        </div>
+        <div class="formgrid grid p-fluid">
+          <div class="field col-12">
+            <label for="recipientNote1" class="fin-label">
+              {{ 'FIN_RECEIVED_WHOM.NOTES' | translate }}
+            </label>
+            <textarea id="recipientNote1" pTextarea [(ngModel)]="recipient.note1" name="note1"
+            [rows]="3"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="fin-dialog-footer">
+      <button pButton pRipple [label]="'COMMON.CANCEL' | translate" icon="pi pi-times" class="p-button-outlined"
+      (click)="recipientDialogVisible = false"></button>
+      <button pButton pRipple [label]="'COMMON.SAVE' | translate" icon="pi pi-check"
+      [loading]="savingRecipient" (click)="saveRecipient()"></button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<p-toast></p-toast>

@@ -1,0 +1,606 @@
+<div class="student-info-requests" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'" [class.rtl]="translationService.isRTL()">
+  <div class="card">
+    <!--
+      Creating a request is not a filter, so it stays out of the search row;
+      it sits at the far end of the heading's row instead of on a line of its
+      own below it.
+
+      The heading block takes the free space rather than the row carrying
+      justify-content-between: styles.scss reverses that class again for RTL,
+      which would land the button back on the heading's own side in Arabic.
+    -->
+    <div class="flex align-items-center mb-4 flex-wrap gap-3">
+      <div class="flex align-items-center gap-3 flex-1">
+        <i class="pi pi-question-circle text-primary" style="font-size: 2.5rem"></i>
+        <div>
+          <h2 class="m-0 text-primary">{{ 'STUDENT_INFO_REQUESTS.TITLE' | translate }}</h2>
+          <p class="text-600 mt-1 mb-0">{{ 'STUDENT_INFO_REQUESTS.SUBTITLE' | translate }}</p>
+        </div>
+      </div>
+      @if (canWrite) {
+        <button pButton pRipple [label]="'STUDENT_INFO_REQUESTS.CREATE_REQUEST' | translate" icon="pi pi-plus" class="p-button-success" (click)="openCreate()"></button>
+      }
+    </div>
+
+    <!--
+      Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+
+      Three unlabelled boxes wrapping in a flex row beside the Create button,
+      with their labels as loose text nodes next to them rather than bound to
+      the inputs.
+
+      Status and type are enumerations the backend compares with cb.equal, so
+      they are picked from the database rather than typed. Both stay editable:
+      three of the stored request types - RESULTS, ACADEMIC_PROGRESS and
+      DOCUMENT - are in no catalogue, and a strict dropdown could never ask for
+      them.
+    -->
+    <div class="filter-bar">
+      <div class="filter-bar__grid filter-bar__grid--cols-3">
+        <div class="filter-bar__field" [class.filter-bar__field--active]="filterStatus">
+          <label for="sirStatus">{{ 'STUDENT_INFO_REQUESTS.STATUS' | translate }}</label>
+          <p-select inputId="sirStatus" [(ngModel)]="filterStatus"
+            [options]="statusOptions" optionLabel="label" optionValue="value"
+            [editable]="true" [filter]="true" [showClear]="true" appendTo="body"
+            [placeholder]="'STUDENT_INFO_REQUESTS.PLACEHOLDER_STATUS' | translate"
+            (onChange)="applyFilters()"></p-select>
+        </div>
+        <div class="filter-bar__field" [class.filter-bar__field--active]="filterRequestType">
+          <label for="sirType">{{ 'STUDENT_INFO_REQUESTS.TYPE' | translate }}</label>
+          <p-select inputId="sirType" [(ngModel)]="filterRequestType"
+            [options]="requestTypes" optionLabel="label" optionValue="value"
+            [editable]="true" [filter]="true" [showClear]="true" appendTo="body"
+            [placeholder]="'STUDENT_INFO_REQUESTS.PLACEHOLDER_TYPE' | translate"
+            (onChange)="applyFilters()"></p-select>
+        </div>
+        <div class="filter-bar__field" [class.filter-bar__field--active]="filterStudentId">
+          <label for="sirStudentId">{{ 'STUDENT_INFO_REQUESTS.STUDENT_ID' | translate }}</label>
+          <span class="p-input-icon-left">
+            <i class="pi pi-hashtag"></i>
+            <input id="sirStudentId" type="number" pInputText [(ngModel)]="filterStudentId"
+              [placeholder]="'STUDENT_INFO_REQUESTS.PLACEHOLDER_ID' | translate"
+              (keyup.enter)="applyFilters()" />
+          </span>
+        </div>
+      </div>
+
+      <div class="filter-bar__actions">
+        <button pButton pRipple [label]="'COMMON.SEARCH' | translate"
+          icon="pi pi-search" class="p-button-search" (click)="applyFilters()"></button>
+        <button pButton pRipple type="button" icon="pi pi-filter-slash"
+          class="p-button-action-outlined"
+          [label]="'COMMON.RESET' | translate"
+          [disabled]="!hasFilters" (click)="clearFilters()"></button>
+      </div>
+    </div>
+
+    <p-table [value]="requests" [loading]="loading" [paginator]="false" styleClass="p-datatable-sm">
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="title">{{ 'STUDENT_INFO_REQUESTS.TABLE_TITLE' | translate }} <p-sortIcon field="title"></p-sortIcon></th>
+          <th pSortableColumn="requestType">{{ 'STUDENT_INFO_REQUESTS.TABLE_TYPE' | translate }} <p-sortIcon field="requestType"></p-sortIcon></th>
+          <th pSortableColumn="studentId">{{ 'STUDENT_INFO_REQUESTS.STUDENT_ID' | translate }} <p-sortIcon field="studentId"></p-sortIcon></th>
+          <th pSortableColumn="studentName">{{ 'STUDENT_INFO_REQUESTS.TABLE_STUDENT_NAME' | translate }} <p-sortIcon field="studentName"></p-sortIcon></th>
+          <th pSortableColumn="status">{{ 'STUDENT_INFO_REQUESTS.STATUS' | translate }} <p-sortIcon field="status"></p-sortIcon></th>
+          <th pSortableColumn="reviewStatus">{{ 'STUDENT_INFO_REQUESTS.TABLE_REVIEW' | translate }} <p-sortIcon field="reviewStatus"></p-sortIcon></th>
+          <th pSortableColumn="createdAt">{{ 'STUDENT_INFO_REQUESTS.TABLE_CREATED' | translate }} <p-sortIcon field="createdAt"></p-sortIcon></th>
+          <th style="width: 5rem"></th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-r>
+        <tr>
+          <td>{{ r.title }}</td>
+          <td>{{ requestTypeLabel(r.requestType) }}</td>
+          <td>{{ r.studentId }}</td>
+          <td>{{ r.studentName || '—' }}</td>
+          <td><span class="badge badge-status" [class]="'status-' + r.status">{{ statusLabel(r.status) }}</span></td>
+          <td><span class="badge badge-review" [class]="'review-' + (r.reviewStatus || 'none')">{{ reviewLabel(r.reviewStatus) }}</span></td>
+          <td>{{ r.createdAt | date:'short' }}</td>
+          <td>
+            <button pButton pRipple icon="pi pi-eye"
+              class="p-button-rounded p-button-text p-button-info"
+              [pTooltip]="'STUDENT_INFO_REQUESTS.VIEW' | translate"
+              tooltipPosition="top"
+            (click)="openDetail(r)"></button>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr><td colspan="8">{{ 'STUDENT_INFO_REQUESTS.NO_REQUESTS' | translate }}</td></tr>
+      </ng-template>
+    </p-table>
+
+    @if (totalPages > 1) {
+      <div class="pagination">
+        <button pButton [label]="'STUDENT_INFO_REQUESTS.PREVIOUS' | translate" icon="pi pi-chevron-left" (click)="prevPage()" [disabled]="page === 0"></button>
+        <span>{{ 'STUDENT_INFO_REQUESTS.PAGE_OF' | translate:{ current: page + 1, total: totalPages, count: totalElements } }}</span>
+        <button pButton [label]="'STUDENT_INFO_REQUESTS.NEXT' | translate" icon="pi pi-chevron-right" (click)="nextPage()" [disabled]="page >= totalPages - 1"></button>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- ═══════════════════════════ CREATE REQUEST ═══════════════════════════
+
+     Layout (styles: .dv-* in assets/layout/styles/_detail-dialog.scss, the
+     vocabulary every record's Add/Edit dialog shares):
+
+       hero     → a live preview: the title as typed, kind, due date, recipients
+       steps    → 1 request details · 2 choose students
+       section  → step 1: type, due date, title, description
+       section  → step 2: one student / selected students / all students
+       footer   → step counter; cancel, back / next, create
+-->
+<p-dialog [(visible)]="showCreateDialog"
+  [style]="{width: '760px', maxWidth: '96vw'}"
+  [header]="'STUDENT_INFO_REQUESTS.CREATE_REQUEST' | translate"
+  [modal]="true" [draggable]="false" [resizable]="false" [closable]="true"
+  styleClass="dv-dialog"
+  [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+  <ng-template pTemplate="content">
+    <div class="dv-form">
+
+      <!-- Hero: what is about to be sent -->
+      <div class="dv-hero dv-hero--new">
+        <div class="dv-hero__badge"><i class="pi pi-plus"></i></div>
+        <div class="dv-hero__body">
+          <div class="dv-hero__eyebrow">{{ 'STUDENT_INFO_REQUESTS.NEW_REQUEST' | translate }}</div>
+          <div class="dv-hero__title" [class.dv-hero__title--placeholder]="!createTitle.trim()">
+            {{ createTitle.trim() || ('STUDENT_INFO_REQUESTS.TABLE_TITLE' | translate) }}
+          </div>
+          <div class="dv-hero__meta">
+            <span class="dv-chip dv-chip--primary">
+              <i class="pi pi-tag"></i>
+              {{ requestTypeLabel(createType) }}
+            </span>
+            @if (createDueDate) {
+              <span class="dv-chip dv-chip--orange">
+                <i class="pi pi-clock"></i>
+                {{ 'STUDENT_INFO_REQUESTS.META_DUE_DATE' | translate }}: {{ createDueDate | date:'mediumDate' }}
+              </span>
+            }
+            <span class="dv-chip">
+              <i class="pi pi-users"></i>
+              {{ targetSummary }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <p-steps [model]="createSteps" [(activeIndex)]="createStep" [readonly]="true"></p-steps>
+
+      <!-- Step 1: request details -->
+      @if (createStep === 0) {
+        <section class="dv-section mt-3">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-file-edit"></i></span>
+            <div>
+              <div class="dv-section__title">{{ 'STUDENT_INFO_REQUESTS.STEP_REQUEST_DETAILS' | translate }}</div>
+              <div class="dv-section__hint">{{ 'STUDENT_INFO_REQUESTS.CREATE_STEP_DETAILS_HINT' | translate }}</div>
+            </div>
+          </header>
+          <div class="dv-fields">
+            <div class="dv-field">
+              <label for="irType" class="dv-label">{{ 'STUDENT_INFO_REQUESTS.LABEL_TYPE' | translate }}</label>
+              <p-select inputId="irType" [options]="requestTypes" [(ngModel)]="createType"
+                optionLabel="label" optionValue="value" appendTo="body" class="w-full"></p-select>
+            </div>
+            <div class="dv-field">
+              <label for="irDue" class="dv-label">{{ 'STUDENT_INFO_REQUESTS.LABEL_DUE_DATE' | translate }}</label>
+              <p-datepicker inputId="irDue" [(ngModel)]="createDueDate" dateFormat="yy-mm-dd"
+                [showIcon]="true" appendTo="body" class="w-full"></p-datepicker>
+            </div>
+            <div class="dv-field dv-field--full">
+              <label for="irTitle" class="dv-label">
+                {{ 'STUDENT_INFO_REQUESTS.TABLE_TITLE' | translate }}
+                <span class="dv-required">*</span>
+              </label>
+              <input id="irTitle" pInputText [(ngModel)]="createTitle" class="w-full"
+                [placeholder]="'STUDENT_INFO_REQUESTS.TITLE_PLACEHOLDER' | translate" />
+            </div>
+            <div class="dv-field dv-field--full">
+              <label for="irDesc" class="dv-label">{{ 'STUDENT_INFO_REQUESTS.LABEL_DESCRIPTION' | translate }}</label>
+              <textarea id="irDesc" pTextarea [(ngModel)]="createDescription" rows="3" class="w-full"></textarea>
+            </div>
+          </div>
+        </section>
+      }
+
+      <!-- Step 2: who receives it -->
+      @if (createStep === 1) {
+        <section class="dv-section mt-3">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-users"></i></span>
+            <div>
+              <div class="dv-section__title">{{ 'STUDENT_INFO_REQUESTS.STEP_CHOOSE_STUDENTS' | translate }}</div>
+              <div class="dv-section__hint">{{ 'STUDENT_INFO_REQUESTS.CREATE_STEP_TARGET_HINT' | translate }}</div>
+            </div>
+          </header>
+          <div class="dv-fields">
+            <div class="dv-field dv-field--full">
+              <span class="dv-label">{{ 'STUDENT_INFO_REQUESTS.LABEL_TARGET' | translate }}</span>
+              <div class="flex flex-wrap gap-4">
+                <div class="flex align-items-center gap-2">
+                  <p-radioButton name="target" value="one" [(ngModel)]="targetMode" inputId="t1"></p-radioButton>
+                  <label for="t1">{{ 'STUDENT_INFO_REQUESTS.TARGET_ONE' | translate }}</label>
+                </div>
+                <div class="flex align-items-center gap-2">
+                  <p-radioButton name="target" value="selected" [(ngModel)]="targetMode" inputId="t2"></p-radioButton>
+                  <label for="t2">{{ 'STUDENT_INFO_REQUESTS.TARGET_SELECTED' | translate }}</label>
+                </div>
+                <div class="flex align-items-center gap-2">
+                  <p-radioButton name="target" value="all" [(ngModel)]="targetMode" inputId="t3"></p-radioButton>
+                  <label for="t3">{{ 'STUDENT_INFO_REQUESTS.TARGET_ALL' | translate }}</label>
+                </div>
+              </div>
+            </div>
+
+            @if (targetMode === 'one') {
+              <div class="dv-field dv-field--full">
+                <label for="irStudent" class="dv-label">{{ 'STUDENT_INFO_REQUESTS.TARGET_ONE' | translate }}</label>
+                <p-autoComplete inputId="irStudent" [(ngModel)]="selectedStudentOption" [suggestions]="studentSuggestions"
+                  (completeMethod)="searchStudentsOne($event)" [dropdown]="false"
+                  [placeholder]="'STUDENT_INFO_REQUESTS.PLACEHOLDER_SEARCH_STUDENT' | translate"
+                  (onSelect)="onStudentOneSelect($event)" (onClear)="onStudentOneSelect(null)"
+                  optionLabel="studentName" appendTo="body" class="w-full">
+                  <ng-template let-opt pTemplate="item">
+                    <span>{{ opt.studentName }} (ID: {{ opt.studentId }})</span>
+                  </ng-template>
+                </p-autoComplete>
+              </div>
+            }
+
+            @if (targetMode === 'selected') {
+              <div class="dv-field dv-field--full">
+                <label for="irSearch" class="dv-label">{{ 'STUDENT_INFO_REQUESTS.SEARCH' | translate }}</label>
+                <div class="flex gap-2">
+                  <input id="irSearch" pInputText [(ngModel)]="studentSearchTerm" class="flex-1"
+                    [placeholder]="'STUDENT_INFO_REQUESTS.PLACEHOLDER_SEARCH' | translate"
+                    (keyup.enter)="loadStudentsForMulti()" />
+                  <button pButton pRipple type="button" [label]="'STUDENT_INFO_REQUESTS.LOAD_STUDENTS' | translate"
+                    icon="pi pi-search" class="p-button-search" (click)="loadStudentsForMulti()" [loading]="loadingStudents"></button>
+                </div>
+              </div>
+              <div class="dv-field dv-field--full">
+                <label for="irMulti" class="dv-label">{{ 'STUDENT_INFO_REQUESTS.SELECT_STUDENTS' | translate }}</label>
+                <p-multiselect inputId="irMulti" [options]="studentOptionsForMulti" [(ngModel)]="targetStudentIds"
+                  optionLabel="studentName" optionValue="studentId" display="chip"
+                  [placeholder]="'STUDENT_INFO_REQUESTS.SELECT_STUDENTS' | translate"
+                  [filter]="true" [showHeader]="true" appendTo="body" class="w-full">
+                  <ng-template let-opt pTemplate="item">
+                    <span>{{ opt.studentName }} (ID: {{ opt.studentId }})</span>
+                  </ng-template>
+                </p-multiselect>
+                @if (targetStudentIds.length) {
+                  <small class="dv-hint">{{ selectedCountText }}</small>
+                }
+              </div>
+            }
+
+            @if (targetMode === 'all') {
+              <div class="dv-field dv-field--full">
+                <div class="dv-notice dv-notice--warn">
+                  <i class="pi pi-exclamation-triangle"></i>
+                  <span>{{ 'STUDENT_INFO_REQUESTS.TARGET_ALL_HINT' | translate }}</span>
+                </div>
+              </div>
+              <!-- The study country and the student study status: the two columns the
+                   server narrows "all students" by (P5-4: the country was the nationality). -->
+              <div class="dv-field">
+                <label for="irCountry" class="dv-label">{{ 'STUDENT_INFO_REQUESTS.TARGET_COUNTRY' | translate }}</label>
+                <p-select inputId="irCountry" [options]="countryOptions" [(ngModel)]="targetCountryId"
+                  optionLabel="name" optionValue="id" [showClear]="true" [filter]="true" filterBy="name"
+                  [placeholder]="'STUDENT_INFO_REQUESTS.TARGET_ANY_COUNTRY' | translate"
+                  appendTo="body" class="w-full"></p-select>
+              </div>
+              <div class="dv-field">
+                <label for="irStatus" class="dv-label">{{ 'STUDENT_INFO_REQUESTS.TARGET_STUDY_STATUS' | translate }}</label>
+                <p-select inputId="irStatus" [options]="studyStatusOptions" [(ngModel)]="targetStatusId"
+                  optionLabel="name" optionValue="id" [showClear]="true"
+                  [placeholder]="'STUDENT_INFO_REQUESTS.TARGET_ANY_STATUS' | translate"
+                  appendTo="body" class="w-full"></p-select>
+              </div>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint">
+        <i class="pi pi-list"></i>
+        <span>{{ createStepText }}</span>
+      </div>
+      <div class="dv-footer__actions">
+        <button pButton type="button" [label]="'STUDENT_INFO_REQUESTS.CANCEL' | translate" icon="pi pi-times"
+          class="p-button-text p-button-secondary" (click)="showCreateDialog = false"></button>
+        @if (createStep === 1) {
+          <button pButton type="button" [label]="'STUDENT_INFO_REQUESTS.BACK' | translate"
+            [icon]="translationService.isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+            class="p-button-outlined p-button-secondary" (click)="prevCreateStep()"></button>
+        }
+        @if (createStep === 0) {
+          <button pButton type="button" [label]="'STUDENT_INFO_REQUESTS.NEXT' | translate"
+            [icon]="translationService.isRTL() ? 'pi pi-arrow-left' : 'pi pi-arrow-right'" iconPos="right"
+            (click)="nextCreateStep()"></button>
+        }
+        @if (createStep === 1) {
+          <button pButton type="button" [label]="'STUDENT_INFO_REQUESTS.CREATE' | translate" icon="pi pi-check"
+            class="p-button-success" (click)="create()" [loading]="creating"></button>
+        }
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- ═══════════════════════════ REQUEST DETAIL ═══════════════════════════
+
+     Layout (styles: .dv-* in assets/layout/styles/_detail-dialog.scss, the
+     vocabulary every record's View dialog shares):
+
+       hero     → request id, kind, title, student; created / due chips,
+                  status and review chips
+       kpis     → status / review / response date
+       columns  → What was requested | Student response
+       notices  → submitted data awaiting review, rejection reason
+       section  → review decision, only while a response awaits one
+       section  → the decision recorded, once there is one
+       footer   → close; cancel while pending; reject / approve while deciding
+-->
+<p-dialog [(visible)]="showDetailDialog"
+  [style]="{width: '960px', maxWidth: '96vw'}"
+  [header]="'STUDENT_INFO_REQUESTS.REQUEST_DETAIL' | translate"
+  [modal]="true" [maximizable]="true" [draggable]="false" [resizable]="false"
+  styleClass="dv-dialog"
+  [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+  <ng-template pTemplate="content">
+    @if (selectedRequest; as r) {
+      <div class="dv-view">
+
+        <!-- Hero -->
+        <div [class]="'dv-hero ' + heroClass(r)">
+          <div class="dv-hero__badge">
+            <span class="dv-hero__badge-prefix">#</span>{{ r.id }}
+          </div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ requestTypeLabel(r.requestType) }}</div>
+            <div class="dv-hero__title">{{ r.title || '—' }}</div>
+            <div class="dv-hero__subtitle">
+              {{ 'STUDENT_INFO_REQUESTS.META_STUDENT_ID' | translate }}: {{ r.studentId }}
+              @if (r.studentName) {
+                · {{ r.studentName }}
+              }
+            </div>
+            <div class="dv-hero__meta">
+              <span class="dv-chip">
+                <i class="pi pi-calendar"></i>
+                {{ 'STUDENT_INFO_REQUESTS.META_CREATED' | translate }}: {{ r.createdAt | date:'mediumDate' }}
+              </span>
+              @if (r.dueDate) {
+                <span [class]="dueChipClass(r)">
+                  <i class="pi pi-clock"></i>
+                  {{ 'STUDENT_INFO_REQUESTS.META_DUE_DATE' | translate }}: {{ r.dueDate | date:'mediumDate' }}
+                </span>
+              }
+              <span [class]="statusChipClass(r)">
+                <i class="pi pi-flag"></i>
+                {{ statusLabel(r.status) }}
+              </span>
+              @if (r.reviewStatus) {
+                <span [class]="reviewChipClass(r)">
+                  <i class="pi pi-check-circle"></i>
+                  {{ reviewLabel(r.reviewStatus) }}
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="dv-kpis dv-kpis--cols-3">
+          <div [class]="statusKpiClass(r)">
+            <span class="dv-kpi__icon"><i class="pi pi-flag"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_INFO_REQUESTS.STATUS' | translate }}</div>
+              <div class="dv-kpi__value">{{ statusLabel(r.status) }}</div>
+            </div>
+          </div>
+          <div [class]="reviewKpiClass(r)">
+            <span class="dv-kpi__icon"><i class="pi pi-check-circle"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_INFO_REQUESTS.TABLE_REVIEW' | translate }}</div>
+              <div class="dv-kpi__value">{{ reviewLabel(r.reviewStatus) }}</div>
+            </div>
+          </div>
+          <div class="dv-kpi dv-kpi--blue">
+            <span class="dv-kpi__icon"><i class="pi pi-comment"></i></span>
+            <div class="dv-kpi__body">
+              <div class="dv-kpi__label">{{ 'STUDENT_INFO_REQUESTS.STUDENT_RESPONSE' | translate }}</div>
+              <div class="dv-kpi__value">{{ (r.responseAt | date:'mediumDate') || '—' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dv-columns">
+          <!-- What was requested -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-info-circle"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_INFO_REQUESTS.WHAT_REQUESTED' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_INFO_REQUESTS.TYPE' | translate }}</dt>
+                <dd>{{ requestTypeLabel(r.requestType) }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_INFO_REQUESTS.META_CREATED' | translate }}</dt>
+                <dd>
+                  {{ (r.createdAt | date:'medium') || '—' }}
+                  @if (r.createdBy) {
+                    <span class="text-500 font-normal">({{ r.createdBy }})</span>
+                  }
+                </dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_INFO_REQUESTS.META_DUE_DATE' | translate }}</dt>
+                <dd [class.dv-dl__red]="isOverdue(r)" [class.dv-dl__muted]="!r.dueDate">
+                  {{ (r.dueDate | date:'medium') || '—' }}
+                </dd>
+              </div>
+              <div class="dv-dl__row dv-dl__row--stack">
+                <dt>{{ 'STUDENT_INFO_REQUESTS.LABEL_DESCRIPTION' | translate }}</dt>
+                <dd>
+                  @if (r.description) {
+                    <p class="dv-notes font-normal">{{ r.description }}</p>
+                  } @else {
+                    <p class="dv-notes dv-notes--empty font-normal">{{ 'STUDENT_INFO_REQUESTS.NO_TEXT' | translate }}</p>
+                  }
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <!-- Student response -->
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--green"><i class="pi pi-comment"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_INFO_REQUESTS.STUDENT_RESPONSE' | translate }}</div>
+            </header>
+            @if (r.responseText || r.responseAt) {
+              <dl class="dv-dl">
+                <div class="dv-dl__row">
+                  <dt>{{ 'STUDENT_INFO_REQUESTS.SUBMITTED_AT' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!r.responseAt">{{ (r.responseAt | date:'medium') || '—' }}</dd>
+                </div>
+                <div class="dv-dl__row">
+                  <dt>{{ 'STUDENT_INFO_REQUESTS.DOCUMENT_ID' | translate }}</dt>
+                  <dd [class.dv-dl__muted]="!r.responseDocumentId">
+                    @if (r.responseDocumentId) {
+                      <i class="pi pi-paperclip"></i> #{{ r.responseDocumentId }}
+                    } @else {
+                      —
+                    }
+                  </dd>
+                </div>
+                <div class="dv-dl__row dv-dl__row--stack">
+                  <dt>{{ 'STUDENT_INFO_REQUESTS.RESPONSE_TEXT' | translate }}</dt>
+                  <dd>
+                    @if (r.responseText) {
+                      <p class="dv-notes font-normal">{{ r.responseText }}</p>
+                    } @else {
+                      <p class="dv-notes dv-notes--empty font-normal">{{ 'STUDENT_INFO_REQUESTS.NO_TEXT' | translate }}</p>
+                    }
+                  </dd>
+                </div>
+              </dl>
+            } @else {
+              <div class="dv-notice dv-notice--muted">
+                <i class="pi pi-hourglass"></i>
+                <span>{{ 'STUDENT_INFO_REQUESTS.NO_RESPONSE_YET' | translate }}</span>
+              </div>
+            }
+          </section>
+        </div>
+
+        <!-- Submitted data awaiting review -->
+        @if (stagingData && (stagingData.studentDataJson || stagingData.studentFinanceJson)) {
+          <div class="dv-notice dv-notice--info">
+            <i class="pi pi-database"></i>
+            <div>
+              <strong>{{ 'STUDENT_INFO_REQUESTS.SUBMITTED_DATA_REVIEW' | translate }}</strong>
+              · {{ 'STUDENT_INFO_REQUESTS.SUBMITTED_AT' | translate }} {{ stagingData.submittedAt | date:'medium' }}
+              <div>{{ 'STUDENT_INFO_REQUESTS.STAGING_HINT' | translate }}</div>
+            </div>
+          </div>
+        }
+
+        <!-- Rejection reason -->
+        @if (r.rejectionReason) {
+          <div class="dv-notice dv-notice--danger">
+            <i class="pi pi-exclamation-triangle"></i>
+            <div>
+              <strong>{{ 'STUDENT_INFO_REQUESTS.REJECTION_REASON' | translate }}</strong>
+              <div>{{ r.rejectionReason }}</div>
+            </div>
+          </div>
+        }
+
+        <!-- Review decision: only while a response awaits one -->
+        @if (canWrite && canDecide(r)) {
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--orange"><i class="pi pi-check-square"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_INFO_REQUESTS.REVIEW_DECIDE' | translate }}</div>
+              <div class="dv-section__hint">{{ 'STUDENT_INFO_REQUESTS.DECIDE_HINT' | translate }}</div>
+            </header>
+            <div class="dv-fields">
+              <div class="dv-field dv-field--full">
+                <label class="dv-label" for="rejectReason">{{ 'STUDENT_INFO_REQUESTS.REJECTION_COMMENT' | translate }}</label>
+                <input pInputText id="rejectReason" [(ngModel)]="rejectReason"
+                  [placeholder]="'STUDENT_INFO_REQUESTS.REJECTION_PLACEHOLDER' | translate" />
+              </div>
+            </div>
+          </section>
+        }
+
+        <!-- The decision recorded -->
+        @if (isDecided(r)) {
+          <section class="dv-section">
+            <header class="dv-section__head">
+              <span class="dv-section__icon dv-section__icon--gray"><i class="pi pi-history"></i></span>
+              <div class="dv-section__title">{{ 'STUDENT_INFO_REQUESTS.REVIEW_DECISION' | translate }}</div>
+            </header>
+            <dl class="dv-dl">
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_INFO_REQUESTS.TABLE_REVIEW' | translate }}</dt>
+                <dd [class]="reviewValueClass(r)">{{ reviewLabel(r.reviewStatus) }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_INFO_REQUESTS.REVIEWED_AT' | translate }}</dt>
+                <dd [class.dv-dl__muted]="!r.reviewedAt">{{ (r.reviewedAt | date:'medium') || '—' }}</dd>
+              </div>
+              <div class="dv-dl__row">
+                <dt>{{ 'STUDENT_INFO_REQUESTS.REVIEWED_BY' | translate }}</dt>
+                <dd [class.dv-dl__muted]="!r.reviewedBy">{{ r.reviewedBy ?? '—' }}</dd>
+              </div>
+            </dl>
+          </section>
+        }
+      </div>
+    }
+  </ng-template>
+
+  <ng-template pTemplate="footer">
+    <div class="dv-footer">
+      <div class="dv-footer__hint">
+        @if (selectedRequest?.reviewedAt; as reviewedAt) {
+          <i class="pi pi-clock"></i>
+          <span>{{ 'STUDENT_INFO_REQUESTS.REVIEWED_AT' | translate }}: {{ reviewedAt | date:'short' }}</span>
+        }
+      </div>
+      <div class="dv-footer__actions">
+        <button pButton type="button" [label]="'STUDENT_INFO_REQUESTS.CLOSE' | translate" icon="pi pi-times"
+          class="p-button-text p-button-secondary" (click)="showDetailDialog = false"></button>
+        @if (canWrite && selectedRequest && canCancel(selectedRequest)) {
+          <button pButton type="button" [label]="'STUDENT_INFO_REQUESTS.CANCEL_REQUEST' | translate" icon="pi pi-ban"
+            class="p-button-outlined p-button-secondary" (click)="cancelRequest()"></button>
+        }
+        @if (canWrite && selectedRequest && canDecide(selectedRequest)) {
+          <button pButton type="button" [label]="'STUDENT_INFO_REQUESTS.REJECT' | translate" icon="pi pi-times"
+            class="p-button-outlined p-button-danger" (click)="reject()" [loading]="rejecting"></button>
+          <button pButton type="button" [label]="'STUDENT_INFO_REQUESTS.APPROVE_INFO_ONLY' | translate" icon="pi pi-check"
+            class="p-button-outlined" (click)="approve()" [loading]="approving"></button>
+          <button pButton type="button" [label]="'STUDENT_INFO_REQUESTS.APPROVE_AND_APPLY' | translate" icon="pi pi-check-circle"
+            class="p-button-success" (click)="approveAndApply()" [loading]="applyApplying"></button>
+        }
+      </div>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<p-toast></p-toast>

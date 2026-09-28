@@ -1,0 +1,334 @@
+/* Student Add Form RTL Support */
+
+/* Form Grid RTL */
+.rtl .formgrid.grid {
+  direction: rtl;
+}
+
+.rtl .formgrid.grid .field {
+  text-align: right;
+}
+
+.rtl .formgrid.grid .field label {
+  text-align: right;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+/* Steps Component RTL */
+.rtl .p-steps {
+  direction: rtl;
+}
+
+.rtl .p-steps .p-steps-item {
+  text-align: right;
+}
+
+.rtl .p-steps .p-steps-item .p-steps-title {
+  text-align: right;
+}
+
+.rtl .p-steps .p-steps-item .p-steps-number {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+/* Form Fields RTL */
+.rtl .p-inputtext {
+  text-align: right;
+  direction: rtl;
+}
+
+.rtl .p-select {
+  text-align: right;
+}
+
+.rtl .p-select .p-select-label {
+  text-align: right;
+}
+
+.rtl .p-select .p-select-dropdown {
+  right: auto;
+  left: 0;
+}
+
+.rtl .p-inputnumber {
+  text-align: right;
+}
+
+.rtl .p-inputnumber .p-inputnumber-input {
+  text-align: right;
+}
+
+.rtl .p-inputnumber .p-inputnumber-button-group {
+  right: auto;
+  left: 0;
+}
+
+.rtl .p-inputnumber .p-inputnumber-button-group .p-button {
+  border-radius: 0;
+}
+
+.rtl .p-inputnumber .p-inputnumber-button-group .p-button:first-child {
+  border-top-left-radius: 0;
+  border-top-right-radius: 6px;
+}
+
+.rtl .p-inputnumber .p-inputnumber-button-group .p-button:last-child {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 6px;
+}
+
+/* Calendar / DatePicker RTL */
+.rtl .p-datepicker {
+  text-align: right;
+}
+
+.rtl .p-datepicker .p-inputtext {
+  text-align: right;
+}
+
+.rtl .p-datepicker .p-button {
+  right: auto;
+  left: 0;
+}
+
+.rtl .p-datepicker .p-datepicker-panel {
+  right: auto;
+  left: 0;
+}
+
+.rtl .p-datepicker .p-datepicker-panel .p-datepicker-header {
+  text-align: right;
+}
+
+.rtl .p-datepicker .p-datepicker-panel .p-datepicker-calendar {
+  text-align: right;
+}
+
+.rtl .p-datepicker .p-datepicker-panel .p-datepicker-calendar th {
+  text-align: right;
+}
+
+.rtl .p-datepicker .p-datepicker-panel .p-datepicker-calendar td {
+  text-align: right;
+}
+
+/* File Upload RTL */
+.rtl .p-fileupload {
+  text-align: right;
+}
+
+.rtl .p-fileupload .p-fileupload-buttonbar {
+  text-align: right;
+}
+
+.rtl .p-fileupload .p-fileupload-content {
+  text-align: right;
+}
+
+.rtl .p-fileupload .p-fileupload-row {
+  text-align: right;
+}
+
+/* Table RTL */
+.rtl .p-datatable .p-datatable-thead > tr > th {
+  text-align: right;
+}
+
+.rtl .p-datatable .p-datatable-tbody > tr > td {
+  text-align: right;
+}
+
+.rtl .p-datatable .p-datatable-tbody > tr > td .p-button {
+  margin-right: 0;
+  margin-left: 0.25rem;
+}
+
+.rtl .p-datatable .p-datatable-tbody > tr > td .p-button:first-child {
+  margin-left: 0;
+}
+
+/* Card RTL */
+.rtl .p-card {
+  text-align: right;
+}
+
+.rtl .p-card .p-card-header {
+  text-align: right;
+}
+
+.rtl .p-card .p-card-title {
+  text-align: right;
+}
+
+.rtl .p-card .p-card-content {
+  text-align: right;
+}
+
+.rtl .p-card .p-card-footer {
+  text-align: right;
+}
+
+/* Button RTL */
+.rtl .p-button {
+  text-align: center;
+}
+
+.rtl .p-button .p-button-icon {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+.rtl .p-button .p-button-icon:only-child {
+  margin-left: 0;
+}
+
+/* Toolbar RTL */
+.rtl .p-toolbar {
+  text-align: right;
+}
+
+.rtl .p-toolbar .p-toolbar-group-left {
+  float: right;
+}
+
+.rtl .p-toolbar .p-toolbar-group-right {
+  float: left;
+}
+
+/* Messages RTL */
+.rtl .p-message {
+  text-align: right;
+}
+
+.rtl .p-message .p-message-icon {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+.rtl .p-message .p-message-text {
+  text-align: right;
+}
+
+/* Toast RTL */
+.rtl .p-toast {
+  right: auto;
+  left: 0;
+}
+
+.rtl .p-toast .p-toast-message {
+  text-align: right;
+}
+
+.rtl .p-toast .p-toast-message .p-toast-message-icon {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+.rtl .p-toast .p-toast-message .p-toast-message-text {
+  text-align: right;
+}
+
+/* Dialog RTL */
+.rtl .p-dialog {
+  text-align: right;
+}
+
+.rtl .p-dialog .p-dialog-header {
+  text-align: right;
+}
+
+.rtl .p-dialog .p-dialog-title {
+  text-align: right;
+}
+
+.rtl .p-dialog .p-dialog-content {
+  text-align: right;
+}
+
+.rtl .p-dialog .p-dialog-footer {
+  text-align: left;
+}
+
+.rtl .p-dialog .p-dialog-footer .p-button {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+.rtl .p-dialog .p-dialog-footer .p-button:first-child {
+  margin-left: 0;
+}
+
+/* Progress Spinner RTL */
+.rtl .p-progress-spinner {
+  text-align: center;
+}
+
+/* Form Validation RTL */
+.rtl .p-invalid {
+  border-color: var(--red-500);
+}
+
+.rtl .p-invalid:focus {
+  border-color: var(--red-500);
+  box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.25);
+}
+
+.rtl .ng-invalid.ng-dirty {
+  border-color: var(--red-500);
+}
+
+.rtl .ng-invalid.ng-dirty:focus {
+  border-color: var(--red-500);
+  box-shadow: 0 0 0 0.2rem rgba(239, 68, 68, 0.25);
+}
+
+/* Small text RTL */
+.rtl .ng-dirty.ng-invalid {
+  text-align: right;
+  color: var(--red-500);
+}
+
+/* Responsive RTL */
+@media (max-width: 768px) {
+  .rtl .formgrid.grid .field {
+    text-align: right;
+  }
+  
+  .rtl .p-steps .p-steps-item {
+    text-align: right;
+  }
+  
+  .rtl .p-card {
+    text-align: right;
+  }
+}
+
+@media (max-width: 480px) {
+  .rtl .formgrid.grid .field label {
+    text-align: right;
+  }
+  
+  .rtl .p-inputtext,
+  .rtl .p-select,
+  .rtl .p-inputnumber,
+  .rtl .p-datepicker {
+    text-align: right;
+  }
+}
+
+/* Print RTL */
+@media print {
+  .rtl .formgrid.grid {
+    direction: rtl;
+  }
+  
+  .rtl .formgrid.grid .field {
+    text-align: right;
+  }
+  
+  .rtl .p-card {
+    text-align: right;
+  }
+}

@@ -1,0 +1,179 @@
+<div class="portal-page inquiries-page">
+  <div class="sp-intro">
+    <p class="sp-intro__text">{{ 'STUDENT_PORTAL.PAGE_INQUIRIES_SUB' | translate }}</p>
+    <button nz-button nzType="primary" class="sp-intro__action" (click)="openForm()">
+      <span nz-icon nzType="plus" nzTheme="outline"></span>
+      {{ 'STUDENT_PORTAL.NEW_INQUIRY' | translate }}
+    </button>
+  </div>
+
+  <!-- No search box here on purpose. This list is paged by the server and its
+       endpoint takes no filter parameters, so a box could only search the ten
+       rows already fetched — and would answer "nothing found" for an inquiry
+       sitting on the next page. Info Requests filters through the server
+       instead, which is why that page has one. -->
+  <nz-card>
+    <nz-spin [nzSpinning]="loading">
+      <div class="portal-table-wrapper sp-stack">
+        <nz-table #inqTable [nzData]="inquiries" [nzShowPagination]="true" [nzFrontPagination]="false"
+          [nzPageIndex]="page + 1" [nzPageSize]="size" [nzTotal]="totalElements" (nzQueryParams)="onQueryParams($event)">
+          <thead>
+            <tr>
+              <th>{{ 'STUDENT_PORTAL.TITLE' | translate }}</th>
+              <th>{{ 'STUDENT_PORTAL.TYPE' | translate }}</th>
+              <th>{{ 'STUDENT_PORTAL.STATUS' | translate }}</th>
+              <th>{{ 'STUDENT_PORTAL.CREATED' | translate }}</th>
+              <th nzWidth="100px">{{ 'STUDENT_PORTAL.ACTIONS' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (inq of inqTable.data; track inq) {
+              <tr>
+                <td [attr.data-label]="'STUDENT_PORTAL.TITLE' | translate">{{ inq.title }}</td>
+                <td [attr.data-label]="'STUDENT_PORTAL.TYPE' | translate"><nz-tag>{{ inquiryTypeLabel(inq.type) }}</nz-tag></td>
+                <td [attr.data-label]="'STUDENT_PORTAL.STATUS' | translate"><nz-tag [nzColor]="statusColor(inq.status)">{{ inquiryStatusLabel(inq.status) }}</nz-tag></td>
+                <td [attr.data-label]="'STUDENT_PORTAL.CREATED' | translate">{{ inq.createdAt | localeDate:'short' }}</td>
+                <td>
+                  <button nz-button nzType="link" nzSize="small" (click)="viewDetail(inq)">
+                    <span nz-icon nzType="eye" nzTheme="outline"></span>
+                    {{ 'STUDENT_PORTAL.VIEW' | translate }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+          <ng-template #nzTableNoResult>
+            <div class="sp-state">
+              <span class="sp-state__icon" nz-icon nzType="message" nzTheme="outline"></span>
+              <p class="sp-state__title">{{ 'STUDENT_PORTAL.NO_INQUIRIES' | translate }}</p>
+              <p class="sp-state__text">{{ 'STUDENT_PORTAL.PAGE_INQUIRIES_SUB' | translate }}</p>
+              <button nz-button nzType="primary" (click)="openForm()">
+                <span nz-icon nzType="plus" nzTheme="outline"></span>
+                {{ 'STUDENT_PORTAL.NEW_INQUIRY' | translate }}
+              </button>
+            </div>
+          </ng-template>
+        </nz-table>
+      </div>
+    </nz-spin>
+  </nz-card>
+</div>
+
+<!-- New inquiry. Laid out and styled by the portal dialog kit
+     (assets/layout/styles/_student-portal-dialog.scss, nzWrapClassName="sp-dialog"). -->
+<nz-modal [(nzVisible)]="showForm" nzWrapClassName="sp-dialog" nzWidth="600px"
+  [nzTitle]="'STUDENT_PORTAL.NEW_INQUIRY' | translate" [nzFooter]="formFooter" (nzOnCancel)="closeForm()">
+  <ng-container *nzModalContent>
+    <p class="sp-dlg-lead">
+      <span nz-icon nzType="message" nzTheme="outline"></span>
+      <span>{{ 'STUDENT_PORTAL.INQUIRY_FORM_HINT' | translate }}</span>
+    </p>
+
+    <div nz-form nzLayout="vertical">
+      <div class="sp-dlg-form-row">
+        <nz-form-item>
+          <nz-form-label nzRequired nzFor="inquiry-type">{{ 'STUDENT_PORTAL.TYPE' | translate }}</nz-form-label>
+          <nz-form-control>
+            <nz-select nzId="inquiry-type" [(ngModel)]="newType" name="newType" class="inquiry-type-select" style="width: 100%"
+              [nzPlaceHolder]="'STUDENT_PORTAL.TYPE_PLACEHOLDER' | translate">
+              @for (opt of typeOptions; track opt.value) {
+                <nz-option [nzValue]="opt.value" [nzLabel]="opt.label"></nz-option>
+              }
+            </nz-select>
+          </nz-form-control>
+        </nz-form-item>
+        <!-- A missing title is said under the field it concerns, not in a banner below the form. -->
+        <nz-form-item>
+          <nz-form-label nzRequired nzFor="inquiry-title">{{ 'STUDENT_PORTAL.TITLE' | translate }}</nz-form-label>
+          <nz-form-control [nzValidateStatus]="titleMissing ? 'error' : ''"
+            [nzErrorTip]="'STUDENT_PORTAL.INQUIRY_TITLE_REQUIRED' | translate">
+            <!-- 255: the width of STUDENT_INQUIRY.Title. -->
+            <input id="inquiry-title" nz-input dir="auto" [(ngModel)]="newTitle" (ngModelChange)="clearTitleError()" name="newTitle"
+              maxlength="255" [placeholder]="'STUDENT_PORTAL.INQUIRY_TITLE_PLACEHOLDER' | translate" />
+          </nz-form-control>
+        </nz-form-item>
+      </div>
+      <nz-form-item>
+        <nz-form-label nzFor="inquiry-description">{{ 'STUDENT_PORTAL.DESCRIPTION' | translate }}</nz-form-label>
+        <nz-form-control>
+          <textarea id="inquiry-description" nz-input dir="auto" [(ngModel)]="newDescription" name="newDescription"
+            [nzAutosize]="{ minRows: 5, maxRows: 12 }"
+            [placeholder]="'STUDENT_PORTAL.INQUIRY_DESCRIPTION_PLACEHOLDER' | translate"></textarea>
+        </nz-form-control>
+      </nz-form-item>
+    </div>
+
+    @if ((submitErrorKey && !titleMissing) || submitError) {
+      <nz-alert nzType="error"
+        [nzMessage]="submitErrorKey ? (submitErrorKey | translate) : submitError" nzShowIcon></nz-alert>
+    }
+  </ng-container>
+</nz-modal>
+<ng-template #formFooter>
+  <button nz-button (click)="closeForm()">{{ 'COMMON.CANCEL' | translate }}</button>
+  <button nz-button nzType="primary" [nzLoading]="submitting" (click)="submit()">
+    <span nz-icon nzType="check" nzTheme="outline"></span>
+    {{ 'STUDENT_PORTAL.SUBMIT_INQUIRY' | translate }}
+  </button>
+</ng-template>
+
+<!-- Detail. The title is the student's own text: a template, so it is shown as
+text. A string title is rendered as markup by the modal (live QA M19). -->
+<ng-template #detailTitle>{{ selected?.title }}</ng-template>
+<nz-modal [(nzVisible)]="showDetailModal" nzWrapClassName="sp-dialog" nzWidth="600px"
+  [nzTitle]="detailTitle" [nzFooter]="detailFooter" (nzOnCancel)="closeDetail()">
+  <ng-container *nzModalContent>
+    @if (selected) {
+      <div class="sp-dlg-summary">
+        <span class="sp-dlg-summary__icon"><span nz-icon nzType="message" nzTheme="outline"></span></span>
+        <div class="sp-dlg-summary__body">
+          <span class="sp-dlg-summary__eyebrow">{{ 'STUDENT_PORTAL.TYPE' | translate }}</span>
+          <span class="sp-dlg-summary__headline">{{ inquiryTypeLabel(selected.type) }}</span>
+          @if (selected.createdAt) {
+            <span class="sp-dlg-summary__meta">
+              <span nz-icon nzType="clock-circle" nzTheme="outline"></span>
+              {{ 'STUDENT_PORTAL.CREATED' | translate }}: {{ selected.createdAt | localeDate:'medium' }}
+            </span>
+          }
+        </div>
+        <div class="sp-dlg-summary__status">
+          <nz-tag [nzColor]="statusColor(selected.status)">{{ inquiryStatusLabel(selected.status) }}</nz-tag>
+        </div>
+      </div>
+
+      <!-- The question, then the answer, read top to bottom like the exchange it was. -->
+      <div class="sp-dlg-thread">
+        @if (selected.description) {
+          <article class="sp-dlg-msg">
+            <header class="sp-dlg-msg__head">
+              <span nz-icon nzType="user" nzTheme="outline"></span>
+              {{ 'STUDENT_PORTAL.YOUR_INQUIRY' | translate }}
+            </header>
+            <p class="sp-dlg-msg__body" dir="auto">{{ selected.description }}</p>
+          </article>
+        }
+        @if (selected.response) {
+          <article class="sp-dlg-msg sp-dlg-msg--reply">
+            <header class="sp-dlg-msg__head">
+              <span nz-icon nzType="check-circle" nzTheme="outline"></span>
+              {{ 'STUDENT_PORTAL.RESPONSE' | translate }}
+              @if (selected.respondedAt) {
+                <time [attr.title]="'STUDENT_PORTAL.RESPONDED_AT' | translate">{{ selected.respondedAt | localeDate:'medium' }}</time>
+              }
+            </header>
+            <p class="sp-dlg-msg__body" dir="auto">{{ selected.response }}</p>
+          </article>
+        } @else if (selected.status !== 'CLOSED') {
+          <!-- A closed inquiry with no answer is not waiting for one. -->
+          <div class="sp-dlg-msg sp-dlg-msg--waiting">
+            <span nz-icon nzType="clock-circle" nzTheme="outline"></span>
+            {{ 'STUDENT_PORTAL.AWAITING_RESPONSE' | translate }}
+          </div>
+        }
+      </div>
+    }
+  </ng-container>
+</nz-modal>
+<ng-template #detailFooter>
+  <button nz-button nzType="default" (click)="closeDetail()">{{ 'STUDENT_PORTAL.CLOSE' | translate }}</button>
+</ng-template>

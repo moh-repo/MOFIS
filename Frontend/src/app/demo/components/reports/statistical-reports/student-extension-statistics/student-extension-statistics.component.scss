@@ -1,0 +1,20 @@
+:host ::ng-deep {
+    .card-header {
+        padding: 1.5rem;
+        background-color: var(--surface-50);
+        border-bottom: 1px solid var(--surface-border);
+    }
+
+    .p-progressbar {
+        .p-progressbar-value {
+            background: linear-gradient(90deg, var(--green-500) 0%, var(--green-600) 100%);
+        }
+    }
+
+    .p-chart {
+        canvas {
+            max-height: 400px;
+        }
+    }
+}
+

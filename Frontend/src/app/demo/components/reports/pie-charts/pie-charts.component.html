@@ -1,0 +1,186 @@
+<p-toast></p-toast>
+
+<div class="page-wrapper" id="pie-charts-print-area" [ngClass]="{ 'rtl-layout': isRTL(), 'ltr-layout': !isRTL() }">
+  <div class="page-hero card surface-0 border-none shadow-none">
+    <div class="page-hero__content">
+      <span class="page-hero__icon surface-100 border-round-xl">
+        <i class="pi pi-chart-pie"></i>
+      </span>
+      <div>
+        <h2 class="page-hero__title">{{ 'PIE_CHART_PAGE.TITLE' | translate }}</h2>
+        <p class="page-hero__subtitle">{{ 'PIE_CHART_PAGE.SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+    <div class="page-hero__actions">
+      <button pButton pRipple type="button"
+        [icon]="isRTL() ? 'pi pi-arrow-right' : 'pi pi-arrow-left'"
+        class="p-button-text"
+        [label]="'COMMON.BACK' | translate"
+      (click)="goBack()"></button>
+      <button pButton pRipple type="button"
+        icon="pi pi-refresh"
+        class="p-button-primary"
+        [label]="'COMMON.REFRESH' | translate"
+        (click)="refreshCharts()"
+      [loading]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-eye" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.PREVIEW_CHARTS_PDF' | translate"
+      (click)="previewChartsPdf()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-print" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.PRINT' | translate"
+      (click)="printCharts()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-file-pdf" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.EXPORT_PDF' | translate"
+      (click)="downloadChartsPdf()" [disabled]="loading"></button>
+      <button pButton pRipple type="button" icon="pi pi-images" class="p-button-outlined"
+        [label]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_IMAGES' | translate"
+      (click)="downloadChartImages()" [disabled]="loading"></button>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card primary">
+      <div class="stat-card__label">{{ 'PIE_CHART_PAGE.SUMMARY.MAJOR_TITLE' | translate }}</div>
+      <div class="stat-card__value">{{ majorSummary.total | number:'1.0-0' }}</div>
+      <div class="stat-card__hint">
+        {{ 'PIE_CHART_PAGE.SUMMARY.TOP_CATEGORY' | translate }}:
+        <strong>{{ majorSummary.topLabel }}</strong>
+      </div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-card__label">{{ 'PIE_CHART_PAGE.SUMMARY.GENDER_TITLE' | translate }}</div>
+      <div class="stat-card__value">{{ genderSummary.total | number:'1.0-0' }}</div>
+      <div class="stat-card__hint">
+        {{ 'PIE_CHART_PAGE.SUMMARY.TOP_CATEGORY' | translate }}:
+        <strong>{{ genderSummary.topLabel }}</strong>
+      </div>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-card__label">{{ 'PIE_CHART_PAGE.SUMMARY.UNIVERSITY_TITLE' | translate }}</div>
+      <div class="stat-card__value">{{ universitySummary.total | number:'1.0-0' }}</div>
+      <div class="stat-card__hint">
+        {{ 'PIE_CHART_PAGE.SUMMARY.TOP_CATEGORY' | translate }}:
+        <strong>{{ universitySummary.topLabel }}</strong>
+      </div>
+    </div>
+    <div class="stat-card neutral">
+      <div class="stat-card__label">{{ 'PIE_CHART_PAGE.SUMMARY.STATUS_TITLE' | translate }}</div>
+      <div class="stat-card__value">{{ studyStatusSummary.total | number:'1.0-0' }}</div>
+      <div class="stat-card__hint">
+        {{ 'PIE_CHART_PAGE.SUMMARY.TOP_CATEGORY' | translate }}:
+        <strong>{{ studyStatusSummary.topLabel }}</strong>
+      </div>
+    </div>
+  </div>
+
+  @if (majorChartData) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'PIE_CHART_PAGE.CHARTS.MAJOR_TITLE' | translate }}</h3>
+          <p>{{ 'PIE_CHART_PAGE.CHARTS.MAJOR_DESCRIPTION' | translate }}</p>
+        </div>
+        <div class="flex align-items-center gap-2">
+          <p-tag severity="info"
+            [value]="( 'PIE_CHART_PAGE.SUMMARY.TOP_CATEGORY' | translate ) + ': ' + majorSummary.topLabel">
+          </p-tag>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(majorChart, 'major-distribution')"></button>
+        </div>
+      </div>
+      <div class="chart-card__body">
+        <p-chart #majorChart type="pie"
+          [data]="majorChartData"
+          [options]="pieChartOptions"
+        height="360px"></p-chart>
+      </div>
+    </div>
+  }
+
+  @if (genderChartData) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'PIE_CHART_PAGE.CHARTS.GENDER_TITLE' | translate }}</h3>
+          <p>{{ 'PIE_CHART_PAGE.CHARTS.GENDER_DESCRIPTION' | translate }}</p>
+        </div>
+        <div class="flex align-items-center gap-2">
+          <p-tag severity="success"
+            [value]="( 'PIE_CHART_PAGE.SUMMARY.TOP_CATEGORY' | translate ) + ': ' + genderSummary.topLabel">
+          </p-tag>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(genderChart, 'gender-distribution')"></button>
+        </div>
+      </div>
+      <div class="chart-card__body">
+        <p-chart #genderChart type="doughnut"
+          [data]="genderChartData"
+          [options]="pieChartOptions"
+        height="360px"></p-chart>
+      </div>
+    </div>
+  }
+
+  @if (universityTypeChartData) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'PIE_CHART_PAGE.CHARTS.UNIVERSITY_TITLE' | translate }}</h3>
+          <p>{{ 'PIE_CHART_PAGE.CHARTS.UNIVERSITY_DESCRIPTION' | translate }}</p>
+        </div>
+        <div class="flex align-items-center gap-2">
+          <p-tag severity="warn"
+            [value]="( 'PIE_CHART_PAGE.SUMMARY.TOP_CATEGORY' | translate ) + ': ' + universitySummary.topLabel">
+          </p-tag>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(universityChart, 'university-type-distribution')"></button>
+        </div>
+      </div>
+      <div class="chart-card__body">
+        <p-chart #universityChart type="pie"
+          [data]="universityTypeChartData"
+          [options]="pieChartOptions"
+        height="360px"></p-chart>
+      </div>
+    </div>
+  }
+
+  @if (studyStatusChartData) {
+    <div class="card chart-card">
+      <div class="chart-card__header">
+        <div>
+          <h3>{{ 'PIE_CHART_PAGE.CHARTS.STATUS_TITLE' | translate }}</h3>
+          <p>{{ 'PIE_CHART_PAGE.CHARTS.STATUS_DESCRIPTION' | translate }}</p>
+        </div>
+        <div class="flex align-items-center gap-2">
+          <p-tag severity="danger"
+            [value]="( 'PIE_CHART_PAGE.SUMMARY.TOP_CATEGORY' | translate ) + ': ' + studyStatusSummary.topLabel">
+          </p-tag>
+          <button pButton pRipple type="button" icon="pi pi-download"
+            class="p-button-text p-button-sm p-button-secondary"
+            [pTooltip]="'REPORTS.REPORT_SUBPAGES.DOWNLOAD_PNG' | translate"
+          (click)="downloadChart(studyStatusChart, 'study-status-distribution')"></button>
+        </div>
+      </div>
+      <div class="chart-card__body">
+        <p-chart #studyStatusChart type="doughnut"
+          [data]="studyStatusChartData"
+          [options]="pieChartOptions"
+        height="360px"></p-chart>
+      </div>
+    </div>
+  }
+</div>
+
+@if (loading) {
+  <div class="loading-overlay">
+    <p-progressSpinner></p-progressSpinner>
+  </div>
+}
+

@@ -1,0 +1,64 @@
+<!-- The drawer is opened from the topbar's settings button
+     (app.topbar.component.html), so this component renders no trigger. -->
+<p-drawer [(visible)]="visible" [position]="drawerPosition" [header]="'LAYOUT.CONFIG.TITLE' | translate"
+  [transitionOptions]="'.3s cubic-bezier(0, 0, 0.2, 1)'" styleClass="layout-config-sidebar w-20rem">
+  <h5>{{ 'LAYOUT.CONFIG.SCALE' | translate }}</h5>
+  <!-- Spacing is `gap` rather than mr-2/ml-2: PrimeFlex's margin utilities are
+       physical, so in Arabic they padded the wrong side of each button. -->
+  <div class="flex align-items-center gap-2">
+    <button icon="pi pi-minus" type="button" pButton (click)="decrementScale()" class="p-button-text p-button-rounded w-2rem h-2rem" [disabled]="scale === scales[0]" [attr.aria-label]="'LAYOUT.CONFIG.DECREASE_SCALE' | translate"></button>
+    <div class="flex gap-2 align-items-center">
+      @for (s of scales; track s) {
+        <i class="pi pi-circle-fill text-300" [ngClass]="{'text-primary-500': s === scale}"></i>
+      }
+    </div>
+    <button icon="pi pi-plus"  type="button" pButton (click)="incrementScale()" class="p-button-text p-button-rounded w-2rem h-2rem" [disabled]="scale === scales[scales.length - 1]" [attr.aria-label]="'LAYOUT.CONFIG.INCREASE_SCALE' | translate"></button>
+  </div>
+
+  @if (!minimal) {
+    <h5>{{ 'LAYOUT.CONFIG.MENU_TYPE' | translate }}</h5>
+    <div class="flex align-items-center gap-2 mb-2">
+      <p-radioButton name="menuMode" value="static" [(ngModel)]="menuMode" inputId="mode1"></p-radioButton>
+      <label for="mode1">{{ 'LAYOUT.CONFIG.STATIC' | translate }}</label>
+    </div>
+    <div class="flex align-items-center gap-2">
+      <p-radioButton name="menuMode" value="overlay" [(ngModel)]="menuMode" inputId="mode2"></p-radioButton>
+      <label for="mode2">{{ 'LAYOUT.CONFIG.OVERLAY' | translate }}</label>
+    </div>
+  }
+
+  @if (!minimal) {
+    <h5>{{ 'LAYOUT.CONFIG.MENU_LAYOUT' | translate }}</h5>
+    <div class="flex align-items-center gap-2 mb-2">
+      <p-radioButton name="menuVariant" value="classic" [(ngModel)]="menuVariant" inputId="variant1"></p-radioButton>
+      <label for="variant1">{{ 'LAYOUT.CONFIG.MENU_LAYOUT_CLASSIC' | translate }}</label>
+    </div>
+    <div class="flex align-items-center gap-2">
+      <p-radioButton name="menuVariant" value="proposed" [(ngModel)]="menuVariant" inputId="variant2"></p-radioButton>
+      <label for="variant2">{{ 'LAYOUT.CONFIG.MENU_LAYOUT_PROPOSED' | translate }}</label>
+    </div>
+  }
+
+  @if (!minimal) {
+    <h5>{{ 'LAYOUT.CONFIG.INPUT_STYLE' | translate }}</h5>
+    <div class="flex">
+      <div class="flex align-items-center gap-2 flex-1">
+        <p-radioButton name="inputStyle" value="outlined" [(ngModel)]="inputStyle" inputId="outlined_input"></p-radioButton>
+        <label for="outlined_input">{{ 'LAYOUT.CONFIG.OUTLINED' | translate }}</label>
+      </div>
+      <div class="flex align-items-center gap-2 flex-1">
+        <p-radioButton name="inputStyle" value="filled" [(ngModel)]="inputStyle" inputId="filled_input"></p-radioButton>
+        <label for="filled_input">{{ 'LAYOUT.CONFIG.FILLED' | translate }}</label>
+      </div>
+    </div>
+    <h5>{{ 'LAYOUT.CONFIG.RIPPLE' | translate }}</h5>
+    <p-toggleswitch [(ngModel)]="ripple"></p-toggleswitch>
+  }
+
+
+  <h5>{{ 'LAYOUT.CONFIG.COLOR_SCHEME' | translate }}</h5>
+  <div class="flex align-items-center gap-2">
+    <p-toggleswitch [(ngModel)]="darkMode" inputId="darkModeSwitch"></p-toggleswitch>
+    <label for="darkModeSwitch">{{ (darkMode ? 'LAYOUT.CONFIG.DARK' : 'LAYOUT.CONFIG.LIGHT') | translate }}</label>
+  </div>
+</p-drawer>

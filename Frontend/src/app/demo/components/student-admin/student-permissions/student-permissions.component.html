@@ -1,0 +1,143 @@
+<p-toast></p-toast>
+<div class="grid">
+  <div class="col-12">
+    <div class="card">
+      <!-- Header Section. `flex-1` on the icon-and-title block, not
+           `justify-content-between`: under `direction: rtl` a flex row already
+           runs right to left, and the global rule in styles.scss reverses every
+           `.flex.justify-content-between` again, which put the heading back on
+           the left and the buttons on the right in Arabic. See
+           src/app/demo/components/page-headings.spec.ts. -->
+      <div class="flex align-items-center mb-4 flex-wrap gap-3">
+        <div class="flex align-items-center gap-3 flex-1">
+          <i class="pi pi-lock text-primary" style="font-size: 2.5rem"></i>
+          <div>
+            <h2 class="m-0 text-primary">{{ 'STUDENT_ADMIN.PERMISSIONS.TITLE' | translate }}</h2>
+            <p class="text-600 mt-1 mb-0">{{ 'STUDENT_ADMIN.PERMISSIONS.SUBTITLE' | translate }}</p>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button pButton pRipple type="button" icon="pi pi-refresh" class="p-button-outlined"
+            [attr.aria-label]="'COMMON.REFRESH' | translate"
+            [label]="'COMMON.REFRESH' | translate" (click)="load()" [loading]="loading"></button>
+        </div>
+      </div>
+
+      <!-- Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+           The list is held whole, so the table narrows itself. -->
+      <div class="filter-bar">
+        <div class="filter-bar__grid filter-bar__grid--cols-3">
+          <div class="filter-bar__field filter-bar__field--wide" [class.filter-bar__field--active]="filterSearch">
+            <label for="spSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+            <span class="p-input-icon-left">
+              <i class="pi pi-search"></i>
+              <input id="spSearch" pInputText type="text" [(ngModel)]="filterSearch"
+                (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+                [placeholder]="'STUDENT_ADMIN.PERMISSIONS.SEARCH_PLACEHOLDER' | translate" />
+            </span>
+          </div>
+          <div class="filter-bar__field" [class.filter-bar__field--active]="filterActive !== null">
+            <label for="spActive">{{ 'STUDENT_ADMIN.PERMISSIONS.ACTIVE' | translate }}</label>
+            <p-select inputId="spActive" [options]="activeOptions" [(ngModel)]="filterActive"
+              optionLabel="label" optionValue="value"
+              (onChange)="dt.filter(filterActive, 'isActive', 'equals')"></p-select>
+          </div>
+        </div>
+        <div class="filter-bar__actions">
+          <button pButton pRipple type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+            [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters(dt)"></button>
+          <span class="filter-bar__hint filter-bar__actions-spacer">
+            {{ 'COMMON.TOTAL' | translate }}: {{ (dt.filteredValue || permissions).length }}
+          </span>
+        </div>
+      </div>
+
+      <p-table #dt [value]="permissions" [loading]="loading" dataKey="permissionId"
+               [globalFilterFields]="['permissionCode', 'permissionName', 'permissionNameAr', 'resourceType', 'actionType']"
+               [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10,20,50]"
+               styleClass="p-datatable-sm p-datatable-gridlines" responsiveLayout="scroll">
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="permissionId" style="width:70px">{{ 'COMMON.ID' | translate }} <p-sortIcon field="permissionId"></p-sortIcon></th>
+            <th pSortableColumn="permissionCode">{{ 'STUDENT_ADMIN.PERMISSIONS.CODE' | translate }} <p-sortIcon field="permissionCode"></p-sortIcon></th>
+            <th pSortableColumn="permissionName">{{ 'STUDENT_ADMIN.PERMISSIONS.NAME' | translate }} <p-sortIcon field="permissionName"></p-sortIcon></th>
+            <th pSortableColumn="permissionNameAr">{{ 'STUDENT_ADMIN.PERMISSIONS.NAME_AR' | translate }} <p-sortIcon field="permissionNameAr"></p-sortIcon></th>
+            <th pSortableColumn="resourceType" style="width:110px">{{ 'STUDENT_ADMIN.PERMISSIONS.RESOURCE_TYPE' | translate }} <p-sortIcon field="resourceType"></p-sortIcon></th>
+            <th pSortableColumn="actionType" style="width:110px">{{ 'STUDENT_ADMIN.PERMISSIONS.ACTION_TYPE' | translate }} <p-sortIcon field="actionType"></p-sortIcon></th>
+            <th pSortableColumn="isActive" style="width:90px">{{ 'STUDENT_ADMIN.PERMISSIONS.ACTIVE' | translate }} <p-sortIcon field="isActive"></p-sortIcon></th>
+            <th style="width:80px">{{ 'COMMON.ACTIONS' | translate }}</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-p>
+          <tr>
+            <td>{{ p.permissionId }}</td>
+            <td><code class="text-xs surface-100 p-1 border-round">{{ p.permissionCode }}</code></td>
+            <td class="font-semibold">{{ p.permissionName }}</td>
+            <td class="text-500">{{ p.permissionNameAr }}</td>
+            <td><p-tag [value]="p.resourceType" severity="secondary"></p-tag></td>
+            <td><p-tag [value]="p.actionType" [severity]="p.actionType === 'VIEW' ? 'info' : 'warning'"></p-tag></td>
+            <td><p-tag [value]="(p.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate" [severity]="p.isActive ? 'success' : 'danger'"></p-tag></td>
+            <td>
+              <button pButton pRipple icon="pi pi-eye" class="p-button-text p-button-sm"
+                [pTooltip]="'COMMON.VIEW' | translate" tooltipPosition="top"
+              (click)="openView(p)"></button>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr>
+            <td colspan="7" class="text-center text-500 py-4">
+              {{ (hasFilters ? 'COMMON.NO_MATCH' : 'STUDENT_ADMIN.NO_RECORDS') | translate }}
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+  </div>
+</div>
+
+<!-- The detail view. The catalogue is seeded and has no writes, but a
+     permission's description is longer than its column and was not readable
+     anywhere until now. -->
+<p-dialog [(visible)]="showViewDialog"
+  [header]="'STUDENT_ADMIN.PERMISSIONS.VIEW_PERMISSION' | translate"
+  [modal]="true" [style]="{ width: '640px', maxWidth: '96vw' }" [draggable]="false"
+  styleClass="dv-dialog">
+  <ng-template pTemplate="content">
+    @if (selectedPermission; as p) {
+      <div class="dv-view">
+        <div class="dv-hero">
+          <div class="dv-hero__badge">{{ p.permissionId }}</div>
+          <div class="dv-hero__body">
+            <div class="dv-hero__eyebrow">{{ 'STUDENT_ADMIN.PERMISSIONS.CODE' | translate }}</div>
+            <div class="dv-hero__title">{{ p.permissionCode }}</div>
+            <div class="dv-hero__meta">
+              <p-tag [rounded]="true" [severity]="p.isActive ? 'success' : 'warning'"
+                [value]="(p.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate"></p-tag>
+              <p-tag [rounded]="true" severity="secondary" [value]="p.resourceType"></p-tag>
+              <p-tag [rounded]="true" [severity]="p.actionType === 'VIEW' ? 'info' : 'warning'" [value]="p.actionType"></p-tag>
+            </div>
+          </div>
+        </div>
+
+        <section class="dv-section">
+          <header class="dv-section__head">
+            <span class="dv-section__icon dv-section__icon--blue"><i class="pi pi-id-card"></i></span>
+            <div class="dv-section__title">{{ 'COMMON.DETAILS' | translate }}</div>
+          </header>
+          <dl class="dv-dl">
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.PERMISSIONS.NAME' | translate }}</dt><dd>{{ p.permissionName }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.PERMISSIONS.NAME_AR' | translate }}</dt><dd>{{ p.permissionNameAr || '—' }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.PERMISSIONS.RESOURCE_TYPE' | translate }}</dt><dd>{{ p.resourceType || '—' }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.PERMISSIONS.ACTION_TYPE' | translate }}</dt><dd>{{ p.actionType || '—' }}</dd></div>
+            <div class="dv-dl__row"><dt>{{ 'STUDENT_ADMIN.PERMISSIONS.DESCRIPTION' | translate }}</dt><dd>{{ p.description || '—' }}</dd></div>
+          </dl>
+        </section>
+      </div>
+    }
+  </ng-template>
+  <ng-template pTemplate="footer">
+    <button pButton pRipple type="button" [label]="'COMMON.CLOSE' | translate"
+      class="p-button-text" (click)="showViewDialog = false"></button>
+  </ng-template>
+</p-dialog>

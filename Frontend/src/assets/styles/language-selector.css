@@ -1,0 +1,410 @@
+/* Country selector in topbar (multi-country scope) */
+/* Spacing between the topbar groups comes from .layout-topbar-menu's `gap`, so
+   these carry no margins of their own — a margin here would only apply on one
+   side and need mirroring for RTL. */
+.topbar-country-selector {
+  display: flex;
+  align-items: center;
+  min-width: 160px;
+  max-width: 220px;
+}
+
+.topbar-country-selector .topbar-country-dropdown.p-select {
+  width: 100%;
+  min-height: 2.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-100);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.topbar-country-selector .topbar-country-dropdown.p-select .p-select-label {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-country-selector .topbar-country-dropdown.p-select .p-select-dropdown {
+  width: 2rem;
+  flex-shrink: 0;
+}
+
+/* The clear × is left where PrimeNG puts it.
+ *
+ * These three rules were written against a select whose × was absolutely
+ * positioned: `inset-inline-end` placed it, `margin-top: -0.5rem` was the other
+ * half of the old `top: 50%` centring trick, and the label reserved 2.25rem
+ * (3.5rem when clearable) of padding so the value would not run underneath it.
+ *
+ * PrimeNG 21 lays the control out as a flex row — label, clear icon, dropdown
+ * — and centres the icon with `align-self: center`. Nothing is positioned any
+ * more, so `inset-inline-end` had no effect at all, and the negative margin was
+ * no longer cancelling a `top: 50%`: it simply lifted the × eight pixels above
+ * the chevron beside it. That is the misalignment. The reserved padding became
+ * dead space in the same change, because the icon is a sibling of the label
+ * now rather than sitting on top of it, which is what left the wide gap between
+ * the country name and the ×.
+ *
+ * Removing all three is the fix; the theme's own `align-self: center` is
+ * correct in both directions and needs no help. */
+
+.topbar-country-selector .p-select-overlay .p-select-list .p-select-option {
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rtl .topbar-country-selector .topbar-country-dropdown.p-select .p-select-label {
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .topbar-country-selector {
+    min-width: 140px;
+    max-width: 180px;
+  }
+}
+
+/* Language Selector Styles - Modern Design */
+.language-selector {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.25rem;
+  background: var(--surface-100);
+  border-radius: 11px;
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.language-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.7rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-width: auto;
+  position: relative;
+  white-space: nowrap;
+}
+
+/* The pill owns the colour and the buttons inherit it.
+ *
+ * The colours are written out rather than read from --text-color, and that is
+ * deliberate but not happily so. `color: var(--text-color)` here — on the
+ * button or on this container — was observed resolving to the *light* value
+ * with .app-dark in force, while `getComputedStyle` reported the variable
+ * itself as the dark value at the very same element, and while
+ * `background: var(--surface-100)` in the rule above resolved correctly. A
+ * literal colour in the same rule applies, so the rule is winning the cascade
+ * and it is the var() substitution that comes out wrong. Nothing else in the
+ * project declares --text-color, and no cascade layer is involved. I could not
+ * explain it, so this does not depend on it.
+ *
+ * In the light theme the wrong value happened to be the right colour, which is
+ * why this never showed. In dark mode it was slate text on a slate pill — the
+ * "مربع تغيير اللغة" half of the August review's note.
+ *
+ * The two values are the two --text-color declarations in
+ * _legacy-theme-vars.scss (:root and .app-dark), copied. If the theme's text
+ * colour is ever changed, change them here too — dark-mode-shared.spec.ts
+ * measures the contrast and will fail if these drift into illegibility. */
+.language-selector {
+  color: #4b5563;
+}
+
+.app-dark .language-selector {
+  color: rgba(255, 255, 255, 0.87);
+}
+
+.language-selector .language-button {
+  color: inherit;
+}
+
+.language-button:hover {
+  background: var(--surface-hover);
+}
+
+.language-selector .language-button.active {
+  color: var(--primary-color-text);
+}
+
+.language-button.active {
+  background: var(--primary-color);
+  color: var(--primary-color-text);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.language-button.active:hover {
+  background: var(--primary-color);
+  opacity: 0.9;
+}
+
+/* Spacing between the icon, flag and code is the button's `gap`; per-part
+   margins only had to be mirrored again for RTL. */
+.language-button .lang-icon {
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  opacity: 0.8;
+}
+
+.language-button.active .lang-icon {
+  opacity: 1;
+}
+
+.language-button .lang-flag {
+  font-size: 1.25rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.language-button .lang-code {
+  font-size: 0.75rem;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: inherit;
+}
+
+/* RTL Support for Language Selector */
+.rtl .language-selector {
+  direction: rtl;
+}
+
+/* The row mirrors itself from the inherited direction — row-reverse on top of
+   that flipped it back, so the icon led from the wrong edge in Arabic. */
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .language-selector {
+    gap: 0.3rem;
+    padding: 0.2rem;
+  }
+
+  .language-button {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+  
+  .language-button .lang-icon {
+    font-size: 0.9rem;
+  }
+  
+  .language-button .lang-flag {
+    font-size: 1.1rem;
+  }
+  
+  .language-button .lang-code {
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .language-selector {
+    gap: 0.25rem;
+    padding: 0.15rem;
+  }
+  
+  .language-button {
+    padding: 0.35rem 0.5rem;
+  }
+  
+  .language-button .lang-icon {
+    font-size: 0.85rem;
+  }
+  
+  .language-button .lang-flag {
+    font-size: 1rem;
+  }
+  
+  .language-button .lang-code {
+    font-size: 0.65rem;
+  }
+}
+
+/* Dark mode needs no block of its own, and the one that used to be here was the
+ * reason the switcher went blank.
+ *
+ * It was written as `@media (prefers-color-scheme: dark)` — the *computer's*
+ * setting, which this control has no business asking, since the theme is the
+ * application's and LayoutService toggles `.app-dark` for it. That was wrong in
+ * both directions. A reader whose computer is set to dark got a dark pill inside
+ * the application's light theme, alone among every control on the page. And the
+ * case the August review photographed: a reader whose computer is set to light
+ * who turns the *application* dark matched nothing here at all, so the pill kept
+ * its light background while --text-color had already become white — the
+ * "يختفي النص لانو لونه ابيض" in the note.
+ *
+ * Re-keying it to .app-dark would not have been enough either: its one real
+ * declaration was `background: var(--surface-800)`, and under .app-dark the
+ * surface scale is inverted, so --surface-800 is #f9fafb — very nearly white.
+ * The block would have painted the same white pill, deliberately.
+ *
+ * Everything else it declared already stood in the rules above, which read
+ * semantic tokens — --surface-100, --surface-border, --text-color,
+ * --surface-hover, --primary-color — and those resolve correctly in both
+ * themes on their own. So the block is gone rather than fixed. */
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .language-selector {
+    border-width: 2px;
+  }
+  
+  .language-button {
+    border: 1px solid var(--surface-border);
+  }
+  
+  .language-button.active {
+    border-width: 2px;
+    border-color: var(--primary-color);
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .language-button {
+    transition: none;
+  }
+  
+  .language-button.active .lang-code {
+    animation: none;
+  }
+  
+  .language-button:hover .lang-code {
+    transform: none;
+  }
+  
+  .language-button:hover {
+    transform: none;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .language-selector {
+    display: none;
+  }
+}
+
+/* Focus Styles for Accessibility — the theme's focus ring, not the hardcoded
+   gold one, which read as an error state next to the rest of the topbar. */
+.language-button:focus {
+  outline: none;
+}
+
+.language-button:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Animation for Language Switch */
+.language-button.switching {
+  animation: pulse 0.3s ease-in-out;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Loading State */
+.language-button.loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.language-button.loading .flag {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error State */
+.language-button.error {
+  background: var(--red-100);
+  color: var(--red-700);
+  border-color: var(--red-300);
+}
+
+.language-button.error:hover {
+  background: var(--red-200);
+  border-color: var(--red-400);
+}
+
+/* Success State */
+.language-button.success {
+  background: var(--green-100);
+  color: var(--green-700);
+  border-color: var(--green-300);
+}
+
+.language-button.success:hover {
+  background: var(--green-200);
+  border-color: var(--green-400);
+}
+
+/* Tooltip Support */
+.language-button[title] {
+  position: relative;
+}
+
+.language-button[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-900);
+  color: var(--surface-0);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 0.25rem;
+}
+
+.language-button[title]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--surface-900);
+  z-index: 1000;
+  margin-bottom: 0.125rem;
+}

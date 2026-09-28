@@ -1,0 +1,140 @@
+.ac {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ac__state {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 0;
+  color: var(--text-color-secondary);
+  font-size: 0.88rem;
+
+  &--error { color: var(--red-500); }
+}
+
+.ac__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ac__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.ac__field {
+  font-weight: 600;
+  color: var(--text-color-secondary);
+}
+
+/* Old struck through, new emphasised: the direction of the change reads at a glance. */
+.ac__old {
+  color: var(--text-color-secondary);
+  text-decoration: line-through;
+  word-break: break-word;
+}
+
+.ac__new {
+  font-weight: 700;
+  color: var(--green-600);
+  word-break: break-word;
+}
+
+/* ── Photo comparison ── */
+.ac__photos {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.ac__photo {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+
+  figcaption {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-color-secondary);
+  }
+
+  &--new .ac__photo-img {
+    border-color: var(--green-500);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--green-500) 22%, transparent);
+  }
+}
+
+.ac__photo-img,
+.ac__photo-empty {
+  width: 104px;
+  height: 134px;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  border: 2px solid var(--surface-border);
+  background: var(--surface-100);
+}
+
+.ac__photo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: var(--text-color-secondary);
+}
+
+.ac__photo-arrow {
+  font-size: 1.25rem;
+  color: var(--text-color-secondary);
+}
+
+/* ── Documents ── */
+.ac__docs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ac__doc {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 0.6rem;
+  background: var(--surface-50);
+}
+
+.ac__doc-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac__doc-view { flex-shrink: 0; }
+
+/* A document queued for removal reads as a deletion, not an addition. */
+.ac__doc--removing {
+  border-color: color-mix(in srgb, var(--red-500) 35%, var(--surface-border));
+  background: color-mix(in srgb, var(--red-500) 7%, var(--surface-50));
+
+  .ac__doc-name { text-decoration: line-through; }
+}

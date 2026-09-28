@@ -1,0 +1,38 @@
+/* $sidebarWidth is also needed by assets/styles/layout-ltr.css and layout-rtl.css,
+   which are plain CSS loaded separately by angular.json and cannot see Sass
+   variables. They had it hardcoded at 300px, so when $sidebarWidth dropped to
+   270px their `!important` margin kept pushing the content 300px out — a 30px
+   dead strip between the sidebar and the content. Publishing it as a custom
+   property keeps the two in step. */
+:root {
+    --layout-sidebar-width: #{$sidebarWidth};
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    height: 100%;
+    font-size: $scale;
+}
+
+body {
+    font-family: var(--font-family);
+    color: var(--text-color);
+    background-color: var(--surface-ground);
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+    text-decoration: none;
+    color: var(--primary-color);
+}
+
+.layout-wrapper {
+    min-height: 100vh;
+}

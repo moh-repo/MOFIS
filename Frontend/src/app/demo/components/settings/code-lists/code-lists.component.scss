@@ -1,0 +1,141 @@
+/**
+ * The parts of the code-lists page that explain it: the picker's option rows,
+ * the "what is this list" panel under the header, and the help block. Everything
+ * else on the page is shared vocabulary (`.filter-bar`, `.dv-*`) and stays in
+ * assets/layout/styles.
+ */
+
+// ── the picker's rows: title first, slug second, a lock when read-only ───────
+.cl-option {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-width: 0;
+
+    &__title {
+        font-weight: 500;
+    }
+
+    &__slug {
+        font-size: .75rem;
+        color: var(--text-color-secondary);
+        background: var(--surface-100);
+        border-radius: 4px;
+        padding: 0 .35rem;
+        white-space: nowrap;
+    }
+
+    &__lock {
+        font-size: .75rem;
+        color: var(--text-color-secondary);
+        margin-inline-start: auto;
+    }
+}
+
+// ── what the selected list is ────────────────────────────────────────────────
+.cl-about {
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    background: var(--surface-50);
+    padding: .85rem 1rem;
+
+    &__head {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+
+    &__title {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--text-color);
+    }
+
+    &__slug {
+        font-size: .8rem;
+        color: var(--text-color-secondary);
+        background: var(--surface-100);
+        border-radius: 4px;
+        padding: .1rem .4rem;
+    }
+
+    &__stat {
+        font-size: .8rem;
+        color: var(--text-color-secondary);
+        margin-inline-start: .5rem;
+
+        i {
+            font-size: .75rem;
+            margin-inline-end: .2rem;
+        }
+    }
+
+    &__text {
+        margin: .5rem 0 0;
+        color: var(--text-color-secondary);
+        line-height: 1.6;
+        max-width: 80ch;
+    }
+
+    &__meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: .5rem;
+    }
+
+    &__meta-item {
+        font-size: .78rem;
+        color: var(--text-color-secondary);
+
+        i {
+            margin-inline-end: .35rem;
+        }
+
+        code {
+            margin-inline-start: .3rem;
+        }
+    }
+
+    &__link {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+}
+
+// ── how the page works ───────────────────────────────────────────────────────
+.cl-help {
+    border: 1px solid var(--primary-200, var(--surface-border));
+    border-radius: 8px;
+    background: var(--primary-50, var(--surface-50));
+    padding: .85rem 1rem;
+
+    &__title {
+        font-weight: 600;
+        color: var(--primary-color);
+        margin-bottom: .35rem;
+    }
+
+    &__list {
+        margin: 0;
+        padding-inline-start: 1.25rem;
+        color: var(--text-color-secondary);
+        line-height: 1.7;
+        max-width: 90ch;
+
+        li + li {
+            margin-top: .25rem;
+        }
+    }
+}
+
+// A locked row reads as locked, not just as a tooltip on an icon.
+.code-list-row--system > td {
+    background: var(--surface-50);
+}

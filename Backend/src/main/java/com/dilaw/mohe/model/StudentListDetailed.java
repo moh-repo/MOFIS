@@ -1,0 +1,157 @@
+package com.dilaw.mohe.model;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.Immutable;
+
+import java.time.LocalDate;
+
+@Getter
+@Setter
+@Entity
+@Immutable
+@Table(name = "V_Student_List_Detailed", schema = "MOHECORE")
+public class StudentListDetailed {
+    
+    @Id
+    @Column(name = "STUDENT_ID")
+    private Integer studentId;
+    
+    @Column(name = "STUDENT_NAME")
+    private String studentName;
+    
+    @Column(name = "STUDENT_PASSPORT_NUMBER")
+    private String studentPassportNumber;
+    
+    @Column(name = "STUDENT_BIRTHDATE")
+    private LocalDate studentBirthdate;
+    
+    @Column(name = "student_age")
+    private Integer studentAge;
+    
+    /**
+     * Tenant key: the country the student studies in.
+     *
+     * <p>This is what UMSCORE.UserCountries holds and what every country-scope
+     * predicate must filter on. Do not confuse it with {@link #studentCountryId},
+     * which is the student's nationality and comes from a different lookup table
+     * with overlapping ids — id 1 is Egypt here and Yemen there.
+     */
+    @Column(name = "study_country_in_id")
+    private Integer studyCountryInId;
+
+    /** The student's home/nationality country. Report content, never the tenant key. */
+    @Column(name = "STUDENT_COUNTRY_ID")
+    private Integer studentCountryId;
+    
+    @Column(name = "STUDENT_COUNTRY_NAME")
+    private String studentCountryName;
+    
+    /** The same name in English; resolved by BilingualRows for an EN render. */
+    @Column(name = "STUDENT_COUNTRY_NAME_EN")
+    private String studentCountryNameEn;
+    
+    @Column(name = "STUDENT_GENDER")
+    private String studentGender;
+    
+    /** The same name in English; resolved by BilingualRows for an EN render. */
+    @Column(name = "STUDENT_GENDER_EN")
+    private String studentGenderEn;
+    
+    @Column(name = "STUDENT_MAJOR_ID")
+    private Integer studentMajorId;
+    
+    @Column(name = "STUDENT_MAJOR_NAME")
+    private String studentMajorName;
+    
+    /** The same name in English; resolved by BilingualRows for an EN render. */
+    @Column(name = "STUDENT_MAJOR_NAME_EN")
+    private String studentMajorNameEn;
+    
+    @Column(name = "STUDENT_DEGREE_ID")
+    private Integer studentDegreeId;
+    
+    @Column(name = "STUDENT_DEGREE_NAME")
+    private String studentDegreeName;
+    
+    /** The same name in English; resolved by BilingualRows for an EN render. */
+    @Column(name = "STUDENT_DEGREE_NAME_EN")
+    private String studentDegreeNameEn;
+    
+    @Column(name = "STUDENT_CURRENT_LEVEL_ID")
+    private Integer studentCurrentLevelId;
+    
+    @Column(name = "STUDENT_CURRENT_LEVEL_NAME")
+    private String studentCurrentLevelName;
+    
+    /** The same name in English; resolved by BilingualRows for an EN render. */
+    @Column(name = "STUDENT_CURRENT_LEVEL_NAME_EN")
+    private String studentCurrentLevelNameEn;
+    
+    @Column(name = "STUDENT_STUDY_TYPE_ID")
+    private Integer studentStudyTypeId;
+    
+    @Column(name = "STUDENT_STUDY_TYPE_NAME")
+    private String studentStudyTypeName;
+    
+    /** The same name in English; resolved by BilingualRows for an EN render. */
+    @Column(name = "STUDENT_STUDY_TYPE_NAME_EN")
+    private String studentStudyTypeNameEn;
+    
+    @Column(name = "STUDENT_STUDY_STATUS_ID")
+    private Integer studentStudyStatusId;
+    
+    @Column(name = "STUDENT_STUDY_STATUS_NAME")
+    private String studentStudyStatusName;
+    
+    /** The same name in English; resolved by BilingualRows for an EN render. */
+    @Column(name = "STUDENT_STUDY_STATUS_NAME_EN")
+    private String studentStudyStatusNameEn;
+    
+    @Column(name = "STUDENT_UNIVERSITY_TYPE_ID")
+    private Integer studentUniversityTypeId;
+    
+    @Column(name = "STUDENT_UNIVERSITY_TYPE_NAME")
+    private String studentUniversityTypeName;
+    
+    /** The same name in English; resolved by BilingualRows for an EN render. */
+    @Column(name = "STUDENT_UNIVERSITY_TYPE_NAME_EN")
+    private String studentUniversityTypeNameEn;
+    
+    @Column(name = "STUDENT_AGENCY_TYPE_ID")
+    private Integer studentAgencyTypeId;
+    
+    @Column(name = "STUDENT_AGENCY_TYPE_NAME")
+    private String studentAgencyTypeName;
+    
+    /** The same name in English; resolved by BilingualRows for an EN render. */
+    @Column(name = "STUDENT_AGENCY_TYPE_NAME_EN")
+    private String studentAgencyTypeNameEn;
+    
+    @Column(name = "STUDENT_MINISTRY_TYPE_ID")
+    private Integer studentMinistryTypeId;
+    
+    @Column(name = "STUDENT_MINISTRY_TYPE_NAME")
+    private String studentMinistryTypeName;
+    
+    /** The same name in English; resolved by BilingualRows for an EN render. */
+    @Column(name = "STUDENT_MINISTRY_TYPE_NAME_EN")
+    private String studentMinistryTypeNameEn;
+    
+    @Column(name = "STUDENT_STUDY_NO_OF_YEARS")
+    private Integer studentStudyNoOfYears;
+    
+    @Column(name = "STUDENT_DELEGATION_DECISION_YEAR")
+    private String studentDelegationDecisionYear;
+    
+    @Column(name = "STUDENT_ADDED_QUARTER")
+    private Integer studentAddedQuarter;
+    
+    @Column(name = "STUDENT_PASSPORT_ISSUE_DATE")
+    private LocalDate studentPassportIssueDate;
+    
+    @Column(name = "STUDENT_PASSPORT_EXPIRE_DATE")
+    private LocalDate studentPassportExpireDate;
+}
+

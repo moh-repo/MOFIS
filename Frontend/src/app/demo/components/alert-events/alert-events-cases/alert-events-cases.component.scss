@@ -1,0 +1,42 @@
+/* Summary palette. Structure is shared — see
+   assets/layout/styles/_summary-cards.scss; only the colours are local, because
+   they track this page's own case states.
+
+   The hues are the ones the cards already carried as `text-red-500`,
+   `text-orange-400`, `text-green-500` and `text-blue-400`; the difference is
+   that each is now declared once and read by the edge bar, the icon tile and
+   the hover border rather than being repeated on the number and the border. */
+.summary-card {
+    .summary-value {
+        color: var(--summary-accent);
+    }
+
+    &.open {
+        --summary-accent: #ef4444;
+        .summary-icon { background: linear-gradient(135deg, #f87171, #ef4444); }
+    }
+
+    &.acknowledged {
+        --summary-accent: #fb923c;
+        .summary-icon { background: linear-gradient(135deg, #fdba74, #fb923c); }
+    }
+
+    &.resolved {
+        --summary-accent: #22c55e;
+        .summary-icon { background: linear-gradient(135deg, #4ade80, #22c55e); }
+    }
+
+    &.total {
+        --summary-accent: #60a5fa;
+        .summary-icon { background: linear-gradient(135deg, #93c5fd, #60a5fa); }
+    }
+}
+
+/* The severity split under the open count. summary-meta is a block by default,
+   which would stack the chips one per line. */
+.summary-severities {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.45rem;
+}

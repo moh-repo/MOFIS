@@ -1,0 +1,123 @@
+<div class="sys-parameters-page" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+  <p-toast></p-toast>
+
+  <div class="card mb-3">
+    <!-- `flex-1` on the icon-and-title block, not `justify-content-between`:
+         see page-headings.spec.ts. -->
+    <div class="flex align-items-center gap-3 flex-wrap">
+      <div class="flex align-items-center gap-3 flex-1">
+        <i class="pi pi-sliders-h text-primary" style="font-size: 2rem"></i>
+        <div>
+          <h3 class="m-0 text-primary">{{ 'SETTINGS.SYS_PARAMETERS.TITLE' | translate }}</h3>
+          <p class="text-600 mt-1 mb-0">{{ 'SETTINGS.SYS_PARAMETERS.DESCRIPTION' | translate }}</p>
+        </div>
+      </div>
+      <button pButton type="button" icon="pi pi-refresh" class="p-button-outlined"
+              [label]="'COMMON.REFRESH' | translate" (click)="load()" [disabled]="loading"></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <!-- Filters. Shared layout: assets/layout/styles/_filter-bar.scss.
+         The parameters are held whole, so the table narrows itself. -->
+    <div class="filter-bar">
+      <div class="filter-bar__grid filter-bar__grid--cols-3">
+        <div class="filter-bar__field filter-bar__field--wide" [class.filter-bar__field--active]="filterSearch">
+          <label for="spSearch">{{ 'COMMON.SEARCH' | translate }}</label>
+          <span class="p-input-icon-left">
+            <i class="pi pi-search"></i>
+            <input id="spSearch" pInputText type="text" [(ngModel)]="filterSearch"
+              (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+              [placeholder]="'COMMON.SEARCH' | translate" />
+          </span>
+        </div>
+        <div class="filter-bar__field" [class.filter-bar__field--active]="filterType">
+          <label for="spType">{{ 'SETTINGS.SYS_PARAMETERS.TYPE' | translate }}</label>
+          <p-select inputId="spType" [options]="typeOptions" [(ngModel)]="filterType"
+            optionLabel="label" optionValue="value" [showClear]="true" [placeholder]="'COMMON.ALL' | translate"
+            appendTo="body" (onChange)="dt.filter(filterType, 'valueType', 'equals')"></p-select>
+        </div>
+      </div>
+      <div class="filter-bar__actions">
+        <button pButton type="button" icon="pi pi-filter-slash" class="p-button-action-outlined"
+          [label]="'COMMON.CLEAR' | translate" [disabled]="!hasFilters" (click)="clearFilters(dt)"></button>
+        <span class="filter-bar__hint filter-bar__actions-spacer">{{ 'COMMON.TOTAL' | translate }}: {{ (dt.filteredValue || rows).length }}</span>
+      </div>
+    </div>
+
+    <p-table #dt [value]="rows" [loading]="loading" dataKey="key" responsiveLayout="scroll" styleClass="p-datatable-sm"
+             [customSort]="true" (sortFunction)="sortTable($event)"
+             [globalFilterFields]="['key', 'nameEn', 'nameAr', 'description']">
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="key">{{ 'SETTINGS.SYS_PARAMETERS.KEY' | translate }} <p-sortIcon field="key"></p-sortIcon></th>
+          <th pSortableColumn="name">{{ 'SETTINGS.SYS_PARAMETERS.NAME' | translate }} <p-sortIcon field="name"></p-sortIcon></th>
+          <th pSortableColumn="valueType">{{ 'SETTINGS.SYS_PARAMETERS.TYPE' | translate }} <p-sortIcon field="valueType"></p-sortIcon></th>
+          <th pSortableColumn="value">{{ 'SETTINGS.SYS_PARAMETERS.VALUE' | translate }} <p-sortIcon field="value"></p-sortIcon></th>
+          <th pSortableColumn="updatedAt">{{ 'SETTINGS.SYS_PARAMETERS.UPDATED' | translate }} <p-sortIcon field="updatedAt"></p-sortIcon></th>
+          @if (canEdit) {
+            <th style="width: 9rem">{{ 'COMMON.ACTIONS' | translate }}</th>
+          }
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-row>
+        <tr [attr.data-key]="row.key">
+          <td><code>{{ row.key }}</code></td>
+          <td>
+            <div class="font-medium">{{ name(row) }}</div>
+            @if (row.description) {
+              <small class="text-500">{{ row.description }}</small>
+            }
+          </td>
+          <td><p-tag severity="secondary" [value]="row.valueType"></p-tag></td>
+          <td>
+            @if (row.editing) {
+              @switch (row.valueType) {
+                @case ('INT') {
+                  <p-inputNumber [(ngModel)]="row.draft" [useGrouping]="false" [showButtons]="true" inputStyleClass="w-8rem"></p-inputNumber>
+                }
+                @case ('DECIMAL') {
+                  <p-inputNumber [(ngModel)]="row.draft" mode="decimal" [minFractionDigits]="0" [maxFractionDigits]="6" [useGrouping]="false" inputStyleClass="w-8rem"></p-inputNumber>
+                }
+                @case ('BOOL') {
+                  <p-toggleswitch [(ngModel)]="row.draft"></p-toggleswitch>
+                }
+                @default {
+                  <input pInputText [(ngModel)]="row.draft" class="w-full" />
+                }
+              }
+            } @else {
+              <span class="font-semibold sys-parameter-value">{{ display(row) }}</span>
+            }
+          </td>
+          <td class="text-sm text-500">
+            @if (row.updatedAt) {
+              {{ row.updatedAt | date:'short' }}
+              @if (row.updatedBy) { · {{ row.updatedBy }} }
+            } @else { — }
+          </td>
+          @if (canEdit) {
+            <td>
+              @if (row.editing) {
+                <button pButton type="button" icon="pi pi-check" class="p-button-text p-button-sm" (click)="save(row)" [loading]="row.saving"
+                        [attr.aria-label]="'COMMON.SAVE' | translate" [pTooltip]="'COMMON.SAVE' | translate"></button>
+                <button pButton type="button" icon="pi pi-times" class="p-button-text p-button-sm p-button-secondary" (click)="cancel(row)" [disabled]="row.saving"
+                        [attr.aria-label]="'COMMON.CANCEL' | translate" [pTooltip]="'COMMON.CANCEL' | translate"></button>
+              } @else {
+                <button pButton type="button" icon="pi pi-pencil" class="p-button-text p-button-sm" (click)="edit(row)"
+                        [attr.aria-label]="'COMMON.EDIT' | translate" [pTooltip]="'COMMON.EDIT' | translate"></button>
+              }
+            </td>
+          }
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td [attr.colspan]="canEdit ? 6 : 5" class="text-center text-500 py-4">
+            {{ (hasFilters ? 'COMMON.NO_MATCH' : 'COMMON.NO_RECORDS_FOUND') | translate }}
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>

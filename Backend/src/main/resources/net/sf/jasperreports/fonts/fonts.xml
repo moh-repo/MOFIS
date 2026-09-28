@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fontFamilies>
+  <fontFamily name="Cairo">
+    <normal>fonts/Cairo-Regular.ttf</normal>
+    <bold>fonts/Cairo-Bold.ttf</bold>
+    <italic>fonts/Cairo-Regular.ttf</italic>
+    <boldItalic>fonts/Cairo-Bold.ttf</boldItalic>
+    <pdfEncoding>Identity-H</pdfEncoding>
+    <isPdfEmbedded>true</isPdfEmbedded>
+  </fontFamily>
+</fontFamilies>

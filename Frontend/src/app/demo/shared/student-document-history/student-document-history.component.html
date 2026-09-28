@@ -1,0 +1,57 @@
+<div class="sdh" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+
+  @if (loading) {
+    <div class="sdh__state">
+      <i class="pi pi-spin pi-spinner"></i>
+      <span>{{ 'COMMON.LOADING' | translate }}</span>
+    </div>
+  }
+
+  @if (!loading && history.length === 0) {
+    <div class="sdh__state">
+      <i class="pi pi-history"></i>
+      <span>{{ 'STUDENTS.NO_DOCUMENT_HISTORY' | translate }}</span>
+    </div>
+  }
+
+  @if (!loading && history.length) {
+    <ul class="sdh__list">
+      @for (item of history; track item) {
+        <li class="sdh__item">
+          <div class="sdh__thumb">
+            @if (thumbnails[item.historyId]) {
+              <img [src]="thumbnails[item.historyId]" alt="" />
+            }
+            @if (!thumbnails[item.historyId]) {
+              <i class="pi"
+              [ngClass]="isImage(item) ? 'pi-image' : 'pi-file-pdf'"></i>
+            }
+          </div>
+          <div class="sdh__info">
+            <div class="sdh__name-row">
+              <span class="sdh__name" [title]="item.documentName">{{ item.documentName || item.originalFilename }}</span>
+              @if (isPhoto(item)) {
+                <p-tag severity="info" styleClass="text-xs"
+                [value]="'STUDENTS.PHOTO_LABEL' | translate"></p-tag>
+              }
+              <p-tag [severity]="actionSeverity(item.action)" styleClass="text-xs"
+              [value]="actionLabelKey(item.action) | translate"></p-tag>
+            </div>
+            <div class="sdh__meta">
+              @if (item.documentType) {
+                <span>{{ item.documentType }}</span>
+              }
+              <span>{{ formatFileSize(item.fileSize) }}</span>
+              <span>v{{ item.versionNo }}</span>
+              <span>{{ item.changedAt | date:'yyyy-MM-dd HH:mm' }}</span>
+            </div>
+          </div>
+          <button pButton pRipple type="button" icon="pi pi-eye"
+            class="p-button-text p-button-sm sdh__view"
+            [pTooltip]="'COMMON.VIEW' | translate"
+          (click)="view(item)"></button>
+        </li>
+      }
+    </ul>
+  }
+</div>

@@ -1,0 +1,588 @@
+// ── Layout ────────────────────────────────────────────────────────────────────
+
+.page-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.page-wrapper.ltr-layout { direction: ltr; text-align: left; }
+
+.page-wrapper.rtl-layout {
+    direction: rtl;
+    text-align: right;
+
+    /* No `flex-direction: row-reverse` on the hero's blocks or the chart-card
+       headers. The wrapper carries `direction: rtl`, so those flex rows already
+       run right to left and `.page-hero`'s `space-between` puts the title block
+       at the right edge on its own; reversing on top of that put the icon back
+       to the left of its title and the buttons back into English order — the
+       same double mirror the page headings across the application had. See
+       src/app/demo/components/page-headings.spec.ts. The ranking rows (`.list li`)
+       likewise: rank, name, bar and value run from the right as they are
+       (round-5 Phase 7). */
+
+    .stat-card, .details-section h3 { text-align: right; }
+    .country-info-card__stats { direction: rtl; }
+}
+
+// ── Page hero ─────────────────────────────────────────────────────────────────
+
+.page-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-radius: 1.5rem;
+    background: linear-gradient(120deg, rgba(96, 165, 250, 0.12), rgba(59, 130, 246, 0.08));
+    border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.page-hero__content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.page-hero__icon {
+    width: 4rem;
+    height: 4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    color: #2563eb;
+}
+
+.page-hero__title {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.page-hero__subtitle {
+    margin: 0;
+    color: var(--text-color-secondary);
+    font-size: 1rem;
+}
+
+.page-hero__actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+// ── Stats grid ────────────────────────────────────────────────────────────────
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+}
+
+.stat-card {
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+    background: linear-gradient(135deg, rgba(255,255,255,0.97), rgba(241,245,249,0.94));
+    box-shadow: 0 12px 30px -16px rgba(15,23,42,0.28);
+    border: 1px solid rgba(148,163,184,0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        height: 4px;
+        border-radius: 1.25rem 1.25rem 0 0;
+    }
+
+    &.primary::before  { background: #2563eb; }
+    &.success::before  { background: #16a34a; }
+    &.info::before     { background: #0ea5e9; }
+    &.warning::before  { background: #f59e0b; }
+}
+
+.stat-card__icon {
+    font-size: 1.5rem;
+    opacity: 0.25;
+    line-height: 1;
+}
+
+.stat-card.primary   .stat-card__icon { color: #2563eb; }
+.stat-card.success   .stat-card__icon { color: #16a34a; }
+.stat-card.info      .stat-card__icon { color: #0ea5e9; }
+.stat-card.warning   .stat-card__icon { color: #f59e0b; }
+
+.stat-card__label {
+    font-size: 0.82rem;
+    color: var(--text-color-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-weight: 600;
+}
+
+.stat-card__value {
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1;
+}
+
+.stat-card__hint {
+    font-size: 0.875rem;
+    color: var(--text-color-secondary);
+}
+
+// ── Map + details layout ──────────────────────────────────────────────────────
+
+.map-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) 360px;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+// ── Map panel ─────────────────────────────────────────────────────────────────
+
+.map-panel {
+    position: relative;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(148,163,184,0.15);
+    overflow: hidden;
+    box-shadow: 0 16px 40px -20px rgba(15,23,42,0.38);
+}
+
+.map-container {
+    width: 100%;
+    height: 560px;
+
+    .leaflet-control-attribution {
+        font-size: 0.7rem;
+    }
+}
+
+// ── Map legend ────────────────────────────────────────────────────────────────
+
+.map-legend {
+    position: absolute;
+    bottom: 1.25rem;
+    right: 1rem;
+    z-index: 500;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(8px);
+    border-radius: 0.875rem;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.14);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    min-width: 140px;
+
+    &--rtl {
+        right: auto;
+        left: 1rem;
+    }
+
+    &__title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--text-color-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        margin-bottom: 0.5rem;
+    }
+
+    &__items {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    &__item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.82rem;
+        color: var(--text-color);
+    }
+
+    &__note {
+        margin-top: 0.5rem;
+        font-size: 0.7rem;
+        color: var(--text-color-secondary);
+        opacity: 0.75;
+        border-top: 1px solid rgba(148,163,184,0.15);
+        padding-top: 0.4rem;
+    }
+}
+
+.legend-dot {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+}
+
+// ── Details panel ─────────────────────────────────────────────────────────────
+
+.details-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.details-section {
+    padding: 1.25rem;
+    border-radius: 1.25rem;
+    background: var(--surface-card, #fff);
+    border: 1px solid rgba(148,163,184,0.14);
+    box-shadow: 0 6px 20px -14px rgba(15,23,42,0.3);
+
+    h3 {
+        margin: 0 0 0.85rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-color);
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    &.empty-section {
+        padding: 0.5rem;
+    }
+}
+
+.section-icon {
+    color: #2563eb;
+    font-size: 1rem;
+}
+
+.section-count {
+    margin-inline-start: auto;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(37,99,235,0.1);
+    color: #2563eb;
+    border-radius: 999px;
+    padding: 0.1rem 0.55rem;
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+
+.details-search {
+    margin: 0 0 0.75rem;
+
+    .p-input-icon-left {
+        display: block;
+
+        input { width: 100%; font-size: 0.875rem; }
+    }
+}
+
+// ── Country list ──────────────────────────────────────────────────────────────
+
+.country-list {
+    max-height: 300px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(37,99,235,0.25) transparent;
+
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-track { background: transparent; }
+    &::-webkit-scrollbar-thumb { background: rgba(37,99,235,0.25); border-radius: 4px; }
+}
+
+.gov-list {
+    max-height: 220px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(37,99,235,0.2) transparent;
+}
+
+// ── Generic list ──────────────────────────────────────────────────────────────
+
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 0.75rem;
+        border-radius: 0.75rem;
+        background: rgba(241,245,249,0.6);
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+
+        &:hover {
+            background: rgba(255,255,255,0.95);
+            border-color: rgba(37,99,235,0.25);
+            box-shadow: 0 4px 12px -8px rgba(59,130,246,0.5);
+        }
+
+        &.active {
+            background: rgba(37,99,235,0.08);
+            border-color: rgba(37,99,235,0.4);
+            color: #1d4ed8;
+            font-weight: 600;
+
+            .rank {
+                background: #2563eb;
+                color: #fff;
+            }
+
+            .count-progress__bar { background: #1d4ed8; }
+        }
+
+        .name {
+            flex: 1;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .value {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-color-secondary);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+    }
+}
+
+// ── Rank badge ────────────────────────────────────────────────────────────────
+
+.rank {
+    min-width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    background: rgba(37,99,235,0.1);
+    color: #2563eb;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+}
+
+// ── Progress bar ──────────────────────────────────────────────────────────────
+
+.count-progress {
+    flex: 1;
+    height: 3px;
+    background: rgba(148,163,184,0.2);
+    border-radius: 999px;
+    overflow: hidden;
+
+    &__bar {
+        height: 100%;
+        background: #3b82f6;
+        border-radius: 999px;
+        transition: width 0.45s ease;
+        max-width: 100%;
+    }
+}
+
+// ── Selected country card ─────────────────────────────────────────────────────
+
+.country-info-card {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border-radius: 1.25rem;
+    padding: 1.1rem 1.25rem;
+    color: #fff;
+    box-shadow: 0 10px 28px -10px rgba(37, 99, 235, 0.5);
+
+    &__header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.85rem;
+
+        i { font-size: 1.1rem; opacity: 0.85; }
+    }
+
+    &__name {
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+
+    &__stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        border-top: 1px solid rgba(255,255,255,0.2);
+        padding-top: 0.75rem;
+    }
+}
+
+.info-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+
+    &__value {
+        font-size: 1.2rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    &__label {
+        font-size: 0.72rem;
+        opacity: 0.75;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    color: var(--text-color-secondary);
+    text-align: center;
+
+    i { font-size: 1.75rem; opacity: 0.35; }
+    p { margin: 0; font-size: 0.875rem; }
+}
+
+// ── Municipality list ─────────────────────────────────────────────────────────
+
+.municipality-list {
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(37,99,235,0.2) transparent;
+}
+
+// ── Dropdown ──────────────────────────────────────────────────────────────────
+
+.dropdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+
+    .dropdown-name { font-weight: 600; }
+    .dropdown-value { color: var(--text-color-secondary); font-size: 0.85rem; }
+}
+
+// ── Loading ───────────────────────────────────────────────────────────────────
+
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+}
+
+// ── Leaflet popup ─────────────────────────────────────────────────────────────
+
+:global(.map-popup) {
+    min-width: 160px;
+    font-family: inherit;
+
+    .map-popup__country {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 0.35rem;
+    }
+
+    .map-popup__row {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        font-size: 0.85rem;
+        padding: 0.15rem 0;
+        color: #475569;
+
+        strong { color: #1e293b; }
+    }
+}
+
+// ── Responsive ────────────────────────────────────────────────────────────────
+
+@media (max-width: 1200px) {
+    .map-layout {
+        grid-template-columns: minmax(0, 2fr) 300px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .map-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .map-container { height: 420px; }
+
+    .details-panel {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .page-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .page-hero__actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .map-container { height: 340px; }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .country-info-card__stats { grid-template-columns: repeat(3, 1fr); }
+}
+
+// L8: shown over the map when its background tiles cannot be fetched.
+.map-offline-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background: var(--yellow-50, #fffbeb);
+    color: var(--yellow-900, #78350f);
+    font-size: 0.875rem;
+}

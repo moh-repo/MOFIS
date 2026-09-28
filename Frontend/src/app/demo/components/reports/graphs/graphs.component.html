@@ -1,0 +1,148 @@
+﻿<div class="grid">
+    <div class="col-12">
+        <div class="card" [attr.dir]="translationService.isRTL() ? 'rtl' : 'ltr'">
+            <!-- Header Section -->
+            <!-- Header Section. Nothing shares this row, so there is nothing to
+                 separate: `justify-content-between` only brought the heading under the
+                 global `[dir="rtl"] .flex.justify-content-between` rule, which reversed
+                 the row and put it on the left in Arabic. See page-headings.spec.ts. -->
+            <div class="flex align-items-center mb-4">
+                <div class="flex align-items-center gap-3">
+                    <i class="pi pi-chart-bar text-primary" style="font-size: 2rem"></i>
+                    <div>
+                        <h3 class="m-0 text-primary">{{ 'GRAPHS.TITLE' | translate }}</h3>
+                        <p class="text-600 mt-1 mb-0">{{ 'GRAPHS.SUBTITLE' | translate }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart Types Selection -->
+            <div class="mt-4">
+                <div class="grid mt-4">
+                    <div class="col-12 md:col-6 lg:col-4">
+                        <div class="surface-card border-round p-4 shadow-2 h-full cursor-pointer hover:surface-hover transition-colors transition-duration-150"
+                             (click)="navigateToBarCharts()"
+                             style="cursor: pointer;">
+                            <div class="flex align-items-center gap-3 mb-3">
+                                <i class="pi pi-chart-bar text-blue-600" style="font-size: 2rem"></i>
+                                <span class="text-900 font-bold">{{ 'GRAPHS.BAR_CHARTS' | translate }}</span>
+                            </div>
+                            <p class="text-600 line-height-3 mb-3">
+                                {{ 'GRAPHS.BAR_CHARTS_DESC' | translate }}
+                            </p>
+                            <button pButton pRipple type="button"
+                                    [label]="'COMMON.VIEW' | translate"
+                                    icon="pi pi-arrow-right"
+                                    iconPos="right"
+                                    class="p-button-sm p-button-outlined w-full"></button>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 md:col-6 lg:col-4">
+                        <div class="surface-card border-round p-4 shadow-2 h-full cursor-pointer hover:surface-hover transition-colors transition-duration-150"
+                             (click)="navigateToLineCharts()">
+                            <div class="flex align-items-center gap-3 mb-3">
+                                <i class="pi pi-chart-line text-green-600" style="font-size: 2rem"></i>
+                                <span class="text-900 font-bold">{{ 'GRAPHS.LINE_CHARTS' | translate }}</span>
+                            </div>
+                            <p class="text-600 line-height-3 mb-3">
+                                {{ 'GRAPHS.LINE_CHARTS_DESC' | translate }}
+                            </p>
+                            <button pButton pRipple type="button"
+                                    [label]="'COMMON.VIEW' | translate"
+                                    icon="pi pi-arrow-right"
+                                    iconPos="right"
+                                    class="p-button-sm p-button-outlined w-full"></button>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 md:col-6 lg:col-4">
+                        <div class="surface-card border-round p-4 shadow-2 h-full cursor-pointer hover:surface-hover transition-colors transition-duration-150"
+                             (click)="navigateToPieCharts()">
+                            <div class="flex align-items-center gap-3 mb-3">
+                                <i class="pi pi-th-large text-orange-600" style="font-size: 2rem"></i>
+                                <span class="text-900 font-bold">{{ 'GRAPHS.PIE_CHARTS' | translate }}</span>
+                            </div>
+                            <p class="text-600 line-height-3 mb-3">
+                                {{ 'GRAPHS.PIE_CHARTS_DESC' | translate }}
+                            </p>
+                            <button pButton pRipple type="button"
+                                    [label]="'COMMON.VIEW' | translate"
+                                    icon="pi pi-arrow-right"
+                                    iconPos="right"
+                                    class="p-button-sm p-button-outlined w-full"></button>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 md:col-6 lg:col-4">
+                        <div class="surface-card border-round p-4 shadow-2 h-full cursor-pointer hover:surface-hover transition-colors transition-duration-150"
+                             (click)="navigateToHierarchicalCharts()">
+                            <div class="flex align-items-center gap-3 mb-3">
+                                <i class="pi pi-sitemap text-purple-600" style="font-size: 2rem"></i>
+                                <span class="text-900 font-bold">{{ 'GRAPHS.HIERARCHICAL_CHARTS' | translate }}</span>
+                            </div>
+                            <p class="text-600 line-height-3 mb-3">
+                                {{ 'GRAPHS.HIERARCHICAL_CHARTS_DESC' | translate }}
+                            </p>
+                            <button pButton pRipple type="button"
+                                    [label]="'COMMON.VIEW' | translate"
+                                    icon="pi pi-arrow-right"
+                                    iconPos="right"
+                                    class="p-button-sm p-button-outlined w-full"></button>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 md:col-6 lg:col-4">
+                        <div class="surface-card border-round p-4 shadow-2 h-full cursor-pointer hover:surface-hover transition-colors transition-duration-150"
+                             (click)="navigateToGeographicMaps()">
+                            <div class="flex align-items-center gap-3 mb-3">
+                                <i class="pi pi-map text-indigo-600" style="font-size: 2rem"></i>
+                                <span class="text-900 font-bold">{{ 'GRAPHS.GEOGRAPHIC_MAPS' | translate }}</span>
+                            </div>
+                            <p class="text-600 line-height-3 mb-3">
+                                {{ 'GRAPHS.GEOGRAPHIC_MAPS_DESC' | translate }}
+                            </p>
+                            <button pButton pRipple type="button"
+                                    [label]="'COMMON.VIEW' | translate"
+                                    icon="pi pi-arrow-right"
+                                    iconPos="right"
+                                    class="p-button-sm p-button-outlined w-full"></button>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 md:col-6 lg:col-4">
+                        <div class="surface-card border-round p-4 shadow-2 h-full cursor-pointer hover:surface-hover transition-colors transition-duration-150"
+                             (click)="navigateToComprehensiveDashboards()">
+                            <div class="flex align-items-center gap-3 mb-3">
+                                <i class="pi pi-desktop text-pink-600" style="font-size: 2rem"></i>
+                                <span class="text-900 font-bold">{{ 'GRAPHS.DASHBOARDS' | translate }}</span>
+                            </div>
+                            <p class="text-600 line-height-3 mb-3">
+                                {{ 'GRAPHS.DASHBOARDS_DESC' | translate }}
+                            </p>
+                            <button pButton pRipple type="button"
+                                    [label]="'COMMON.VIEW' | translate"
+                                    icon="pi pi-arrow-right"
+                                    iconPos="right"
+                                    class="p-button-sm p-button-outlined w-full"></button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="mt-5">
+                    <div class="flex align-items-center justify-content-center gap-3 mb-3">
+                        <i class="pi pi-info-circle text-500"></i>
+                        <p class="text-500 m-0">
+                            {{ 'GRAPHS.FEATURES_INFO' | translate }}
+                        </p>
+                    </div>
+                    <p class="text-400 text-sm m-0">
+                        {{ 'GRAPHS.POWERED_BY' | translate }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

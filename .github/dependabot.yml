@@ -1,0 +1,59 @@
+# Dependabot (security plan O-22 / O-24, 6 Sep 2026).
+#
+# Weekly update PRs for the three ecosystems this repository uses. Security
+# advisories are raised as soon as they are published regardless of schedule.
+# Nothing here runs until the repository has a GitHub remote — see the note at
+# the top of .github/workflows/ci.yml.
+#
+# A renovate.json (25 Aug 2026) once sat beside this file with the same weekly
+# schedule; it was removed on 23 Sep 2026 so that one remote does not get two
+# bots opening the same PRs. Its three hold-back rules live on here as the
+# `ignore` blocks and the `update-types` restriction on the spring group.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /Backend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # JasperReports and OpenPDF render 45 RTL reports between them and are
+    # deliberately held back: an upgrade needs a manual render pass, not a PR.
+    ignore:
+      - dependency-name: "net.sf.jasperreports:jasperreports"
+      - dependency-name: "net.sf.jasperreports:jasperreports-fonts"
+      - dependency-name: "com.github.librepdf:openpdf"
+    groups:
+      # Minor and patch only: a Spring Boot major pulls in Jackson, Hibernate and
+      # Spring Security majors with it and must surface as a PR of its own.
+      spring:
+        patterns: ["org.springframework*"]
+        update-types: ["minor", "patch"]
+      reporting:
+        patterns: ["net.sf.jasperreports*", "org.apache.poi*", "com.github.librepdf*"]
+
+  - package-ecosystem: npm
+    directory: /Frontend
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # PrimeNG is pinned to 21, the last MIT release: v22 moved to the commercial
+    # PrimeUI licence and this project cannot take it, so majors are not offered.
+    ignore:
+      - dependency-name: "primeng"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@primeng/themes"
+        update-types: ["version-update:semver-major"]
+    groups:
+      angular:
+        patterns: ["@angular/*", "@angular-devkit/*"]
+      primeng:
+        patterns: ["primeng", "primeicons", "@primeng/*"]
+
+  # O-24: actions are pinned to commit SHAs in ci.yml; this keeps the pins current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

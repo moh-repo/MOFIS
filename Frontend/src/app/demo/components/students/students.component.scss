@@ -1,0 +1,500 @@
+// ─── Table sizing ────────────────────────────────────────────────────────────
+
+/*
+ * The table carried [tableStyle]="{'min-width': '75rem'}" — 945px at this app's
+ * 12.6px root size — which stopped it shrinking with the page. The content area
+ * is the window less the 270px sidebar and the shell's inline padding, so any
+ * window under roughly 1280px left the table wider than its card and pushed the
+ * Actions column behind the card's own horizontal scrollbar.
+ *
+ * PrimeNG already stretches .p-datatable-table to 100% of the card, so with the
+ * floor gone the table is exactly as wide as the page and no wider. The rules
+ * below choose which columns absorb the squeeze: the two free-text ones wrap,
+ * and everything whose shape matters — the checkbox, the IDs, the status tag and
+ * the three action buttons — keeps its line. Below roughly 640px there is
+ * genuinely no room left, and .p-datatable-table-container (overflow-x: auto)
+ * scrolls rather than clipping.
+ */
+:host ::ng-deep .p-datatable {
+    th,
+    td {
+        white-space: nowrap;
+    }
+
+    // Name (3rd) and Major (5th) are the flexible columns.
+    th:nth-child(3), td:nth-child(3),
+    th:nth-child(5), td:nth-child(5) {
+        white-space: normal;
+        min-width: 9rem;
+        word-break: break-word;
+    }
+}
+
+// ─── Page header toolbar ─────────────────────────────────────────────────────
+
+.st-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1.1rem 1.5rem;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(59, 130, 246, 0.03) 100%);
+    border-bottom: 1px solid var(--surface-border);
+
+    @media (max-width: 640px) {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem;
+    }
+}
+
+.st-header__left {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.st-header__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.st-header__title {
+    margin: 0 0 0.1rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-color);
+    line-height: 1.2;
+}
+
+.st-header__count {
+    font-size: 0.8rem;
+    color: var(--text-color-secondary);
+    font-weight: 500;
+}
+
+// ─── Student View Dialog ──────────────────────────────────────────────────────
+
+.sv {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    /*
+     * Deliberately not a scroll container: p-dialog-content already scrolls within the
+     * dialog's own height cap, and giving this box its own overflow + max-height put a
+     * second scrollbar inside the first. It also broke maximizing, since the cap stayed
+     * at 90vh while the dialog grew to full screen.
+     */
+
+    @media (max-width: 640px) {
+        padding: 1rem;
+        gap: 1rem;
+    }
+}
+
+/*
+ * This box carries tabindex="0" so that p-dialog has something to focus at the
+ * top of its content instead of the first button in the documents table — see
+ * the comment on the element. That focus is programmatic and happens on every
+ * open, so it must not draw a ring; :focus-visible still does, for anyone who
+ * actually tabs to it.
+ */
+.sv:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.sv__hero {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.5rem 1.75rem;
+    border-radius: 1.25rem;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.13) 0%, rgba(59, 130, 246, 0.07) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+
+    @media (max-width: 560px) {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1.25rem;
+    }
+}
+
+.sv__hero-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 1.25rem;
+    background: rgba(99, 102, 241, 0.18);
+    color: var(--primary-color);
+    font-size: 1.85rem;
+    flex-shrink: 0;
+    overflow: hidden;
+    // Lifts the portrait off the tinted hero panel.
+    box-shadow: 0 0 0 3px var(--surface-card), 0 6px 18px -8px rgba(15, 23, 42, 0.35);
+}
+
+.sv__hero-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sv__hero-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.sv__hero-name {
+    margin: 0 0 0.6rem;
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: var(--text-color);
+    line-height: 1.2;
+}
+
+.sv__hero-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.sv__hero-id {
+    font-weight: 600;
+    color: var(--text-color-secondary);
+    font-size: 0.88rem;
+    background: var(--surface-100);
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+}
+
+.sv__hero-year {
+    font-size: 0.88rem;
+    color: var(--text-color-secondary);
+}
+
+.sv__stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.85rem;
+
+    @media (max-width: 768px) { grid-template-columns: repeat(2, 1fr); }
+    @media (max-width: 480px) { grid-template-columns: 1fr; }
+}
+
+.sv__stat {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 1rem 1.1rem;
+    border-radius: 1rem;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    height: 100%;
+
+    div {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        // Long values truncate instead of pushing the tile out of line.
+        min-width: 0;
+    }
+
+    &-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.6rem;
+        height: 2.6rem;
+        border-radius: 0.75rem;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    &-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-color-secondary);
+    }
+
+    &-value {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-color);
+        font-variant-numeric: tabular-nums;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &--success {
+        border-color: rgba(16, 185, 129, 0.25);
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
+        .sv__stat-icon { background: rgba(16, 185, 129, 0.14); color: var(--green-600); }
+    }
+
+    &--info {
+        border-color: rgba(14, 165, 233, 0.25);
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(2, 132, 199, 0.05));
+        .sv__stat-icon { background: rgba(14, 165, 233, 0.14); color: var(--blue-500); }
+    }
+
+    &--neutral {
+        border-color: rgba(148, 163, 184, 0.25);
+        background: linear-gradient(135deg, rgba(148, 163, 184, 0.1), rgba(100, 116, 139, 0.05));
+        .sv__stat-icon { background: rgba(148, 163, 184, 0.14); color: var(--text-color-secondary); }
+    }
+
+    &--primary {
+        border-color: rgba(99, 102, 241, 0.25);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(79, 70, 229, 0.05));
+        .sv__stat-icon { background: rgba(99, 102, 241, 0.14); color: var(--primary-color); }
+    }
+}
+
+.sv__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+
+    @media (max-width: 768px) { grid-template-columns: 1fr; }
+}
+
+.sv__card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 1.25rem;
+    padding: 1.25rem 1.4rem;
+    box-shadow: 0 4px 18px -8px rgba(15, 23, 42, 0.1);
+    // Cards in the same grid row end level regardless of how many fields each holds.
+    height: 100%;
+    transition: box-shadow 0.18s ease, border-color 0.18s ease;
+
+    &:hover {
+        box-shadow: 0 10px 26px -12px rgba(15, 23, 42, 0.18);
+        border-color: color-mix(in srgb, var(--primary-color) 22%, var(--surface-border));
+    }
+
+    &--full {
+        grid-column: 1 / -1;
+
+        @media (max-width: 768px) { grid-column: 1; }
+    }
+}
+
+.sv__card-head {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+    // Separates the heading from the fields without adding another boxed element.
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.sv__card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 0.65rem;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--primary-color);
+    font-size: 1rem;
+    flex-shrink: 0;
+
+    &--finance  { background: rgba(16, 185, 129, 0.12); color: var(--green-600); }
+    &--contact  { background: rgba(14, 165, 233, 0.12); color: var(--blue-500); }
+    &--mgmt     { background: rgba(245, 158, 11, 0.12); color: var(--yellow-600); }
+    &--location { background: rgba(239, 68, 68, 0.12);  color: var(--red-500); }
+    &--docs     { background: rgba(168, 85, 247, 0.12); color: var(--purple-500); }
+}
+
+.sv__card-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-color);
+}
+
+.sv__dl {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.sv__dl-row {
+    /*
+     * A two-column grid rather than space-between: with flex the value sat hard against
+     * the row's end edge, so every value landed at a different position depending on the
+     * label's length. A fixed label column lines the values up into a single edge, which
+     * is what makes a long list of fields scannable.
+     */
+    display: grid;
+    grid-template-columns: minmax(7rem, 38%) 1fr;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--surface-100);
+
+    &:last-child { border-bottom: none; }
+
+    dt {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--text-color-secondary);
+        line-height: 1.4;
+    }
+
+    dd {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-color);
+        // Logical: values share one leading edge in both directions.
+        text-align: start;
+        line-height: 1.4;
+        word-break: break-word;
+        // Digits line up column-wise in dates, amounts and IDs.
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+.sv__dl-positive { color: var(--green-600) !important; }
+
+.sv__dl-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 2.5rem;
+
+    @media (max-width: 600px) {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
+
+// .sv__docs-grid / .sv__doc* / .sv__empty / .sv__loading moved to
+// shared/student-documents, which owns the documents card body.
+
+.sv__notes {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 1.25rem;
+    padding: 1.25rem 1.4rem;
+    box-shadow: 0 4px 18px -8px rgba(15, 23, 42, 0.1);
+}
+
+.sv__notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.sv__note {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.sv__note-label {
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-color-secondary);
+}
+
+.sv__note-text {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    line-height: 1.6;
+    padding: 0.65rem 0.9rem;
+    border-radius: 0.75rem;
+    background: var(--surface-50);
+    // Logical: leading edge in both directions, no RTL override needed.
+    border-inline-start: 3px solid rgba(99, 102, 241, 0.28);
+}
+
+/**
+ * RTL corrections for the view dialog.
+ *
+ * Note what is deliberately absent: `flex-direction: row-reverse`. Under `direction: rtl`
+ * a flex row already lays its items out right-to-left, so adding row-reverse flips them
+ * back to left-to-right — the avatar, hero meta and stat icons all ended up on the wrong
+ * side because of exactly that double flip. Text alignment and the note border are
+ * handled by logical properties above, so they need no override here either.
+ */
+[dir="rtl"] {
+    /* Cancels the app-wide row-reverse in styles.scss, for the double-flip reason above. */
+    .sv .flex.justify-content-between,
+    .sv .flex.justify-content-end {
+        flex-direction: row;
+    }
+
+    /* PrimeFlex spacing utilities are physical and do not mirror; these are the ones
+       used inside this component's markup. */
+    .mr-1 { margin-right: 0 !important; margin-left: 0.25rem !important; }
+    .mr-3 { margin-right: 0 !important; margin-left: 1rem !important; }
+    .ml-2 { margin-left: 0 !important; margin-right: 0.5rem !important; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Modal that hosts the student add/edit wizard (`app-student-add`).
+ */
+:host ::ng-deep .student-add-modal {
+  .p-dialog-content {
+    padding-top: 0;
+    padding-bottom: 0.75rem;
+  }
+
+  .p-dialog-footer {
+    border-top: 1px solid var(--surface-border);
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /**
+   * The dialog body is the scroll container inside the modal, and the wizard's sticky
+   * stepper and nav bar pin to its top and bottom edges. Nothing between here and those
+   * bars may clip overflow, or they would stick to that box instead and scroll away.
+   */
+  .student-add-modal__content {
+    max-height: calc(95vh - 10rem);
+  }
+}
+
+/* Pending-approval notice inside the view dialog */
+.sv__pending {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.9rem 1.1rem;
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--yellow-500) 12%, var(--surface-card));
+    border: 1px solid color-mix(in srgb, var(--yellow-500) 38%, transparent);
+    color: var(--text-color);
+
+    > .pi {
+        font-size: 1.35rem;
+        color: var(--yellow-700, #b45309);
+        flex-shrink: 0;
+    }
+}
