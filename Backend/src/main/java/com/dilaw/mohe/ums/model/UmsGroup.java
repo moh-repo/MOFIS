@@ -17,6 +17,8 @@ public class UmsGroup {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "Id")
+    // SEC-01: the id is written by the database and the path, never by a request body.
+    @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
     private Long id;
 
     @Column(name = "GroupName", nullable = false, unique = true, length = 100)

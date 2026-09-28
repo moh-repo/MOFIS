@@ -32,6 +32,17 @@ public class UmsPermissionService {
     @Autowired
     private UmsUserPermissionRepository userPermissionRepository;
 
+    /**
+     * SEC-02: a permission change reaches every holder at once. {@code @Lazy}: the
+     * cache reads its codes through this service, a cycle Spring refuses otherwise.
+     */
+    @Autowired
+    @org.springframework.context.annotation.Lazy
+    private UserAuthorityCache authorityCache;
+
+    @Autowired
+    private UmsAuditLogService auditLogService;
+
     // ========== Permission CRUD ==========
 
     public List<UmsPermission> getAllActivePermissions() {
@@ -77,31 +88,85 @@ public class UmsPermissionService {
     }
 
     public UmsPermission createPermission(UmsPermission permission) {
+        return createPermission(permission, null);
+    }
+
+    /**
+     * SEC-01/SEC-02: a create never merges onto an existing row (the id is cleared),
+     * and it is audited.
+     */
+    @Transactional
+    public UmsPermission createPermission(UmsPermission permission, Long createdBy) {
+        permission.setId(null);
         permission.setIsActive(true);
-        return permissionRepository.save(permission);
+        UmsPermission saved = permissionRepository.save(permission);
+        audit(createdBy, "CREATE_PERMISSION", saved.getId(), null, saved.getPermissionCode());
+        return saved;
     }
 
     public UmsPermission updatePermission(Long id, UmsPermission updatedPermission) {
-        return permissionRepository.findById(id)
-                .map(existing -> {
-                    existing.setPermissionName(updatedPermission.getPermissionName());
-                    existing.setPermissionNameAr(updatedPermission.getPermissionNameAr());
-                    existing.setPermissionCode(updatedPermission.getPermissionCode());
-                    existing.setDescription(updatedPermission.getDescription());
-                    existing.setResourceType(updatedPermission.getResourceType());
-                    existing.setActionType(updatedPermission.getActionType());
-                    return permissionRepository.save(existing);
-                })
-                .orElseThrow(() -> new RuntimeException("Permission not found with id: " + id));
+        return updatePermission(id, updatedPermission, null);
     }
 
-    /** Switches the permission off; 404 for an id with no row (round-5 QA R5-22), which used to read as success. */
+    /**
+     * SEC-02: the code is what every {@code hasAuthority} check matches on, so it is
+     * immutable. Renaming a code one already holds to {@code SYSTEM.RESTORE} was a
+     * privilege escalation that took effect when the authority cache expired. A
+     * body naming a different code is refused; one repeating it (or omitting it)
+     * edits the descriptive fields as before. Every holder's cached authorities are
+     * evicted, and the change is audited.
+     */
+    @Transactional
+    public UmsPermission updatePermission(Long id, UmsPermission updatedPermission, Long updatedBy) {
+        UmsPermission existing = permissionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Permission not found with id: " + id));
+        String requestedCode = updatedPermission.getPermissionCode();
+        if (requestedCode != null && !requestedCode.equals(existing.getPermissionCode())) {
+            throw new com.dilaw.mohe.exception.LocalizedArgumentException(
+                    "A permission code cannot be changed; create a new permission instead.",
+                    "ums.permission.code.immutable");
+        }
+        String oldName = existing.getPermissionName();
+        existing.setPermissionName(updatedPermission.getPermissionName());
+        existing.setPermissionNameAr(updatedPermission.getPermissionNameAr());
+        existing.setDescription(updatedPermission.getDescription());
+        existing.setResourceType(updatedPermission.getResourceType());
+        existing.setActionType(updatedPermission.getActionType());
+        UmsPermission saved = permissionRepository.save(existing);
+        evictAuthorities();
+        audit(updatedBy, "UPDATE_PERMISSION", id, oldName, saved.getPermissionName());
+        return saved;
+    }
+
     public void deletePermission(Long id) {
+        deletePermission(id, null);
+    }
+
+    /**
+     * Switches the permission off; 404 for an id with no row (round-5 QA R5-22), which used to read as success.
+     * SEC-02: every holder loses it now, not when the authority cache expires; audited.
+     */
+    @Transactional
+    public void deletePermission(Long id, Long deletedBy) {
         UmsPermission permission = permissionRepository.findById(id)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.NOT_FOUND, "Permission not found"));
         permission.setIsActive(false);
         permissionRepository.save(permission);
+        evictAuthorities();
+        audit(deletedBy, "DELETE_PERMISSION", id, permission.getPermissionCode(), null);
+    }
+
+    private void evictAuthorities() {
+        if (authorityCache != null) {
+            authorityCache.evictAll();
+        }
+    }
+
+    private void audit(Long actor, String action, Long id, String oldValue, String newValue) {
+        if (auditLogService != null) {
+            auditLogService.log(actor, action, "PERMISSION", id, oldValue, newValue);
+        }
     }
 
     // ========== Permission Checking ==========

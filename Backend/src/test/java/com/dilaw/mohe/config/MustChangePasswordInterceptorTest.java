@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
  * An account holding a password an administrator set can do nothing but change it
@@ -35,6 +36,14 @@ class MustChangePasswordInterceptorTest {
         @GetMapping("/api/v1/studentdata/1") public String student() { return "student"; }
         @PostMapping("/api/v1/ums/auth/change-password") public String change() { return "changed"; }
         @GetMapping("/api/v1/ums/auth/me") public String me() { return "me"; }
+        @PostMapping("/api/v1/ums/auth/reset-password") public String reset() { return "reset"; }
+        @PostMapping("/api/v1/ums/auth/mfa/verify") public String mfa() { return "mfa"; }
+        @PostMapping("/api/v1/ums/auth/logout") public String logout() { return "out"; }
+        @GetMapping("/api/v1/sys-settings") public String settings() { return "settings"; }
+        @org.springframework.web.bind.annotation.PutMapping("/api/v1/sys-settings") public String saveSettings() { return "saved"; }
+        @PostMapping("/api/v1/sys-settings/logo") public String logo() { return "logo"; }
+        @GetMapping("/api/v1/code-lists/{list}") public String codes() { return "codes"; }
+        @PostMapping("/api/v1/code-lists/{list}") public String addCode() { return "added"; }
     }
 
     private final MustChangePasswordGate gate = mock(MustChangePasswordGate.class);
@@ -84,5 +93,35 @@ class MustChangePasswordInterceptorTest {
         when(gate.mustChange(5L)).thenReturn(false);
 
         assertThat(mvc.perform(get("/api/v1/studentdata/1")).andReturn().getResponse().getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("SEC-07: resetting another account's password and writing the settings are held too")
+    void administrativeWritesAreHeld() throws Exception {
+        when(gate.mustChange(5L)).thenReturn(true);
+
+        assertThat(mvc.perform(post("/api/v1/ums/auth/reset-password")).andReturn().getResponse().getStatus())
+                .isEqualTo(403);
+        assertThat(mvc.perform(put("/api/v1/sys-settings")).andReturn().getResponse().getStatus())
+                .isEqualTo(403);
+        assertThat(mvc.perform(post("/api/v1/sys-settings/logo")).andReturn().getResponse().getStatus())
+                .isEqualTo(403);
+        assertThat(mvc.perform(post("/api/v1/code-lists/X")).andReturn().getResponse().getStatus())
+                .isEqualTo(403);
+    }
+
+    @Test
+    @DisplayName("SEC-07: the self-service steps and the shell's reads stay open")
+    void selfServiceAndReadsStayOpen() throws Exception {
+        when(gate.mustChange(5L)).thenReturn(true);
+
+        assertThat(mvc.perform(post("/api/v1/ums/auth/mfa/verify")).andReturn().getResponse().getStatus())
+                .isEqualTo(200);
+        assertThat(mvc.perform(post("/api/v1/ums/auth/logout")).andReturn().getResponse().getStatus())
+                .isEqualTo(200);
+        assertThat(mvc.perform(get("/api/v1/sys-settings")).andReturn().getResponse().getStatus())
+                .isEqualTo(200);
+        assertThat(mvc.perform(get("/api/v1/code-lists/X")).andReturn().getResponse().getStatus())
+                .isEqualTo(200);
     }
 }

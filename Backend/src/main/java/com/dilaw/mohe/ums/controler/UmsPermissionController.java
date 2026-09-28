@@ -1,6 +1,7 @@
 package com.dilaw.mohe.ums.controler;
 
 import com.dilaw.mohe.config.MoheSecurityExpressions;
+import com.dilaw.mohe.config.SecurityRequestUtils;
 import com.dilaw.mohe.ums.model.*;
 import com.dilaw.mohe.ums.service.UmsPermissionService;
 import com.dilaw.mohe.ums.util.UmsPageableUtil;
@@ -90,23 +91,27 @@ public class UmsPermissionController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // SEC-02: the permission catalogue is the application's, not an attache's: the
+    // same ministry-only gate as pages, reports and API links. A country admin holds
+    // UMS_ADMIN.* for its own staff and could otherwise rename a code it holds.
     @PostMapping
-    @PreAuthorize(MoheSecurityExpressions.UMS_ADD)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_ADD)
     public ResponseEntity<UmsPermission> createPermission(@Valid @RequestBody UmsPermission permission) {
-        return ResponseEntity.ok(permissionService.createPermission(permission));
+        return ResponseEntity.ok(permissionService.createPermission(permission, SecurityRequestUtils.requireUserId()));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(MoheSecurityExpressions.UMS_EDIT)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_EDIT)
     public ResponseEntity<UmsPermission> updatePermission(@PathVariable Long id,
             @Valid @RequestBody UmsPermission permission) {
-        return ResponseEntity.ok(permissionService.updatePermission(id, permission));
+        return ResponseEntity.ok(permissionService.updatePermission(id, permission,
+                SecurityRequestUtils.requireUserId()));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize(MoheSecurityExpressions.UMS_DELETE)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_DELETE)
     public ResponseEntity<Void> deletePermission(@PathVariable Long id) {
-        permissionService.deletePermission(id);
+        permissionService.deletePermission(id, SecurityRequestUtils.requireUserId());
         return ResponseEntity.noContent().build();
     }
 

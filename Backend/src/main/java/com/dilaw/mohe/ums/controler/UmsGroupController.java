@@ -19,6 +19,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/*
+ * SEC-03: groups are global (no country), so every write is gated on the ministry-only
+ * admin-tools codes, as pages, reports and API links are. A country admin holds
+ * UMS_ADMIN.* for its own staff and used to rename or deactivate a global group.
+ */
 @RestController
 @RequestMapping("api/v1/ums/groups")
 @PreAuthorize(MoheSecurityExpressions.UMS_VIEW)
@@ -74,14 +79,14 @@ public class UmsGroupController {
     }
 
     @PostMapping("/")
-    @PreAuthorize(MoheSecurityExpressions.UMS_ADD)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_ADD)
     public ResponseEntity<UmsGroup> createGroup(@Valid @RequestBody UmsGroup group) {
         long createdBy = SecurityRequestUtils.requireUserId();
         return ResponseEntity.ok(groupService.createGroup(group, createdBy));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(MoheSecurityExpressions.UMS_EDIT)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_EDIT)
     public ResponseEntity<UmsGroup> updateGroup(
             @PathVariable Long id,
             @Valid @RequestBody UmsGroup group) {
@@ -90,7 +95,7 @@ public class UmsGroupController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize(MoheSecurityExpressions.UMS_DELETE)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_DELETE)
     public ResponseEntity<Map<String, String>> deleteGroup(@PathVariable Long id) {
         long deletedBy = SecurityRequestUtils.requireUserId();
         groupService.deleteGroup(id, deletedBy);
@@ -105,7 +110,7 @@ public class UmsGroupController {
     }
 
     @PostMapping("/{id}/roles/{roleId}")
-    @PreAuthorize(MoheSecurityExpressions.UMS_EDIT)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_EDIT)
     public ResponseEntity<Map<String, String>> assignRoleToGroup(
             @PathVariable Long id,
             @PathVariable Long roleId) {
@@ -115,7 +120,7 @@ public class UmsGroupController {
     }
 
     @DeleteMapping("/{id}/roles/{roleId}")
-    @PreAuthorize(MoheSecurityExpressions.UMS_EDIT)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_EDIT)
     public ResponseEntity<Map<String, String>> removeRoleFromGroup(
             @PathVariable Long id,
             @PathVariable Long roleId) {

@@ -127,6 +127,8 @@ public class ApiRateLimitFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
+        // SEC-06: decoded and normalised, so a percent-encoded or dot-segment path
+        // that the container routes to a report is counted like the plain one.
         String path = LoginRateLimitFilter.contextRelativePath(request);
 
         if (matchesAny(path, reportPrefixes)) {

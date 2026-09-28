@@ -54,7 +54,8 @@ public class StudentPortalTenantScope {
         if (studyCountryInId == null || studyCountryInId == 0) {
             return TenantContext.Scope.DENY;
         }
-        return TenantContext.Scope.of(false, java.util.List.of(studyCountryInId));
+        // SEC-08: a student records no Wafar, so the portal connection never carries the write key.
+        return TenantContext.Scope.of(false, java.util.List.of(studyCountryInId)).withoutWafarWrite();
     }
 
     /**
@@ -73,7 +74,8 @@ public class StudentPortalTenantScope {
             return TenantContext.runAsSystem(() ->
                     studentDataRepository.findStudyCountryInByStudentId(studentId)
                             .filter(countryId -> countryId != 0)
-                            .map(countryId -> TenantContext.Scope.of(false, java.util.List.of(countryId)))
+                            .map(countryId -> TenantContext.Scope.of(false, java.util.List.of(countryId))
+                                    .withoutWafarWrite()) // SEC-08
                             .orElseGet(() -> {
                                 log.warn("Student {} has no study country; portal request denied tenant access", studentId);
                                 return TenantContext.Scope.DENY;

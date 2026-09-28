@@ -13,7 +13,23 @@ import java.util.Optional;
  */
 public final class SecurityRequestUtils {
 
+    /** SEC-10: request attribute {@code JwtAuthFilter} sets to the jti of the session the request rides on. */
+    public static final String JTI_ATTRIBUTE = SecurityRequestUtils.class.getName() + ".jti";
+
     private SecurityRequestUtils() {
+    }
+
+    /**
+     * The jti of the session the current request authenticated with, when there is
+     * a request and it carried a valid token. Empty outside a request.
+     */
+    public static Optional<String> currentJti() {
+        if (!(org.springframework.web.context.request.RequestContextHolder.getRequestAttributes()
+                instanceof org.springframework.web.context.request.ServletRequestAttributes attrs)) {
+            return Optional.empty();
+        }
+        Object jti = attrs.getRequest().getAttribute(JTI_ATTRIBUTE);
+        return jti instanceof String s && !s.isBlank() ? Optional.of(s) : Optional.empty();
     }
 
     public static Optional<Long> currentUserId() {

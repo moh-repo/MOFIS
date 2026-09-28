@@ -80,6 +80,9 @@ public class UmsRoleService {
 
     @Transactional
     public UmsRole createRole(UmsRole role, Long createdBy) {
+        // SEC-01: never merge onto an existing role (renaming it to a tier role, say).
+        role.setId(null);
+        assertNotTierRoleName(role.getRoleName());
         if (roleRepository.existsByRoleName(role.getRoleName())) {
             throw new IllegalArgumentException("Role name already exists: " + role.getRoleName());
         }
@@ -102,10 +105,14 @@ public class UmsRoleService {
             // 409, not 400 (review M9): the request is well formed; the row is the one that refuses it.
             throw new LocalizedStateException("A system role cannot be edited or deleted.", "ums.role.system");
         }
+        // SEC-03: the same rule as a change to the role's permission set.
+        privilegeGuard.assertMayEditRole(id);
 
         String oldValue = existingRole.getRoleName();
 
-        if (roleUpdate.getRoleName() != null) {
+        if (roleUpdate.getRoleName() != null && !roleUpdate.getRoleName().equals(oldValue)) {
+            // SEC-03: a role renamed to MINISTRY_ADMIN would confer that tier on every holder.
+            assertNotTierRoleName(roleUpdate.getRoleName());
             existingRole.setRoleName(roleUpdate.getRoleName());
         }
         if (roleUpdate.getRoleNameAr() != null) {
@@ -128,6 +135,8 @@ public class UmsRoleService {
         existingRole.setUpdatedAt(LocalDateTime.now());
 
         UmsRole savedRole = roleRepository.save(existingRole);
+        // SEC-03: a rename or a deactivation changes what every holder is.
+        authorityCache.evictAll();
 
         auditLogService.log(updatedBy, "UPDATE_ROLE", "ROLE", id, oldValue, savedRole.getRoleName());
 
@@ -142,6 +151,7 @@ public class UmsRoleService {
         if (role.getIsSystem()) {
             throw new LocalizedStateException("A system role cannot be edited or deleted.", "ums.role.system");
         }
+        privilegeGuard.assertMayEditRole(id); // SEC-03
 
         role.setIsActive(false);
         role.setUpdatedBy(deletedBy);
@@ -149,6 +159,21 @@ public class UmsRoleService {
         authorityCache.evictAll();
 
         auditLogService.log(deletedBy, "DELETE_ROLE", "ROLE", id, role.getRoleName(), null);
+    }
+
+    /**
+     * SEC-03: the tier roles ({@link AdminTier}) are conferred by name, so no
+     * other role may take one of those names, whatever its case or padding
+     * (the database collation compares names case-insensitively).
+     */
+    static void assertNotTierRoleName(String roleName) {
+        if (roleName == null) return;
+        String normalised = roleName.strip().toUpperCase(java.util.Locale.ROOT);
+        if (AdminTier.fromRoleName(normalised).isPresent()) {
+            throw new com.dilaw.mohe.exception.LocalizedArgumentException(
+                    "The role name " + roleName.strip() + " is reserved for an administrative tier.",
+                    "ums.role.name.reserved", roleName.strip());
+        }
     }
 
     // ========== Permission Assignment to Role ==========

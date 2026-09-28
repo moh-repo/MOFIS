@@ -47,6 +47,8 @@ public class UmsReportService {
     }
 
     public UmsReport createReport(UmsReport report) {
+        // SEC-01: a create never merges onto an existing row, whatever id the body carried.
+        report.setId(null);
         report.setIsActive(true);
         return reportRepository.save(report);
     }

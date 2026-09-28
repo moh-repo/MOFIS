@@ -174,6 +174,26 @@ public class UmsUserSessionService {
     }
 
     /**
+     * SEC-10: ends every active session of an account except the one {@code keepJti}
+     * names (none kept when it is null). After a password change a token stolen
+     * before it must stop working; the holder's own session, the one that made the
+     * change, carries on. Unscoped like {@link #endSessionsOf}: the caller's right
+     * to change the password has already been checked.
+     *
+     * @return the number of sessions ended
+     */
+    @Transactional
+    public int endSessionsOfExcept(Long userId, String keepJti) {
+        if (userId == null) return 0;
+        List<UmsUserSession> ended = sessionRepository.findByUserIdAndIsActiveTrue(userId).stream()
+                .filter(s -> keepJti == null || !keepJti.equals(s.getTokenHash()))
+                .toList();
+        ended.forEach(session -> session.setIsActive(false));
+        sessionRepository.saveAll(ended);
+        return ended.size();
+    }
+
+    /**
      * Moves the session that {@code oldJti} identifies onto {@code newJti} and
      * extends it. True only when that exact session is still active.
      *

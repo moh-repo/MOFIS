@@ -474,6 +474,10 @@ public class UmsUserService {
 
     @Transactional
     public UmsUser createUser(UmsUser user, Long createdBy) {
+        // SEC-01: the id is the database's to choose. A body carrying the id of an
+        // existing account made save() merge onto it: the victim's user name and
+        // password hash were replaced (account takeover, ministry accounts included).
+        user.setId(null);
         // Validate username uniqueness
         if (userRepository.existsByUserName(user.getUserName())) {
             throw new LocalizedArgumentException("Username already exists: " + user.getUserName(),
@@ -716,8 +720,18 @@ public class UmsUserService {
         userRepository.save(user);
         mustChangePasswordGate.evict(userId);
 
+        // SEC-10: a token issued before the change stops working. The holder's own
+        // change (POST /auth/change-password, or their own row) keeps the session that
+        // made it; an administrator's change or reset ends every session of the target.
+        boolean ownChange = java.util.Objects.equals(changedBy, userId)
+                && java.util.Objects.equals(com.dilaw.mohe.config.SecurityRequestUtils.currentUserId().orElse(null), userId);
+        String keep = ownChange ? com.dilaw.mohe.config.SecurityRequestUtils.currentJti().orElse(null) : null;
+        int ended = sessionService.endSessionsOfExcept(userId, keep);
+        authorityCache.evict(userId);
+
         // Audit log
-        auditLogService.log(changedBy, "CHANGE_PASSWORD", "USER", userId, null, null);
+        auditLogService.log(changedBy, "CHANGE_PASSWORD", "USER", userId, null,
+                ended > 0 ? "sessions ended=" + ended : null);
     }
 
     // ========== Group Assignment ==========

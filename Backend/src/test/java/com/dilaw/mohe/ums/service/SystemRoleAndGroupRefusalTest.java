@@ -55,6 +55,7 @@ class SystemRoleAndGroupRefusalTest {
         @Mock private UmsRoleRepository roleRepository;
         @Mock private UmsAuditLogService auditLogService;
         @Mock private UserAuthorityCache authorityCache;
+        @Mock private UmsPrivilegeGuard privilegeGuard;
         @InjectMocks private UmsRoleService service;
 
         private UmsRole role(long id, boolean system) {
@@ -113,7 +114,9 @@ class SystemRoleAndGroupRefusalTest {
 
             service.deleteRole(CUSTOM_ID, OPERATOR);
             assertThat(stored.getIsActive()).as("a delete deactivates").isFalse();
-            verify(authorityCache).evictAll();
+            // SEC-03: the edit evicts too, not only the delete.
+            verify(authorityCache, org.mockito.Mockito.times(2)).evictAll();
+            verify(privilegeGuard, org.mockito.Mockito.times(2)).assertMayEditRole(CUSTOM_ID);
         }
     }
 
@@ -183,7 +186,8 @@ class SystemRoleAndGroupRefusalTest {
 
             service.deleteGroup(CUSTOM_ID, OPERATOR);
             assertThat(stored.getIsActive()).isFalse();
-            verify(authorityCache).evictAll();
+            // SEC-03: the edit evicts too, not only the delete.
+            verify(authorityCache, org.mockito.Mockito.times(2)).evictAll();
         }
     }
 
