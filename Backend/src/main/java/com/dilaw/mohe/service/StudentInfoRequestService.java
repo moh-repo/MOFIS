@@ -284,6 +284,141 @@ public class StudentInfoRequestService {
         return findInScope(requestId).flatMap(r -> stagingRepository.findById(requestId));
     }
 
+    // ── PRT-05: what a student may propose through an answer ────────────────────
+
+    private static final java.util.Set<String> CONTACT_FIELDS = java.util.Set.of(
+            "studentEmail", "studentCellphone", "studentHomeNumber", "studentEmergencyContact");
+    private static final java.util.Set<String> IDENTITY_FIELDS = java.util.Set.of(
+            "studentName", "studentGender", "studentBirthdate", "studentBirthdatePlace", "studentPassportNumber",
+            "studentPassportIssueDate", "studentPassportExpireDate", "studentPassportIssueCountryId");
+    private static final java.util.Set<String> STUDY_FIELDS = java.util.Set.of(
+            "studyUniversityIn", "studyCollegeIn", "studyMajorIn", "studyEducationIn", "studentCurrentLevelId");
+
+    private static java.util.Set<String> union(java.util.Set<?>... sets) {
+        java.util.Set<String> all = new java.util.HashSet<>();
+        for (java.util.Set<?> set : sets) set.forEach(f -> all.add((String) f));
+        return java.util.Set.copyOf(all);
+    }
+
+    /**
+     * PRT-05: the student-record fields an answer to each kind of request may propose. An
+     * answer's proposed data used to be staged whole, and staff approval raised whatever
+     * differed — {@code studentAmount}, a status, the study country — as though the student
+     * were entitled to ask for it. These are the fields the change-request form offers
+     * ({@code StudentChangeRequestService.ALLOWED_FIELDS}), less the study country (a move
+     * relocates files and ends sessions; it goes through a change request), narrowed to what
+     * each kind of request is about. A kind not listed here gets the contact fields.
+     */
+    static final Map<String, java.util.Set<String>> STUDENT_FIELDS_BY_KIND = Map.of(
+            "STATUS_CERT", union(CONTACT_FIELDS, STUDY_FIELDS),
+            "TRANSCRIPT", union(CONTACT_FIELDS, STUDY_FIELDS),
+            "BANK_COVER_LETTER", union(CONTACT_FIELDS, IDENTITY_FIELDS),
+            "FIN_SUMMARY", union(CONTACT_FIELDS, IDENTITY_FIELDS),
+            DEFAULT_KIND, union(CONTACT_FIELDS, IDENTITY_FIELDS, STUDY_FIELDS));
+
+    /**
+     * PRT-05: no finance field may be proposed from the portal: amounts, dates and payment
+     * status are the finance office's to set, whatever the request asked for.
+     */
+    static final java.util.Set<String> FINANCE_FIELDS_FROM_PORTAL = java.util.Set.of();
+
+    static java.util.Set<String> studentFieldsFor(String kind) {
+        return STUDENT_FIELDS_BY_KIND.getOrDefault(kind, CONTACT_FIELDS);
+    }
+
+    /** The proposal as it is staged: only permitted fields, null for a half with nothing in it. */
+    public record PortalProposal(String studentDataJson, String studentFinanceJson) {
+        public boolean isEmpty() {
+            return studentDataJson == null && studentFinanceJson == null;
+        }
+    }
+
+    /**
+     * PRT-05: checks the data a student sends with an answer, before anything is stored.
+     *
+     * <p>The portal's "include my data" button sends the student's whole record back, so a
+     * field outside the request kind's list is not refused for being present: it is dropped
+     * when it holds the value already stored, and refused (400, naming the fields) when it
+     * would change it. Keys the record does not have (display names) are dropped.
+     *
+     * @throws com.dilaw.mohe.exception.LocalizedStatusException 400 for a field the request
+     *         may not change, or for data that is not a JSON object
+     */
+    public PortalProposal checkPortalProposal(StudentInfoRequest req, String studentDataJson, String studentFinanceJson) {
+        List<String> refused = new java.util.ArrayList<>();
+        StudentDatum student = isBlank(studentDataJson) ? null
+                : studentDataRepository.findById(req.getStudentId()).orElse(null);
+        String studentOut = filterProposal(studentDataJson, StudentDatum.class, student,
+                studentFieldsFor(req.getRequestType()), refused);
+        StudentFinance finance = isBlank(studentFinanceJson) ? null
+                : studentFinanceRepository.findById(req.getStudentId()).orElse(null);
+        String financeOut = filterProposal(studentFinanceJson, StudentFinance.class, finance,
+                FINANCE_FIELDS_FROM_PORTAL, refused);
+        if (!refused.isEmpty()) {
+            throw new com.dilaw.mohe.exception.LocalizedStatusException(HttpStatus.BAD_REQUEST,
+                    "These fields cannot be changed through this request: " + String.join(", ", refused),
+                    "portal.infoRequest.fieldNotAllowed", String.join(", ", refused));
+        }
+        return new PortalProposal(studentOut, financeOut);
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank() || "null".equals(s.strip());
+    }
+
+    private <T> String filterProposal(String json, Class<T> type, T stored, java.util.Set<String> allowed,
+                                      List<String> refused) {
+        if (isBlank(json)) return null;
+        com.fasterxml.jackson.databind.JsonNode node;
+        try {
+            node = jsonMapper.readTree(json);
+        } catch (JsonProcessingException e) {
+            node = null;
+        }
+        if (node == null || !node.isObject()) {
+            throw new com.dilaw.mohe.exception.LocalizedStatusException(HttpStatus.BAD_REQUEST,
+                    "The submitted data could not be read.", "portal.infoRequest.proposalInvalid");
+        }
+        com.fasterxml.jackson.databind.node.ObjectNode kept = jsonMapper.createObjectNode();
+        java.util.Iterator<Map.Entry<String, com.fasterxml.jackson.databind.JsonNode>> fields = node.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, com.fasterxml.jackson.databind.JsonNode> e = fields.next();
+            java.lang.reflect.Field field = entityField(type, e.getKey());
+            if (field == null) continue;
+            if (allowed.contains(e.getKey())) {
+                kept.set(e.getKey(), e.getValue());
+            } else if (changes(field, stored, e.getValue())) {
+                refused.add(e.getKey());
+            }
+        }
+        return kept.isEmpty() ? null : kept.toString();
+    }
+
+    private static java.lang.reflect.Field entityField(Class<?> type, String name) {
+        try {
+            java.lang.reflect.Field f = type.getDeclaredField(name);
+            if (java.lang.reflect.Modifier.isStatic(f.getModifiers())) return null;
+            f.setAccessible(true);
+            return f;
+        } catch (NoSuchFieldException e) {
+            return null;
+        }
+    }
+
+    /** Whether {@code proposed} differs from the stored value; unreadable counts as a change. */
+    private boolean changes(java.lang.reflect.Field field, Object stored, com.fasterxml.jackson.databind.JsonNode proposed) {
+        try {
+            Object current = stored == null ? null : field.get(stored);
+            Object wanted = proposed == null || proposed.isNull() ? null : jsonMapper.treeToValue(proposed, field.getType());
+            if (current instanceof java.math.BigDecimal a && wanted instanceof java.math.BigDecimal b) {
+                return a.compareTo(b) != 0;
+            }
+            return !java.util.Objects.equals(current, wanted);
+        } catch (Exception unreadable) {
+            return true;
+        }
+    }
+
     @Transactional
     public void saveStaging(Integer requestId, String studentDataJson, String studentFinanceJson) {
         StudentInfoRequestStaging staging = stagingRepository.findById(requestId)

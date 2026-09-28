@@ -73,6 +73,8 @@ public class StudentChangeRequestService {
     @Autowired private FieldAccessService fieldAccessService;
     @Autowired private com.dilaw.mohe.service.StudentReferenceValidator referenceValidator;
     @Autowired private com.dilaw.mohe.service.StudentAccessGuard studentAccessGuard;
+    @Autowired private com.dilaw.mohe.service.StudentDocumentCountryMigrationService documentCountryMigration;
+    @Autowired private com.dilaw.mohe.studentportal.repository.StudentSessionRepository sessionRepository;
     @PersistenceContext private EntityManager entityManager;
 
     public record FieldChangeInput(String fieldName, String fieldLabel, String newValue) {}
@@ -406,6 +408,7 @@ public class StudentChangeRequestService {
     private void applyFieldToStudent(Integer studentId, String fieldName, String value) {
         StudentDatum student = studentDataRepository.findById(studentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
+        Integer previousCountry = student.getStudyCountryIn();
         Field f;
         try {
             f = StudentDatum.class.getDeclaredField(fieldName);
@@ -435,5 +438,19 @@ public class StudentChangeRequestService {
                     "Value '" + value + "' for field '" + fieldName
                             + "' is not an accepted value for this student", e);
         }
+        followCountryChange(studentId, previousCountry, student.getStudyCountryIn());
+    }
+
+    /**
+     * PRT-03: an approved {@code studyCountryIn} change does what the staff edit does
+     * ({@code StudentDataService}): the student's files move to the new country's folder
+     * and their rows are repointed. It also ends the student's portal sessions, which
+     * carry the old country pinned at sign-in (V036) and would otherwise keep reading
+     * under it until they expired.
+     */
+    void followCountryChange(Integer studentId, Integer previousCountry, Integer newCountry) {
+        if (Objects.equals(previousCountry, newCountry)) return;
+        documentCountryMigration.relocateForCountryChange(studentId, previousCountry, newCountry);
+        sessionRepository.deleteByStudentId(studentId);
     }
 }

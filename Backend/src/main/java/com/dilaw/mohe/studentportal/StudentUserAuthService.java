@@ -44,6 +44,26 @@ public class StudentUserAuthService {
 
     private final BCryptPasswordEncoder passwordEncoder = com.dilaw.mohe.config.Passwords.encoder();
 
+    /**
+     * PRT-06: what a password is compared against when there is no account to compare it
+     * with. Unknown and inactive accounts used to return before bcrypt ran, so the answer
+     * came back in a fraction of the time a real account's did, and the clock said which
+     * e-mails are active portal accounts. Same encoder, so the same cost.
+     */
+    private final String timingDummyHash = passwordEncoder.encode("portal-timing-equaliser");
+
+    /**
+     * PRT-04: wrong passwords before the account locks, and for how long. The portal had
+     * no per-account lock ({@code failed_login_attempts} was never incremented), so only
+     * the per-request captcha stood between a password list and an account. Mirrors the
+     * staff {@code LoginAttemptService}: counted on the account, a timed lock, cleared by a
+     * successful sign-in, a password reset or an administrator returning it to ACTIVE.
+     */
+    @org.springframework.beans.factory.annotation.Value("${mohe.portal.login.max-failures:5}")
+    private int maxPasswordFailures = 5;
+    @org.springframework.beans.factory.annotation.Value("${mohe.portal.login.lock-minutes:15}")
+    private int passwordLockMinutes = 15;
+
     @Autowired private StudentUserRepository studentUserRepository;
     @Autowired private StudentSessionRepository sessionRepository;
     @Autowired private StudentDataRepository studentDataRepository;
@@ -132,16 +152,27 @@ public class StudentUserAuthService {
 
         Optional<StudentUser> userOpt = studentUserRepository.findByUsernameAndIsDeletedFalse(username.trim().toLowerCase());
         if (userOpt.isEmpty()) {
+            spendPasswordCheck(password); // PRT-06
             return null;
         }
 
         StudentUser user = userOpt.get();
 
         if (!PortalAccountStatus.ACTIVE.equals(user.getStatus())) {
+            spendPasswordCheck(password); // PRT-06
+            return null;
+        }
+
+        // PRT-04: a locked account is refused without looking at the password, so the lock
+        // cannot be used as an oracle (a right password answering differently while locked).
+        // The refusal is the same 401 as any other, for the reason the javadoc gives.
+        if (isPasswordLocked(user)) {
+            spendPasswordCheck(password); // PRT-06
             return null;
         }
 
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            recordPasswordFailure(user);
             return null;
         }
 
@@ -202,6 +233,9 @@ public class StudentUserAuthService {
         }
 
         user.setLastLoginAt(Instant.now());
+        // PRT-04: a completed sign-in ends the run of failures.
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
         studentUserRepository.save(user);
 
         String token = UUID.randomUUID().toString().replace("-", "");
@@ -229,6 +263,32 @@ public class StudentUserAuthService {
                 permCodes,
                 user.getPasswordChangedAt() == null
         ));
+    }
+
+    /** PRT-06: one bcrypt comparison whose answer is thrown away. */
+    private void spendPasswordCheck(String password) {
+        passwordEncoder.matches(password, timingDummyHash);
+    }
+
+    private static boolean isPasswordLocked(StudentUser user) {
+        return user.getLockedUntil() != null && user.getLockedUntil().isAfter(Instant.now());
+    }
+
+    /**
+     * PRT-04: one wrong password against an account. At the limit the account locks for
+     * {@code mohe.portal.login.lock-minutes} and the count starts again, so the next run
+     * after the lock gets the same number of tries. Stored at once: the caller answers
+     * 401 without throwing, so nothing rolls this back.
+     */
+    private void recordPasswordFailure(StudentUser user) {
+        int failures = (user.getFailedLoginAttempts() == null ? 0 : user.getFailedLoginAttempts()) + 1;
+        if (failures >= Math.max(1, maxPasswordFailures)) {
+            user.setLockedUntil(Instant.now().plus(Math.max(1, passwordLockMinutes), ChronoUnit.MINUTES));
+            failures = 0;
+        }
+        user.setFailedLoginAttempts(failures);
+        user.setUpdatedAt(Instant.now());
+        studentUserRepository.save(user);
     }
 
     /**
@@ -325,6 +385,9 @@ public class StudentUserAuthService {
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setPasswordChangedAt(Instant.now());
         user.setUpdatedAt(Instant.now());
+        // PRT-04: the owner proved the address; a lock set by someone guessing is lifted.
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
         studentUserRepository.save(user);
         // A reset is how a student recovers an account someone else may be using:
         // every session opened with the old password ends (FIX-PLAN H4).

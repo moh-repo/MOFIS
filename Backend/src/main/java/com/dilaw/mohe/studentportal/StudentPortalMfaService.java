@@ -64,6 +64,7 @@ public class StudentPortalMfaService {
         }
         String secret = totp.generateSecret();
         u.setTotpSecretEnc(cipher.encrypt(secret));
+        u.setTotpLastStep(null); // a new secret has its own steps
         u.setTotpFailedAttempts(0);
         u.setTotpLockedUntil(null);
         u.setUpdatedAt(Instant.now());
@@ -121,6 +122,7 @@ public class StudentPortalMfaService {
         }
         u.setTotpEnabled(false);
         u.setTotpSecretEnc(null);
+        u.setTotpLastStep(null);
         u.setTotpEnrolledAt(null);
         u.setUpdatedAt(Instant.now());
         users.save(u);
@@ -141,6 +143,13 @@ public class StudentPortalMfaService {
         String digits = code == null ? "" : code.replaceAll("[^0-9]", "");
         long step = digits.length() == TotpService.DIGITS
                 ? totp.verify(cipher.decrypt(u.getTotpSecretEnc()), digits, totp.currentStep(), 1) : -1;
+        // PRT-07: a code is good once. The window accepts a step either side of now, so a
+        // code seen over a shoulder or in a proxy log stayed usable for up to 90 seconds.
+        // A step at or before the last one accepted is refused and counts as a wrong code,
+        // as the staff MFA's LastUsedStep does.
+        if (step >= 0 && u.getTotpLastStep() != null && step <= u.getTotpLastStep()) {
+            step = -1;
+        }
         if (step < 0) {
             int failures = (u.getTotpFailedAttempts() == null ? 0 : u.getTotpFailedAttempts()) + 1;
             u.setTotpFailedAttempts(failures);
@@ -151,6 +160,7 @@ public class StudentPortalMfaService {
             users.save(u);
             return false;
         }
+        u.setTotpLastStep(step);
         u.setTotpFailedAttempts(0);
         u.setTotpLockedUntil(null);
         users.save(u);

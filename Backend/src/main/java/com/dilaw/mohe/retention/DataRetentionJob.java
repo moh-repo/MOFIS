@@ -10,7 +10,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,15 +43,22 @@ import java.util.Map;
  *       than the same period are deleted.</li>
  *   <li><b>otps</b>: password-reset codes live in memory for ten minutes;
  *       nothing to do, reported for completeness.</li>
- *   <li><b>student-records</b>: a student in a terminal study status
- *       ({@code student-terminal-statuses}, codes of the {@code study-status}
- *       list) whose record was last modified more than {@code student-years}
- *       ago is anonymised: identifying fields on the student row and its
- *       archive copies are cleared, parents and travelling family members
- *       renamed, the portal account retired, its sessions deleted, and the
- *       stored documents removed from disk and deactivated. The student id,
- *       country, programme and finance rows stay, so the totals reports keep
- *       adding up.</li>
+ *   <li><b>student-records</b>: a student who has been in a terminal study
+ *       status ({@code student-terminal-statuses}, codes of the
+ *       {@code study-status} list) for more than {@code student-years} is
+ *       anonymised: identifying fields on the student row and its archive
+ *       copies are cleared, parents and travelling family members renamed,
+ *       the portal account retired, its sessions deleted, the student's own
+ *       words in change requests, info-request answers and inquiries cleared,
+ *       and the stored documents, their earlier versions and the photo removed
+ *       from disk. The student id, country, programme and finance rows stay,
+ *       so the totals reports keep adding up.
+ *       <p>PRT-01: "for more than N years" is measured from the date the
+ *       status was set ({@code MOHECORE.STUDENT_STUDY_STATUS_CHANGE}, V150),
+ *       not from {@code STUDENT_MIDATE}, the date the record was entered. A
+ *       student with no recorded date, or whose recorded status is not the
+ *       current one, is never a candidate: deletion cannot be undone, so no
+ *       evidence means no anonymisation.</li>
  *   <li><b>audit</b>: handled by {@code AuditRetentionJob} (O-35); listed in
  *       the report so one document describes the whole schedule.</li>
  * </ul>
@@ -66,6 +76,7 @@ public class DataRetentionJob {
     private final ObjectMapper objectMapper;
     private final SecurityEventLog securityEventLog;
     private final StudentFileStorageService fileStorage;
+    private final TransactionTemplate perStudentTx;
     private final boolean enabled;
     private final boolean dryRunByDefault;
     private final int sessionsDays;
@@ -75,6 +86,7 @@ public class DataRetentionJob {
 
     public DataRetentionJob(JdbcTemplate jdbc, ObjectMapper objectMapper, SecurityEventLog securityEventLog,
                             StudentFileStorageService fileStorage,
+                            PlatformTransactionManager transactionManager,
                             @Value("${mohe.retention.enabled:true}") boolean enabled,
                             @Value("${mohe.retention.dry-run:true}") boolean dryRunByDefault,
                             @Value("${mohe.retention.sessions-days:90}") int sessionsDays,
@@ -85,6 +97,7 @@ public class DataRetentionJob {
         this.objectMapper = objectMapper;
         this.securityEventLog = securityEventLog;
         this.fileStorage = fileStorage;
+        this.perStudentTx = new TransactionTemplate(transactionManager);
         this.enabled = enabled;
         this.dryRunByDefault = dryRunByDefault;
         this.sessionsDays = Math.max(1, sessionsDays);
@@ -122,15 +135,22 @@ public class DataRetentionJob {
         return TenantContext.runAsSystem(() -> run(now, true));
     }
 
-    /** The real thing, whatever the property says; for the audited admin endpoint. */
-    @Transactional
+    /**
+     * The real thing, whatever the property says; for the audited admin endpoint.
+     *
+     * <p>PRT-09: neither this nor {@link #run} is {@code @Transactional} any more. A
+     * transaction opened here borrowed its connection before {@code runAsSystem} ran, so
+     * the elevation stamped nothing (see {@code StudentUserAuthService.login}); and one
+     * transaction around every student meant a failure part-way through a student was
+     * caught, logged, and that student's half-done updates committed with everyone
+     * else's. Each student is now its own transaction, opened inside the elevation.
+     */
     public Report apply(LocalDateTime now) {
         // runAsSystem: applying the schedule touches every country; the controller behind it is
         // SYSTEM_ADMIN-only and the run is audited.
         return TenantContext.runAsSystem(() -> run(now, false));
     }
 
-    @Transactional
     public Report run(LocalDateTime now, boolean dryRun) {
         List<ClassResult> results = new ArrayList<>();
         LocalDateTime sessionCutoff = now.minusDays(sessionsDays);
@@ -175,8 +195,19 @@ public class DataRetentionJob {
         return new ClassResult("staff-sessions", rule, candidates, deleted, null);
     }
 
+    /** Where V150 records when each student's study status was last set. */
+    static final String STATUS_CHANGE_TABLE = "MOHECORE.STUDENT_STUDY_STATUS_CHANGE";
+
     /**
-     * Students in a terminal status, untouched for the period, not yet anonymised.
+     * Students who entered their terminal status before {@code cutoff}, not yet anonymised.
+     *
+     * <p>PRT-01: the date is when the status was set, from {@value #STATUS_CHANGE_TABLE}
+     * (kept by a trigger on STUDENT_DATA, backfilled conservatively from the quarterly
+     * archive; see V150). It used to be {@code STUDENT_MIDATE}, the date the record was
+     * entered, so a student who joined eight years ago and withdrew yesterday was
+     * anonymised — files deleted — on the next apply. The join requires the recorded
+     * status to be the current one; a student with no row, or a row that disagrees, is
+     * left out. Without the table (V150 not applied) nobody is a candidate.
      *
      * <p>Deleted students are included on purpose (FIX-PLAN P5-11): a delete is a soft delete,
      * so their personal data is still in the table, and retention exists to anonymise it by
@@ -184,6 +215,11 @@ public class DataRetentionJob {
      */
     List<Integer> studentCandidates(LocalDateTime cutoff) {
         if (terminalStatuses.isEmpty()) return List.of();
+        Integer table = jdbc.queryForObject("SELECT OBJECT_ID(N'" + STATUS_CHANGE_TABLE + "', N'U')", Integer.class);
+        if (table == null) {
+            log.warn("Data retention: {} is missing (V150 not applied); no student is a candidate", STATUS_CHANGE_TABLE);
+            return List.of();
+        }
         String marks = String.join(",", java.util.Collections.nCopies(terminalStatuses.size(), "?"));
         List<Object> args = new ArrayList<>(terminalStatuses);
         args.add(cutoff);
@@ -191,14 +227,16 @@ public class DataRetentionJob {
         return jdbc.queryForList("""
                 SELECT d.STUDENT_ID FROM MOHECORE.STUDENT_DATA d
                 JOIN MOHECORE.STUDENT_STUDY_STATUS s ON s.STUDENT_STUDY_STATUS_ID = d.STUDENT_STUDY_STATUS_ID
-                WHERE s.CODE IN (%s) AND d.STUDENT_MIDATE IS NOT NULL AND d.STUDENT_MIDATE < ?
+                JOIN %s c ON c.STUDENT_ID = d.STUDENT_ID
+                       AND c.STUDENT_STUDY_STATUS_ID = d.STUDENT_STUDY_STATUS_ID
+                WHERE s.CODE IN (%s) AND c.CHANGED_AT < ?
                   AND (d.STUDENT_NAME IS NULL OR d.STUDENT_NAME NOT LIKE ?)
                 ORDER BY d.STUDENT_ID
-                """.formatted(marks), Integer.class, args.toArray());
+                """.formatted(STATUS_CHANGE_TABLE, marks), Integer.class, args.toArray());
     }
 
     private ClassResult studentRecords(boolean dryRun, List<Integer> students, LocalDateTime cutoff) {
-        String rule = "status in " + terminalStatuses + " and last modified before " + cutoff.toLocalDate();
+        String rule = "status in " + terminalStatuses + " since before " + cutoff.toLocalDate();
         if (dryRun || students.isEmpty()) {
             return new ClassResult("student-records", rule, students.size(), 0, null);
         }
@@ -206,7 +244,7 @@ public class DataRetentionJob {
         List<String> notes = new ArrayList<>();
         for (Integer id : students) {
             try {
-                anonymise(id, notes);
+                anonymiseInOwnTransaction(id, notes);
                 done++;
             } catch (RuntimeException e) {
                 log.error("Anonymising student {} failed: {}", id, e.getMessage());
@@ -216,19 +254,51 @@ public class DataRetentionJob {
         return new ClassResult("student-records", rule, students.size(), done, notes.isEmpty() ? null : String.join("; ", notes));
     }
 
-    private void anonymise(int id, List<String> notes) {
+    /**
+     * PRT-09: one student, one transaction. The rows are all changed or none are, and the
+     * files are deleted only once that transaction has committed, so a rollback never
+     * leaves a record whose files are already gone. (Joined to a caller's transaction, as
+     * in the integration test, the files wait for that one's commit.)
+     */
+    void anonymiseInOwnTransaction(int id, List<String> notes) {
+        perStudentTx.executeWithoutResult(status -> {
+            List<String> files = anonymise(id);
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    deleteFiles(id, files, notes);
+                }
+            });
+        });
+    }
+
+    /**
+     * Clears what identifies student {@code id}; returns the stored paths of their files
+     * (documents, earlier document versions, photo) for deletion after the commit.
+     */
+    private List<String> anonymise(int id) {
         String label = ANONYMISED_PREFIX + id;
+        // Read before the rows below are rewritten.
+        List<String> files = new ArrayList<>(jdbc.queryForList(
+                "SELECT FILE_PATH FROM MOHECORE.STUDENT_DOCUMENTS WHERE STUDENT_ID = ?", String.class, id));
+        // PRT-02: every earlier version of a document is a file of its own, and so is the photo.
+        files.addAll(jdbc.queryForList(
+                "SELECT FILE_PATH FROM MOHECORE.STUDENT_DOCUMENT_HISTORY WHERE STUDENT_ID = ?", String.class, id));
+        files.addAll(jdbc.queryForList(
+                "SELECT PICTURE_PATH FROM MOHECORE.STUDENT_DATA WHERE STUDENT_ID = ?", String.class, id));
+
         jdbc.update("""
                 UPDATE MOHECORE.STUDENT_DATA SET STUDENT_NAME = ?, FirstName = NULL, LastName = NULL, STUDENT_EMAIL = NULL,
                   STUDENT_CELLPHONE = NULL, NATIONAL_ID = NULL, STUDENT_PASSPORT_NUMBER = NULL, STUDENT_PASSPORT_ISSUE_DATE = NULL,
                   STUDENT_PASSPORT_EXPIRE_DATE = NULL, STUDENT_BIRTHDATE = NULL, STUDENT_BIRTHDATE_PLACE = NULL,
-                  STUDENT_NOTE_1 = NULL, STUDENT_NOTE_2 = NULL
+                  STUDENT_NOTE_1 = NULL, STUDENT_NOTE_2 = NULL, PICTURE_PATH = NULL
                 WHERE STUDENT_ID = ?
                 """, label, id);
         jdbc.update("""
                 UPDATE MOHECORE.STUDENT_DATA_ARCH SET STUDENT_NAME = ?, STUDENT_EMAIL = NULL, STUDENT_CELLPHONE = NULL,
                   STUDENT_PASSPORT_NUMBER = NULL, STUDENT_PASSPORT_ISSUE_DATE = NULL, STUDENT_PASSPORT_EXPIRE_DATE = NULL,
-                  STUDENT_BIRTHDATE = NULL, STUDENT_BIRTHDATE_PLACE = NULL, STUDENT_NOTE_1 = NULL, STUDENT_NOTE_2 = NULL
+                  STUDENT_BIRTHDATE = NULL, STUDENT_BIRTHDATE_PLACE = NULL, STUDENT_NOTE_1 = NULL, STUDENT_NOTE_2 = NULL,
+                  PICTURE_PATH = NULL, PROFILE_SNAPSHOT = NULL
                 WHERE STUDENT_ID = ?
                 """, label, id);
         jdbc.update("UPDATE MOHECORE.STUDENT_PARENT SET PARENT_NAME = N'Anonymised', NATIONAL_ID = NULL, PHONE = NULL, ADDRESS = NULL, NOTES = NULL WHERE STUDENT_ID = ?", id);
@@ -240,6 +310,24 @@ public class DataRetentionJob {
                 """, id);
         jdbc.update("UPDATE MOHECORE.STUDENT_DEATH_CASE SET NOTES = NULL WHERE STUDENT_ID = ?", id);
 
+        // PRT-02: the student's own words elsewhere. A change request holds the name,
+        // passport or phone as it was and as they asked for it; an info-request answer and
+        // its staged data are their record again; an inquiry is free text in their words
+        // and the reply to it. new_value and Title are NOT NULL.
+        jdbc.update("""
+                UPDATE STUDENTCORE.student_change_requests SET old_value = NULL, new_value = N'Anonymised',
+                  applied_value = NULL, rejection_reason = NULL, employee_comment = NULL
+                WHERE student_id = ?
+                """, id);
+        jdbc.update("""
+                UPDATE s SET s.StudentDataJson = NULL, s.StudentFinanceJson = NULL
+                FROM MOHECORE.StudentInfoRequestStaging s
+                JOIN MOHECORE.StudentInfoRequest r ON r.Id = s.RequestId
+                WHERE r.StudentId = ?
+                """, id);
+        jdbc.update("UPDATE MOHECORE.StudentInfoRequest SET ResponseText = NULL, RejectionReason = NULL WHERE StudentId = ?", id);
+        jdbc.update("UPDATE MOHECORE.StudentInquiry SET Title = N'Anonymised', Description = NULL, Response = NULL WHERE StudentId = ?", id);
+
         // The portal account: retired, unusable, and its sessions gone.
         jdbc.update("""
                 UPDATE STUDENTCORE.student_users SET username = ?, password_hash = '!', status = ?,
@@ -248,21 +336,26 @@ public class DataRetentionJob {
         jdbc.update("DELETE FROM STUDENTCORE.student_sessions WHERE student_id = ?", id);
         jdbc.update("DELETE FROM MOHECORE.StudentPortalSession WHERE StudentId = ?", id);
 
-        // Documents: the files go, the rows stay deactivated so the history is honest.
-        for (Map<String, Object> doc : jdbc.queryForList(
-                "SELECT DOCUMENT_ID, FILE_PATH FROM MOHECORE.STUDENT_DOCUMENTS WHERE STUDENT_ID = ?", id)) {
-            Object path = doc.get("FILE_PATH");
-            if (path != null && !path.toString().isBlank()) {
-                try {
-                    Path stored = fileStorage.resolveStored(path.toString());
-                    Files.deleteIfExists(stored);
-                } catch (Exception e) {
-                    notes.add("document " + doc.get("DOCUMENT_ID") + " file not removed: " + e.getMessage());
-                }
+        // Documents: the files go after the commit, the rows stay deactivated so the history is honest.
+        jdbc.update("UPDATE MOHECORE.STUDENT_DOCUMENTS SET IS_ACTIVE = 0, ORIGINAL_FILENAME = NULL, FILE_PATH = 'retired' WHERE STUDENT_ID = ?", id);
+        jdbc.update("UPDATE MOHECORE.STUDENT_DOCUMENT_HISTORY SET ORIGINAL_FILENAME = NULL, FILE_PATH = 'retired' WHERE STUDENT_ID = ?", id);
+        return files;
+    }
+
+    /** Deletes an anonymised student's files; a file that will not go is noted, not fatal. */
+    private void deleteFiles(int id, List<String> files, List<String> notes) {
+        for (String path : files) {
+            if (path == null || path.isBlank() || RETIRED_PATH.equals(path)) continue;
+            try {
+                Files.deleteIfExists(fileStorage.resolveStored(path));
+            } catch (Exception e) {
+                log.warn("Retention: a file of student {} was not removed: {}", id, e.getMessage());
+                notes.add("student " + id + ": a file was not removed: " + e.getMessage());
             }
         }
-        jdbc.update("UPDATE MOHECORE.STUDENT_DOCUMENTS SET IS_ACTIVE = 0, ORIGINAL_FILENAME = NULL, FILE_PATH = 'retired' WHERE STUDENT_ID = ?", id);
     }
+
+    private static final String RETIRED_PATH = "retired";
 
     /** Writes the report as JSON under {@code dir}; returns the file, or null when it could not be written. */
     public Path write(Report report, Path dir) {

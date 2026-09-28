@@ -110,11 +110,87 @@ public final class FileUploadValidator {
      * inline as {@code image/svg+xml} from the application's own origin, a
      * {@code <script>} or an {@code onload=} runs with that origin's cookies and
      * storage. {@code <!ENTITY} is refused as well — an external entity is the
-     * XML parser's way of reading a file. Case-insensitive; a logo has no
-     * legitimate use for any of these.
+     * XML parser's way of reading a file. A logo has no legitimate use for any
+     * of these.
+     *
+     * <p>PRT-13: matched against the text after character references are decoded
+     * ({@link #decodeSvgReferences}) and lower-cased. The old pattern ran on the raw
+     * bytes, so {@code href="javascript&#58;..."} — which the XML parser turns into
+     * {@code javascript:} — passed, as did {@code <svg/onload=...>} (no space before
+     * the handler) and elements that load or embed a document ({@code foreignObject},
+     * {@code iframe}, {@code srcdoc}...).
      */
     private static final java.util.regex.Pattern SVG_ACTIVE_CONTENT = java.util.regex.Pattern.compile(
-            "<script|\\son[a-z]+\\s*=|javascript:|<!entity", java.util.regex.Pattern.CASE_INSENSITIVE);
+            "<\\s*(?:[a-z0-9_.-]+:)?(?:script|foreignobject|iframe|frame|frameset|embed|object|applet|handler|listener|base|meta|link)\\b"
+                    + "|[\\s/\"'](?:[a-z0-9_.-]+:)?on[a-z]+\\s*="
+                    + "|<!entity|<!doctype[^>]*\\[|<\\?xml-stylesheet"
+                    + "|\\bsrcdoc\\s*=|\\bformaction\\s*=|@import|expression\\s*\\(");
+
+    /**
+     * A URL scheme that runs or embeds a document, checked with every character up to
+     * the space removed as well, because a browser drops tabs and newlines inside a URL
+     * ({@code java&#9;script:}). {@code data:} is allowed only for an embedded PNG, JPEG or
+     * GIF, which is how drawing programs store a raster inside an SVG.
+     */
+    private static final java.util.regex.Pattern SVG_ACTIVE_SCHEME = java.util.regex.Pattern.compile(
+            "(?:javascript|vbscript|livescript|mhtml):|data:(?!image/(?:png|jpe?g|gif)[;,])");
+
+    /** The five references XML defines without a DTD; any other named one is refused. */
+    private static final java.util.Map<String, String> XML_ENTITIES = java.util.Map.of(
+            "amp", "&", "lt", "<", "gt", ">", "quot", "\"", "apos", "'");
+    private static final java.util.regex.Pattern CHARACTER_REFERENCE = java.util.regex.Pattern.compile(
+            "&(#[xX][0-9a-fA-F]+|#[0-9]+|[a-zA-Z][a-zA-Z0-9]*);?");
+
+    /**
+     * PRT-13: {@code text} with its character references resolved — numeric ones and the
+     * five XML names, repeated until nothing changes so {@code &amp;#58;} is caught too.
+     * A named reference XML does not define (HTML's {@code &colon;}, {@code &Tab;}) makes
+     * the result null: a logo has no use for one, and it is the classic way to hide a
+     * scheme from a filter.
+     */
+    static String decodeSvgReferences(String text) {
+        String current = text;
+        for (int round = 0; round < 5; round++) {
+            java.util.regex.Matcher m = CHARACTER_REFERENCE.matcher(current);
+            StringBuilder out = new StringBuilder();
+            boolean changed = false;
+            while (m.find()) {
+                String ref = m.group(1);
+                String replacement;
+                if (ref.startsWith("#")) {
+                    int codePoint;
+                    try {
+                        codePoint = ref.length() > 1 && (ref.charAt(1) == 'x' || ref.charAt(1) == 'X')
+                                ? Integer.parseInt(ref.substring(2), 16) : Integer.parseInt(ref.substring(1));
+                    } catch (NumberFormatException tooLong) {
+                        return null;
+                    }
+                    if (!Character.isValidCodePoint(codePoint)) return null;
+                    replacement = new String(Character.toChars(codePoint));
+                } else {
+                    replacement = XML_ENTITIES.get(ref);
+                    if (replacement == null) return null;
+                }
+                m.appendReplacement(out, java.util.regex.Matcher.quoteReplacement(replacement));
+                changed = true;
+            }
+            m.appendTail(out);
+            if (!changed) return current;
+            current = out.toString();
+        }
+        return current;
+    }
+
+    /** True when the SVG's text, decoded, contains anything {@link #SVG_ACTIVE_CONTENT} or {@link #SVG_ACTIVE_SCHEME} names. */
+    static boolean hasActiveSvgContent(String text) {
+        String decoded = decodeSvgReferences(text);
+        if (decoded == null) return true;
+        String lower = decoded.toLowerCase(java.util.Locale.ROOT);
+        if (SVG_ACTIVE_CONTENT.matcher(lower).find()) return true;
+        StringBuilder compact = new StringBuilder(lower.length());
+        lower.codePoints().filter(c -> c > 0x20 && c != 0x7F && c != 0xA0).forEach(compact::appendCodePoint);
+        return SVG_ACTIVE_SCHEME.matcher(compact).find();
+    }
 
     /**
      * Validates a system-logo upload and returns the extension the file must be
@@ -200,7 +276,7 @@ public final class FileUploadValidator {
         if (!s.regionMatches(true, 0, "<svg", 0, 4)) {
             return false;
         }
-        if (SVG_ACTIVE_CONTENT.matcher(text).find()) {
+        if (hasActiveSvgContent(text)) {
             throw new IllegalArgumentException("SVG contains script or event handlers. Upload rejected.");
         }
         return true;

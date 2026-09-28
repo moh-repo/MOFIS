@@ -138,6 +138,10 @@ public class StudentPortalMeController {
     @Autowired
     private MessageSource messageSource;
 
+    /** PRT-14: an upload's rows are written in one transaction, and its file removed if they fail. */
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
     /**
      * Documents a student may hold before the portal refuses another upload
      * ({@code mohe.portal.upload.max-documents}, default 20). There was no ceiling:
@@ -432,6 +436,10 @@ public class StudentPortalMeController {
             headers.setContentLength(content.length);
             return ResponseEntity.ok().headers(headers).body(content);
         } catch (Exception e) {
+            // PRT-11: a file that will not decrypt is tampering or a lost key; it was answered
+            // 500 with nothing in the log to find it by. The id, never the path or the bytes.
+            log.error("Portal travel-ticket download failed: document {} could not be read ({})",
+                    doc.getDocumentId(), e.getClass().getSimpleName(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -477,6 +485,9 @@ public class StudentPortalMeController {
             headers.setContentLength(content.length);
             return ResponseEntity.ok().headers(headers).body(content);
         } catch (Exception e) {
+            // PRT-11: see getMyTravelTicketDocument.
+            log.error("Portal document download failed: document {} could not be read ({})",
+                    doc.getDocumentId(), e.getClass().getSimpleName(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -503,21 +514,12 @@ public class StudentPortalMeController {
         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
         String safeName = Instant.now().toEpochMilli() + "_" + originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
         Path targetPath = studentDir.resolve(safeName);
-        fileEncryptionService.encryptMultipartFile(file, targetPath);
-        String relativePath = studentFileStorage.relativise(targetPath);
-        byte[] plaintext = fileEncryptionService.readDecrypted(targetPath);
-        StudentDocument doc = new StudentDocument(
-                studentId,
-                documentName != null && !documentName.isBlank() ? documentName : originalFilename,
-                type,
-                relativePath,
-                originalFilename,
-                (long) plaintext.length
-        );
-        doc.setFileHash(fileEncryptionService.sha256(plaintext));
-        doc.setIsEncrypted(true);
-        doc.setVersionNo(1);
-        studentDocumentService.saveDocument(doc);
+        String name = documentName != null && !documentName.isBlank() ? documentName : originalFilename;
+        StudentDocument doc = storeThenRecord(targetPath, () -> {
+            StudentDocument d = documentFor(studentId, name, type, file, targetPath);
+            studentDocumentService.saveDocument(d);
+            return d;
+        }, file);
         return ResponseEntity.ok(Map.of("id", doc.getDocumentId(), "message", msg("portal.upload.uploaded")));
     }
 
@@ -614,41 +616,88 @@ public class StudentPortalMeController {
             FileUploadValidator.requireMatchingExtension(file);
             requireDocumentCapacity(studentId);
         }
-        req.setResponseText(responseText != null ? responseText : "");
-        req.setResponseAt(Instant.now());
-        req.setStatus(InfoRequestStatus.RESPONDED);
-        req.setReviewStatus(InfoReviewStatus.PENDING_REVIEW);
-        req.setRejectionReason(null);
+        // PRT-05: the proposed data is checked against the request's kind before anything
+        // is written; a field the request may not change is a 400 naming it.
+        StudentInfoRequestService.PortalProposal proposal;
+        try {
+            proposal = studentInfoRequestService.checkPortalProposal(req, proposedStudentDataJson, proposedFinanceDataJson);
+        } catch (com.dilaw.mohe.exception.LocalizedStatusException refused) {
+            return ResponseEntity.status(refused.getStatusCode())
+                    .body(Map.of("error", msg(refused.messageKey(), refused.messageArgs())));
+        }
+        Path targetPath = null;
+        String originalFilename = null;
         if (hasFile) {
             Path studentDir = studentFileStorage.studentDir(studentId, studyCountryIn(studentId));
-            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
+            originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
             String safeName = "info_req_" + id + "_" + Instant.now().toEpochMilli() + "_" + originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
-            Path targetPath = studentDir.resolve(safeName);
-            fileEncryptionService.encryptMultipartFile(file, targetPath);
-            String relativePath = studentFileStorage.relativise(targetPath);
-            byte[] plaintext = fileEncryptionService.readDecrypted(targetPath);
-            StudentDocument doc = new StudentDocument(
-                    studentId,
-                    "Info request response: " + req.getTitle(),
-                    "INFO_REQUEST_RESPONSE",
-                    relativePath,
-                    originalFilename,
-                    (long) plaintext.length
-            );
-            doc.setFileHash(fileEncryptionService.sha256(plaintext));
-            doc.setIsEncrypted(true);
-            doc.setVersionNo(1);
-            studentDocumentService.saveDocument(doc);
-            req.setResponseDocumentId(doc.getDocumentId());
+            targetPath = studentDir.resolve(safeName);
         }
-        studentInfoRequestRepository.save(req);
-        // Save proposed data to staging for admin review (workflow)
-        if ((proposedStudentDataJson != null && !proposedStudentDataJson.isBlank())
-                || (proposedFinanceDataJson != null && !proposedFinanceDataJson.isBlank())) {
-            studentInfoRequestService.saveStaging(id,
-                    proposedStudentDataJson != null ? proposedStudentDataJson : null,
-                    proposedFinanceDataJson != null ? proposedFinanceDataJson : null);
+        Path written = targetPath;
+        String docFilename = originalFilename;
+        // PRT-14: the document row, the answer and the staged data in one transaction; the
+        // row used to be saved, then the request, then the staging, each on its own, so a
+        // failure between them left an answer without its data or a document nobody named.
+        StudentInfoRequest saved = storeThenRecord(written, () -> {
+            req.setResponseText(responseText != null ? responseText : "");
+            req.setResponseAt(Instant.now());
+            req.setStatus(InfoRequestStatus.RESPONDED);
+            req.setReviewStatus(InfoReviewStatus.PENDING_REVIEW);
+            req.setRejectionReason(null);
+            if (written != null) {
+                StudentDocument doc = documentFor(studentId, "Info request response: " + req.getTitle(),
+                        "INFO_REQUEST_RESPONSE", docFilename, written);
+                studentDocumentService.saveDocument(doc);
+                req.setResponseDocumentId(doc.getDocumentId());
+            }
+            StudentInfoRequest r = studentInfoRequestRepository.save(req);
+            // Save proposed data to staging for admin review (workflow)
+            if (!proposal.isEmpty()) {
+                studentInfoRequestService.saveStaging(id, proposal.studentDataJson(), proposal.studentFinanceJson());
+            }
+            return r;
+        }, hasFile ? file : null);
+        return ResponseEntity.ok(saved);
+    }
+
+    /**
+     * PRT-14: writes the upload (when there is one) to {@code target}, then runs
+     * {@code record} in one transaction. If the write, the read-back or any of the database
+     * work fails, the file is removed: it used to be written first and left on disk,
+     * counted by nothing and named by no row, whenever the insert after it failed.
+     */
+    private <T> T storeThenRecord(Path target, java.util.function.Supplier<T> record, MultipartFile upload) throws IOException {
+        try {
+            if (upload != null && target != null) {
+                fileEncryptionService.encryptMultipartFile(upload, target);
+            }
+            return new org.springframework.transaction.support.TransactionTemplate(transactionManager)
+                    .execute(status -> record.get());
+        } catch (IOException | RuntimeException | Error e) {
+            if (target != null) {
+                try {
+                    Files.deleteIfExists(target);
+                } catch (IOException cleanup) {
+                    log.warn("Portal upload: the file of a failed save could not be removed: {}", cleanup.getMessage());
+                }
+            }
+            throw e;
         }
-        return ResponseEntity.ok(req);
+    }
+
+    /** The document row for a file already written (encrypted) at {@code stored}. */
+    private StudentDocument documentFor(int studentId, String name, String type, MultipartFile file, Path stored) {
+        return documentFor(studentId, name, type,
+                file.getOriginalFilename() != null ? file.getOriginalFilename() : "file", stored);
+    }
+
+    private StudentDocument documentFor(int studentId, String name, String type, String originalFilename, Path stored) {
+        byte[] plaintext = fileEncryptionService.readDecrypted(stored);
+        StudentDocument doc = new StudentDocument(
+                studentId, name, type, studentFileStorage.relativise(stored), originalFilename, (long) plaintext.length);
+        doc.setFileHash(fileEncryptionService.sha256(plaintext));
+        doc.setIsEncrypted(true);
+        doc.setVersionNo(1);
+        return doc;
     }
 }

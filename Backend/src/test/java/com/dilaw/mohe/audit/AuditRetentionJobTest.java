@@ -38,6 +38,7 @@ class AuditRetentionJobTest {
 
     @Autowired private AuditRetentionJob job;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private com.dilaw.mohe.service.FileEncryptionService fileEncryption;
 
     @TempDir Path archive;
 
@@ -94,10 +95,10 @@ class AuditRetentionJobTest {
         try (Stream<Path> s = Files.list(archive)) { files = s.toList(); }
         assertThat(files).hasSize(4);
         String userActions = files.stream().filter(f -> f.getFileName().toString().startsWith("UserActions-"))
-                .map(AuditRetentionJobTest::readGzip).collect(Collectors.joining());
+                .map(this::readGzip).collect(Collectors.joining());
         assertThat(userActions).contains("RETENTION_PROBE_OLD").doesNotContain("RETENTION_PROBE_KEPT");
         String trail = files.stream().filter(f -> f.getFileName().toString().startsWith("AuditTrail-"))
-                .map(AuditRetentionJobTest::readGzip).collect(Collectors.joining());
+                .map(this::readGzip).collect(Collectors.joining());
         assertThat(trail).contains("RetentionProbe").contains("probe");
     }
 
@@ -110,8 +111,12 @@ class AuditRetentionJobTest {
         return n == null ? 0 : n;
     }
 
-    private static String readGzip(Path file) {
-        try (BufferedReader r = new BufferedReader(new InputStreamReader(new GZIPInputStream(Files.newInputStream(file)), StandardCharsets.UTF_8))) {
+    /** PRT-08: a finished archive is encrypted (.enc) with the document key, then gzip inside. */
+    private String readGzip(Path file) {
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(new GZIPInputStream(
+                file.getFileName().toString().endsWith(".enc")
+                        ? new java.io.ByteArrayInputStream(fileEncryption.readDecrypted(file))
+                        : Files.newInputStream(file)), StandardCharsets.UTF_8))) {
             return r.lines().collect(Collectors.joining("\n"));
         } catch (java.io.IOException e) {
             throw new java.io.UncheckedIOException(e);

@@ -91,6 +91,14 @@ public interface StudentSessionRepository extends JpaRepository<StudentSession, 
     @Query("DELETE FROM StudentSession s WHERE s.studentUserId = :studentUserId")
     void deleteByStudentUserId(Integer studentUserId);
 
+    /**
+     * Every session of the student (PRT-03): a session pins the study country it was opened
+     * under (V036), so a country change ends them and the next sign-in pins the new one.
+     */
+    @Modifying
+    @Query("DELETE FROM StudentSession s WHERE s.studentId = :studentId")
+    void deleteByStudentId(Integer studentId);
+
     /** Every session of the account except the one holding {@code keepTokenHash}. */
     @Modifying
     @Query("DELETE FROM StudentSession s WHERE s.studentUserId = :studentUserId AND s.token <> :keepTokenHash")
