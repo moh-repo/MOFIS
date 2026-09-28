@@ -45,7 +45,7 @@ public interface CustomFilterReportRepository extends JpaRepository<CustomFilter
             SELECT
                 CAST(sd.STUDENT_ID AS BIGINT) AS student_id,
                 sd.STUDENT_NAME AS student_name,
-                sd.STUDENT_PASSPORT_NUMBER AS national_number,
+                sd.STUDENT_PASSPORT_NUMBER AS passport_number,
                 sui.STUDY_UNIVERSITY_IN_NAME AS university_name,
                 COALESCE(NULLIF(sui.STUDY_UNIVERSITY_IN_NAME_EN, N''), sui.STUDY_UNIVERSITY_IN_NAME) AS university_name_en,
                 sm.STUDENT_MAJOR_NAME AS major_name,
@@ -101,7 +101,7 @@ public interface CustomFilterReportRepository extends JpaRepository<CustomFilter
             SELECT
                 CAST(sd.STUDENT_ID AS BIGINT) AS student_id,
                 sd.STUDENT_NAME AS student_name,
-                sd.STUDENT_PASSPORT_NUMBER AS national_number,
+                sd.STUDENT_PASSPORT_NUMBER AS passport_number,
                 sui.STUDY_UNIVERSITY_IN_NAME AS university_name,
                 COALESCE(NULLIF(sui.STUDY_UNIVERSITY_IN_NAME_EN, N''), sui.STUDY_UNIVERSITY_IN_NAME) AS university_name_en,
                 sm.STUDENT_MAJOR_NAME AS major_name,
@@ -159,7 +159,7 @@ public interface CustomFilterReportRepository extends JpaRepository<CustomFilter
             SELECT
                 CAST(sd.STUDENT_ID AS BIGINT) AS student_id,
                 sd.STUDENT_NAME AS student_name,
-                sd.STUDENT_PASSPORT_NUMBER AS national_number,
+                sd.STUDENT_PASSPORT_NUMBER AS passport_number,
                 sui.STUDY_UNIVERSITY_IN_NAME AS university_name,
                 COALESCE(NULLIF(sui.STUDY_UNIVERSITY_IN_NAME_EN, N''), sui.STUDY_UNIVERSITY_IN_NAME) AS university_name_en,
                 sm.STUDENT_MAJOR_NAME AS major_name,
@@ -217,7 +217,7 @@ public interface CustomFilterReportRepository extends JpaRepository<CustomFilter
             SELECT
                 CAST(sd.STUDENT_ID AS BIGINT) AS student_id,
                 sd.STUDENT_NAME AS student_name,
-                sd.STUDENT_PASSPORT_NUMBER AS national_number,
+                sd.STUDENT_PASSPORT_NUMBER AS passport_number,
                 sui.STUDY_UNIVERSITY_IN_NAME AS university_name,
                 COALESCE(NULLIF(sui.STUDY_UNIVERSITY_IN_NAME_EN, N''), sui.STUDY_UNIVERSITY_IN_NAME) AS university_name_en,
                 sm.STUDENT_MAJOR_NAME AS major_name,
@@ -275,7 +275,7 @@ public interface CustomFilterReportRepository extends JpaRepository<CustomFilter
             SELECT
                 CAST(sd.STUDENT_ID AS BIGINT) AS student_id,
                 sd.STUDENT_NAME AS student_name,
-                sd.STUDENT_PASSPORT_NUMBER AS national_number,
+                sd.STUDENT_PASSPORT_NUMBER AS passport_number,
                 sui.STUDY_UNIVERSITY_IN_NAME AS university_name,
                 COALESCE(NULLIF(sui.STUDY_UNIVERSITY_IN_NAME_EN, N''), sui.STUDY_UNIVERSITY_IN_NAME) AS university_name_en,
                 sm.STUDENT_MAJOR_NAME AS major_name,
@@ -333,7 +333,7 @@ public interface CustomFilterReportRepository extends JpaRepository<CustomFilter
             SELECT
                 CAST(sd.STUDENT_ID AS BIGINT) AS student_id,
                 sd.STUDENT_NAME AS student_name,
-                sd.STUDENT_PASSPORT_NUMBER AS national_number,
+                sd.STUDENT_PASSPORT_NUMBER AS passport_number,
                 sui.STUDY_UNIVERSITY_IN_NAME AS university_name,
                 COALESCE(NULLIF(sui.STUDY_UNIVERSITY_IN_NAME_EN, N''), sui.STUDY_UNIVERSITY_IN_NAME) AS university_name_en,
                 sm.STUDENT_MAJOR_NAME AS major_name,

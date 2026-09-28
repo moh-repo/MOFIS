@@ -46,8 +46,9 @@ public class StudentExtensionStatisticsReportController {
     @GetMapping("/statistics")
     public ResponseEntity<List<StudentExtensionStatisticsDto>> statistics(
             @RequestParam(required = false) Integer countryId,
-            @RequestParam(required = false) List<Integer> countryIds) {
-        return ResponseEntity.ok(reportService.statistics(countryId, countryIds));
+            @RequestParam(required = false) List<Integer> countryIds,
+            @RequestParam(value = "year", required = false) Integer year) {
+        return ResponseEntity.ok(reportService.statistics(countryId, countryIds, year));
     }
 
     @GetMapping("/trends")
@@ -65,7 +66,9 @@ public class StudentExtensionStatisticsReportController {
             @RequestParam(value = "extensionType", required = false) String extensionType,
             @RequestParam(value = "year", required = false) Integer year,
             @RequestParam(defaultValue = "ar") String lang) {
-        List<StudentExtensionStatisticsDto> items = reportService.statisticsFiltered(countryId, countryIds, extensionType);
+        // RPT-06: the year the page filters by reaches the export; it used to be accepted and dropped.
+        List<StudentExtensionStatisticsDto> items =
+                reportService.statisticsFiltered(countryId, countryIds, extensionType, year);
         Map<String, Object> jasperParams = reportParamBuilder.build("STUDENT_EXTENSION", lang);
         return reportExports.render("student-extension-statistics", jasperParams, items, "student-extension-statistics", disposition);
     }

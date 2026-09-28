@@ -217,6 +217,16 @@ SELECT 13, CASE WHEN ep.minor_id = 0 THEN 0 ELSE 1 END, SCHEMA_NAME(o.schema_id)
   FROM sys.extended_properties ep JOIN sys.objects o ON o.object_id = ep.major_id
  WHERE ep.class = 1 AND o.type IN ('U', 'V') AND o.is_ms_shipped = 0;
 
+/* DB-01: Flyway's own history table is Flyway's to create. Shipped empty in the
+   baseline, it made a database built from this file look un-migrated with a history
+   table already present, so baseline-on-migrate did not apply and Flyway ran the
+   whole run list against a schema that already had it. Left out, Flyway creates it
+   and baselines (spring.flyway.baseline-version) like on any hand-built database.
+   Every row about it - table, key, index, check, trigger, property - is keyed
+   dbo.flyway_schema_history[.<name>]. */
+DELETE FROM @out
+ WHERE ord = N'dbo.flyway_schema_history' OR ord LIKE N'dbo.flyway[_]schema[_]history.%';
+
 SELECT ddl + @nl + @mark AS ddl FROM @out ORDER BY section, sub, ord;
 """
 

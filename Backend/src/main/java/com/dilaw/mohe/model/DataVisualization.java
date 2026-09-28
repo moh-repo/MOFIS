@@ -44,5 +44,13 @@ public class DataVisualization {
     
     @Column(name = "sort_order")
     private Integer sortOrder;
+
+    /**
+     * The study country the slice was counted in (V030 / V109 partition the view by it).
+     * RPT-05: the endpoints narrow on it themselves instead of relying on RLS alone.
+     */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Column(name = "study_country_in_id", insertable = false, updatable = false)
+    private Integer studyCountryInId;
 }
 

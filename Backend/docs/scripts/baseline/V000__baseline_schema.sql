@@ -2,13 +2,16 @@
     V000 — baseline schema (GENERATED — do not edit by hand)
 
     Generated 2026-09-23 by scripts/db_baseline.py from SQL Server database
-    `MOHE` on localhost,1433: 1576 statements.
+    `MOHE` on localhost,1433: 1573 statements.
 
     Reference only. This file is not applied anywhere and is not part of
     the V001+ run list; V001 and later assume a database that looks like
     this. See baseline/README.md. Security policies are emitted with
     STATE = OFF (V062 turns the tenant policy on). Logins, database users
     and permissions (V025's mohe_query_reader) are server-level and not here.
+    dbo.flyway_schema_history is not here either: Flyway creates it (DB-01,
+    see baseline/README.md). Removed from this snapshot by hand, exactly as
+    scripts/db_baseline.py now leaves it out.
 */
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
@@ -204,20 +207,6 @@ CREATE TABLE [AUDITLOG].[AuditTrail] (
     [SESSION_ID] nvarchar(255) NULL,
     [APPLICATION_NAME] nvarchar(100) NULL CONSTRAINT [DF__AuditTrai__APPLI__39836D4D] DEFAULT ('MOHE_SYSTEM'),
     [COUNTRY_ID] int NULL
-);
-GO
-
-CREATE TABLE [dbo].[flyway_schema_history] (
-    [installed_rank] int NOT NULL,
-    [version] nvarchar(50) NULL,
-    [description] nvarchar(200) NULL,
-    [type] nvarchar(20) NOT NULL,
-    [script] nvarchar(1000) NOT NULL,
-    [checksum] int NULL,
-    [installed_by] nvarchar(100) NOT NULL,
-    [installed_on] datetime NOT NULL CONSTRAINT [DF__flyway_sc__insta__719DA93E] DEFAULT (getdate()),
-    [execution_time] int NOT NULL,
-    [success] bit NOT NULL
 );
 GO
 
@@ -3459,9 +3448,6 @@ GO
 ALTER TABLE [AUDITLOG].[AuditTrail] ADD CONSTRAINT [PK__AuditTra__4364C8821F9C5478] PRIMARY KEY CLUSTERED ([LOG_ID]);
 GO
 
-ALTER TABLE [dbo].[flyway_schema_history] ADD CONSTRAINT [flyway_schema_history_pk] PRIMARY KEY CLUSTERED ([installed_rank]);
-GO
-
 ALTER TABLE [FINCORE].[ATTACHE_ADVANCE_BALANCE] ADD CONSTRAINT [PK_ATTACHE_ADVANCE_BALANCE] PRIMARY KEY CLUSTERED ([BALANCE_ID]);
 GO
 
@@ -5251,9 +5237,6 @@ CREATE NONCLUSTERED INDEX [IX_AuditTrail_Country_ChangedAt] ON [AUDITLOG].[Audit
 GO
 
 CREATE NONCLUSTERED INDEX [IX_AuditTrail_TableName] ON [AUDITLOG].[AuditTrail] ([TABLE_NAME], [CHANGED_AT] DESC);
-GO
-
-CREATE NONCLUSTERED INDEX [flyway_schema_history_s_idx] ON [dbo].[flyway_schema_history] ([success]);
 GO
 
 CREATE NONCLUSTERED INDEX [IX_ALLOC_QUARTER_COUNTRY] ON [FINCORE].[ATTACHE_ALLOCATION] ([MOHE_QUARTER_KEY], [STUDY_COUNTRY_IN_ID], [STATUS]);

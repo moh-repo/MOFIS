@@ -59,13 +59,31 @@ SET NOCOUNT ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 
-/* ── 0. Drop the policy first ──────────────────────────────────────────────────
- * A security policy schema-binds the function it calls, so the function cannot
- * be altered while the policy exists (Msg 3729). Dropping first makes this
- * script re-runnable; it is recreated below in the same state it was in.
+/* ── 0. Run once: skip everything if the policy already exists (DB-02) ─────────
+ * This section used to DROP the policy so that the function below could be
+ * altered (a policy schema-binds its function, Msg 3729), claiming the policy
+ * was "recreated below in the same state it was in". It was not: section 2
+ * recreates it with V031's predicate list and STATE = OFF. Re-running this
+ * script on a live database therefore switched row-level security OFF and
+ * dropped every predicate added since (V032, V037, V041, V042, V060, V065,
+ * V095, V102) — silently, since the script succeeds. V062 had turned it on.
+ *
+ * So the script now only ever creates. When tenant_country_policy exists, the
+ * remaining batches up to section 3 are compiled but not executed
+ * (SET NOEXEC ON) and the policy, its predicates and its state are left exactly
+ * as they are. To change the predicate function or the predicate list, write a
+ * new numbered script that drops and recreates the policy with the COMPLETE
+ * current predicate list and its CURRENT state (see V065 / V102 for the pattern).
+ *
+ * Scripts up to V096 were applied by hand and sit below Flyway's baseline (96),
+ * so editing this one changes no Flyway checksum.
  * ──────────────────────────────────────────────────────────────────────────── */
 IF EXISTS (SELECT 1 FROM sys.security_policies WHERE name = 'tenant_country_policy')
-    DROP SECURITY POLICY MOHECORE.tenant_country_policy;
+BEGIN
+    PRINT 'V031: MOHECORE.tenant_country_policy already exists; leaving the policy, its predicates '
+        + 'and its state unchanged (sections 1-2 skipped).';
+    SET NOEXEC ON;
+END
 GO
 
 /* ── 1. The predicate function ─────────────────────────────────────────────────
@@ -135,6 +153,10 @@ CREATE SECURITY POLICY MOHECORE.tenant_country_policy
     ADD FILTER PREDICATE MOHECORE.fn_tenant_predicate(STUDY_COUNTRY_IN_ID) ON MOHECORE.SCHEDULED_REPORT,
     ADD FILTER PREDICATE MOHECORE.fn_tenant_predicate(STUDY_COUNTRY_IN_ID) ON MOHECORE.REPORT_ACCESS_LOG
 WITH (STATE = OFF);
+GO
+
+-- End of the create-only part (DB-02): always resume execution here.
+SET NOEXEC OFF;
 GO
 
 /* ── 3. What is covered ────────────────────────────────────────────────────── */

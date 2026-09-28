@@ -240,9 +240,9 @@ public class ScheduledReportExecutionService {
                 TenantContext.Scope.of(false, countryIds),
                 () -> customFilterReportRepository.findAllFiltered(true, countryIds));
 
-        String[] headers = {"Student Name", "National Number", "Country", "University", "Major",
+        String[] headers = {"Student Name", "Passport Number", "Country", "University", "Major",
                             "Degree Level", "Study Status", "Study Type", "Enrollment Year", "Financial Amount"};
-        String[] fields  = {"studentName", "nationalNumber", "countryName", "universityName", "majorName",
+        String[] fields  = {"studentName", "passportNumber", "countryName", "universityName", "majorName",
                             "degreeLevelName", "studyStatusName", "studyTypeName", "enrollmentYear", "financialAmount"};
         // Masked by the owner's own permissions (W5-03). A @Scheduled thread has no
         // security context, so the signed-in caller here is nobody and holds nothing;

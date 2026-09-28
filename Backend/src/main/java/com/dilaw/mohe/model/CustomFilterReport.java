@@ -32,7 +32,7 @@ import java.time.LocalDate;
     SELECT
         CAST(sd.STUDENT_ID AS BIGINT) AS student_id,
         sd.STUDENT_NAME AS student_name,
-        sd.STUDENT_PASSPORT_NUMBER AS national_number,
+        sd.STUDENT_PASSPORT_NUMBER AS passport_number,
         sui.STUDY_UNIVERSITY_IN_NAME AS university_name,
         COALESCE(NULLIF(sui.STUDY_UNIVERSITY_IN_NAME_EN, N''), sui.STUDY_UNIVERSITY_IN_NAME) AS university_name_en,
         sm.STUDENT_MAJOR_NAME AS major_name,
@@ -91,10 +91,24 @@ public class CustomFilterReport {
     @Column(name = "student_name")
     private String studentName;
 
-    /** The student's national id under another name; masked by its rule (W5-03). */
-    @com.dilaw.mohe.config.MaskedAs(type = com.dilaw.mohe.model.StudentDatum.class, field = "studentGovId")
-    @Column(name = "national_number")
-    private String nationalNumber;
+    /**
+     * The student's passport number (STUDENT_PASSPORT_NUMBER), masked by the passport
+     * rule (W5-03).
+     *
+     * <p>RPT-01: this was called {@code nationalNumber} / {@code national_number} and
+     * masked under the national-id rule ({@code studentGovId}), so a user who held the
+     * national-id permission but not the passport one received passport numbers in the
+     * custom-filter export and in the scheduled e-mails. The column is what it selects.
+     *
+     * <p>The rule is carried here rather than through {@code @MaskedAs} because the
+     * JSON writer reads only {@code @FieldPermission}; it is a copy of
+     * {@code StudentDatum.studentPassportNumber}'s, and {@code ReportFieldMaskTest}
+     * fails if the two drift apart.
+     */
+    @com.dilaw.mohe.config.FieldPermission(page = "STUDENTS_ADD", field = "ADD_STUDENT_PASSPORT",
+            anyOf = {"STUDENT_QUICK_EDIT.VIEW", "UMS_ADMIN.VIEW", "UMS.VIEW"})
+    @Column(name = "passport_number")
+    private String passportNumber;
 
     @Column(name = "university_name")
     private String universityName;

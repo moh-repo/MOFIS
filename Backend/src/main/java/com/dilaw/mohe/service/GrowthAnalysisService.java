@@ -52,7 +52,12 @@ public class GrowthAnalysisService {
         return items.stream().map(i -> {
             String status = i.getGrowthStatus();
             String statusClass = status == null ? null : STATUS_CLASS.get(status.trim().toLowerCase(java.util.Locale.ROOT));
-            String statusLabel = statusClass == null ? status : statusNames.getOrDefault(statusClass, status);
+            // A status with no trend class (RPT-07's 'baseline', the first year, which has
+            // nothing to be compared with) is named from report.growth.status.<code>.
+            String statusLabel = statusClass != null ? statusNames.getOrDefault(statusClass, status)
+                    : status == null ? null
+                    : messages.getMessage("report.growth.status." + status.trim().toLowerCase(java.util.Locale.ROOT),
+                            null, status, locale);
             String category = i.getGrowthCategory();
             String categoryLabel = category == null ? null
                     : messages.getMessage("report.growth.category." + category.trim().toLowerCase(java.util.Locale.ROOT),

@@ -1,6 +1,7 @@
 package com.dilaw.mohe.service;
 
 import com.dilaw.mohe.audit.ReportAccessLogService;
+import com.dilaw.mohe.dto.JoinSuggestionDto;
 import com.dilaw.mohe.dto.QueryResultDto;
 import com.dilaw.mohe.dto.QuerySpecDto;
 import com.dilaw.mohe.model.QueryBuilder;
@@ -224,6 +225,11 @@ public class QueryExecutionService {
         boolean joined = sources.size() > 1;
 
         List<ColumnRef> selected = resolveSelectedColumns(spec, sources);
+        List<JoinRef> joinRefs = resolveJoins(sources, joins);
+        // RPT-04: who is asking decides which columns may be filtered and sorted on,
+        // not only which are blanked in the result.
+        ReportFieldMask.Viewer viewer = reportFieldMask.viewer();
+        ScopePlan scope = planCountryScope(spec, sources, joinRefs);
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder();
 
@@ -235,20 +241,23 @@ public class QueryExecutionService {
                         ? c.qualified() + " AS " + bracket(c.outputName(true))
                         : c.qualified())
                 .collect(Collectors.joining(", ")));
-        sql.append(buildFrom(sources, joins));
+        sql.append(buildFrom(sources, joinRefs, scope, params));
 
         List<String> predicates = new ArrayList<>();
         String rootLive = liveStudentCondition(sources.get(0));
         if (rootLive != null) {
             predicates.add(rootLive);
         }
-        appendFilters(spec, sources, predicates, params);
-        String scopeNote = appendCountryScope(spec, sources, predicates, params);
+        appendFilters(spec, sources, predicates, params, viewer);
+        if (scope.anchor() != null) {
+            predicates.add(scopePredicate(scope.anchor(), scope.countryIds(), params));
+        }
+        String scopeNote = scope.note();
 
         if (!predicates.isEmpty()) {
             sql.append(" WHERE ").append(String.join(" AND ", predicates));
         }
-        appendSorts(spec, sources, sql);
+        appendSorts(spec, sources, sql, viewer);
 
         return run(sql.toString(), params, selected, joined, limit, sources, scopeNote);
     }
@@ -299,10 +308,23 @@ public class QueryExecutionService {
         return new SourceRef(table, alias, catalogue);
     }
 
-    /** The FROM clause, with one JOIN per entry in the spec, in the given order. */
-    private String buildFrom(List<SourceRef> sources, List<QuerySpecDto.Join> joins) {
-        StringBuilder from = new StringBuilder(" FROM ").append(sources.get(0).from());
+    /** One validated join: both sides resolved against the catalogue and the join whitelist. */
+    private record JoinRef(String type, SourceRef left, QueryBuilder leftColumn,
+                           SourceRef right, QueryBuilder rightColumn) {
+    }
 
+    /**
+     * Resolves and validates every join in the spec, in the given order.
+     *
+     * <p>RPT-03: a join is accepted only on a pair of columns the join picker
+     * itself offers ({@code GET /joins/{table}}): a declared foreign key, or two
+     * key-shaped columns of the same name. The engine used to accept any two
+     * columns, which let a caller join, say, a student table to another
+     * person-level object on an unrelated value and read rows the country scope
+     * never saw.
+     */
+    private List<JoinRef> resolveJoins(List<SourceRef> sources, List<QuerySpecDto.Join> joins) {
+        List<JoinRef> out = new ArrayList<>();
         for (int i = 0; i < joins.size(); i++) {
             QuerySpecDto.Join join = joins.get(i);
             SourceRef right = sources.get(i + 1);
@@ -329,14 +351,54 @@ public class QueryExecutionService {
 
             QueryBuilder leftColumn = requireColumnIn(left, join.getLeftColumn());
             QueryBuilder rightColumn = requireColumnIn(right, join.getColumn());
+            requireSuggestedJoin(left, leftColumn, right, rightColumn);
+            out.add(new JoinRef(type, left, leftColumn, right, rightColumn));
+        }
+        return out;
+    }
 
-            from.append(' ').append(type).append(" JOIN ").append(right.from())
-                    .append(" ON ").append(right.alias).append('.').append(bracket(rightColumn.getColumnName()))
-                    .append(" = ").append(left.alias).append('.').append(bracket(leftColumn.getColumnName()));
+    /** RPT-03: refuses a join pair the join picker would not have offered. */
+    private void requireSuggestedJoin(SourceRef left, QueryBuilder leftColumn,
+                                      SourceRef right, QueryBuilder rightColumn) {
+        List<JoinSuggestionDto> suggestions = catalogService.getJoinSuggestions(left.table);
+        boolean allowed = suggestions != null && suggestions.stream().anyMatch(j ->
+                pairMatches(j, left.table, leftColumn.getColumnName(), right.table, rightColumn.getColumnName())
+                        || pairMatches(j, right.table, rightColumn.getColumnName(),
+                        left.table, leftColumn.getColumnName()));
+        if (!allowed) {
+            throw badRequest("'" + left.table + "." + leftColumn.getColumnName() + " = " + right.table + "."
+                    + rightColumn.getColumnName() + "' is not a key relationship between these tables; "
+                    + "join on a foreign key or a shared key column offered by the join picker");
+        }
+    }
+
+    private static boolean pairMatches(JoinSuggestionDto j, String fromTable, String fromColumn,
+                                       String toTable, String toColumn) {
+        return fromTable.equalsIgnoreCase(j.getFromTable()) && fromColumn.equalsIgnoreCase(j.getFromColumn())
+                && toTable.equalsIgnoreCase(j.getToTable()) && toColumn.equalsIgnoreCase(j.getToColumn());
+    }
+
+    /** The FROM clause, with one JOIN per entry in the spec, in the given order. */
+    private String buildFrom(List<SourceRef> sources, List<JoinRef> joins, ScopePlan scope, List<Object> params) {
+        StringBuilder from = new StringBuilder(" FROM ").append(sources.get(0).from());
+
+        for (JoinRef join : joins) {
+            SourceRef right = join.right();
+            SourceRef left = join.left();
+            from.append(' ').append(join.type()).append(" JOIN ").append(right.from())
+                    .append(" ON ").append(right.alias).append('.').append(bracket(join.rightColumn().getColumnName()))
+                    .append(" = ").append(left.alias).append('.').append(bracket(join.leftColumn().getColumnName()));
             // In the ON clause, so a LEFT JOIN still keeps the row it joins from.
             String live = liveStudentCondition(right);
             if (live != null) {
                 from.append(" AND ").append(live);
+            }
+            // RPT-03: a joined source with its own country column is narrowed on it
+            // too, in the ON clause so a LEFT JOIN keeps its left rows and shows
+            // nothing of another country's on the right.
+            ColumnRef own = scope.onClause().get(right);
+            if (own != null) {
+                from.append(" AND ").append(scopePredicate(own, scope.countryIds(), params));
             }
         }
         return from.toString();
@@ -452,10 +514,26 @@ public class QueryExecutionService {
         return column;
     }
 
+    /**
+     * RPT-04: refuses a filter or a sort on a column this caller may not read.
+     *
+     * <p>The value of such a column is blanked in the result, but a filter
+     * ({@code LIKE '%123%'}, {@code BETWEEN}) or an ordering would still answer
+     * questions about it, and a few requests would recover the passport number
+     * the mask hides.
+     */
+    private void requireViewable(ColumnRef ref, ReportFieldMask.Viewer viewer, String verb) {
+        if (!reportFieldMask.mayViewColumn(ref.source().table, ref.column().getColumnName(), viewer)) {
+            throw badRequest("Column cannot be " + verb + " on: " + ref.source().table + "."
+                    + ref.column().getColumnName() + " is not visible to you");
+        }
+    }
+
     // ---------------------------------------------------------------- filters
 
     private void appendFilters(QuerySpecDto spec, List<SourceRef> sources,
-                               List<String> predicates, List<Object> params) {
+                               List<String> predicates, List<Object> params,
+                               ReportFieldMask.Viewer viewer) {
         if (spec.getFilters() == null || spec.getFilters().isEmpty()) {
             return;
         }
@@ -466,6 +544,7 @@ public class QueryExecutionService {
         for (QuerySpecDto.Filter filter : spec.getFilters()) {
             ColumnRef ref = resolveColumn(sources, filter.getColumn());
             QueryBuilder column = ref.column();
+            requireViewable(ref, viewer, "filtered");
             if (column.getIsFilterable() != null && column.getIsFilterable() == 0) {
                 throw badRequest("Column cannot be filtered on: " + column.getColumnName()
                         + " (" + column.getDataType() + ")");
@@ -566,50 +645,66 @@ public class QueryExecutionService {
     // ------------------------------------------------------------------ scope
 
     /**
-     * Applies the caller's country scope across every source in the query.
+     * How the caller's country scope is applied to this query.
+     *
+     * @param anchor     the column narrowed in the WHERE clause; null when no scope applies
+     * @param onClause   joined sources narrowed on their own country column in their ON clause
+     * @param countryIds the ids bound for every scope predicate
+     * @param note       a note for the reader about how scope was applied, else null
+     */
+    private record ScopePlan(ColumnRef anchor, Map<SourceRef, ColumnRef> onClause,
+                             List<Integer> countryIds, String note) {
+
+        private static ScopePlan none(String note) {
+            return new ScopePlan(null, Map.of(), List.of(), note);
+        }
+    }
+
+    /**
+     * Plans the caller's country scope across every source in the query.
      *
      * <p>A general query facility would otherwise be a way around the scoping
-     * every report enforces. The predicate goes on the first study-destination
-     * column any source carries, which is what makes joining useful to a scoped
-     * user: {@code STUDENT_LOAN} alone cannot be narrowed and is refused, but
-     * joined to {@code STUDENT_DATA} it inherits that table's country column and
-     * the whole query is scoped through it.
+     * every report enforces. The WHERE predicate goes on the first study-destination
+     * column any source carries (the anchor), which is what makes joining useful
+     * to a scoped user: {@code STUDENT_LOAN} alone cannot be narrowed and is
+     * refused, but joined to {@code STUDENT_DATA} it inherits that table's country
+     * column and the whole query is scoped through it.
      *
-     * <p>Where no source carries one, what happens depends on whether any source
-     * holds people: reference data is served as it stands, because there is
-     * nothing in it to narrow, while a query that reaches student records with
-     * no way to filter them is refused.
+     * <p>RPT-03: the scope used to stop there, so a person-level source joined
+     * on anything but its student key — or LEFT-joined with a country column of
+     * its own — could bring back another country's people. Now:
+     * <ul>
+     *   <li>every other source with a country column is narrowed on it as well, in
+     *       its ON clause;</li>
+     *   <li>a source that holds people and has no country column must be joined to
+     *       the anchor through student keys ({@code STUDENT_ID} on both sides, directly
+     *       or through other sources joined the same way), so each of its rows is a
+     *       row of an in-scope student. Otherwise the query is refused.</li>
+     * </ul>
      *
-     * @return a note for the reader about how scope was applied, else null
+     * <p>Where no source carries a country column, what happens depends on whether
+     * any source holds people: reference data is served as it stands, because there
+     * is nothing in it to narrow, while a query that reaches student records with no
+     * way to filter them is refused.
      */
-    private String appendCountryScope(QuerySpecDto spec, List<SourceRef> sources,
-                                      List<String> predicates, List<Object> params) {
+    private ScopePlan planCountryScope(QuerySpecDto spec, List<SourceRef> sources, List<JoinRef> joins) {
         List<Integer> countryIds =
                 countryScopeHelper.resolveCountryIds(spec.getCountryId(), spec.getCountryIds());
         if (!countryScopeHelper.shouldApplyCountryFilter(countryIds)) {
-            return null;
+            return ScopePlan.none(null);
         }
+        List<Integer> safe = countryIds.isEmpty() ? List.of(-1) : countryIds;
 
-        ColumnRef countryColumn = null;
+        Map<SourceRef, ColumnRef> countryColumns = new LinkedHashMap<>();
         for (SourceRef source : sources) {
-            for (String candidate : COUNTRY_COLUMNS) {
-                QueryBuilder column = source.column(candidate);
-                if (column != null) {
-                    countryColumn = new ColumnRef(source, column);
-                    break;
-                }
-            }
-            if (countryColumn != null) {
-                break;
+            ColumnRef own = countryColumnOf(source);
+            if (own != null) {
+                countryColumns.put(source, own);
             }
         }
 
-        if (countryColumn == null) {
-            ColumnRef person = sources.stream()
-                    .flatMap(s -> s.ordered.stream().map(c -> new ColumnRef(s, c)))
-                    .filter(c -> identifiesAPerson(c.column().getColumnName()))
-                    .findFirst()
-                    .orElse(null);
+        if (countryColumns.isEmpty()) {
+            ColumnRef person = firstPersonColumn(List.copyOf(sources));
             if (person != null) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "'" + person.source().table + "' holds student records ("
@@ -618,18 +713,82 @@ public class QueryExecutionService {
                                 + "countries. Join a table that carries STUDY_COUNTRY_IN.");
             }
             // Reference data: no students in it, so the scope has nothing to act on.
-            return sources.stream().map(s -> "'" + s.table + "'").collect(Collectors.joining(", "))
+            return ScopePlan.none(sources.stream().map(s -> "'" + s.table + "'").collect(Collectors.joining(", "))
                     + (sources.size() > 1 ? " are" : " is") + " reference data and hold"
                     + (sources.size() > 1 ? "" : "s") + " no student records, so the result is shown "
-                    + "in full rather than narrowed to your countries";
+                    + "in full rather than narrowed to your countries");
         }
 
-        List<Integer> safe = countryIds.isEmpty() ? List.of(-1) : countryIds;
-        predicates.add(countryColumn.qualified() + " IN ("
-                + safe.stream().map(id -> "?").collect(Collectors.joining(", ")) + ")");
-        params.addAll(safe);
-        return "Narrowed to your country scope on " + countryColumn.source().table
-                + "." + countryColumn.column().getColumnName();
+        ColumnRef anchor = countryColumns.values().iterator().next();
+        Map<SourceRef, ColumnRef> onClause = new LinkedHashMap<>(countryColumns);
+        onClause.remove(anchor.source());
+
+        // Sources tied row-for-row to the anchor's student through student keys.
+        Set<SourceRef> tied = new java.util.HashSet<>();
+        tied.add(anchor.source());
+        boolean grew = true;
+        while (grew) {
+            grew = false;
+            for (JoinRef join : joins) {
+                if (!isStudentKey(join.leftColumn().getColumnName())
+                        || !isStudentKey(join.rightColumn().getColumnName())) {
+                    continue;
+                }
+                if (tied.contains(join.left()) && tied.add(join.right())) grew = true;
+                if (tied.contains(join.right()) && tied.add(join.left())) grew = true;
+            }
+        }
+        List<SourceRef> unscoped = sources.stream()
+                .filter(s -> !countryColumns.containsKey(s) && !tied.contains(s))
+                .toList();
+        ColumnRef loose = firstPersonColumn(unscoped);
+        if (loose != null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "'" + loose.source().table + "' holds student records ("
+                            + loose.column().getColumnName() + ") and has no study-country column, so it "
+                            + "can only be narrowed to your countries through its student: join it on "
+                            + "STUDENT_ID to " + anchor.source().table + " (or to a table joined to it the same way).");
+        }
+
+        return new ScopePlan(anchor, Map.copyOf(onClause), safe,
+                "Narrowed to your country scope on " + anchor.source().table
+                        + "." + anchor.column().getColumnName());
+    }
+
+    private static ColumnRef countryColumnOf(SourceRef source) {
+        for (String candidate : COUNTRY_COLUMNS) {
+            QueryBuilder column = source.column(candidate);
+            if (column != null) {
+                return new ColumnRef(source, column);
+            }
+        }
+        return null;
+    }
+
+    private static ColumnRef firstPersonColumn(List<SourceRef> sources) {
+        return sources.stream()
+                .flatMap(s -> s.ordered.stream().map(c -> new ColumnRef(s, c)))
+                .filter(c -> identifiesAPerson(c.column().getColumnName()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static String scopePredicate(ColumnRef column, List<Integer> countryIds, List<Object> params) {
+        params.addAll(countryIds);
+        return column.qualified() + " IN ("
+                + countryIds.stream().map(id -> "?").collect(Collectors.joining(", ")) + ")";
+    }
+
+    /**
+     * Whether a column is the student key, in either spelling the schema uses
+     * ({@code STUDENT_ID}, {@code StudentId}, {@code STUDENT_DATA_ID}).
+     */
+    static boolean isStudentKey(String columnName) {
+        if (columnName == null) {
+            return false;
+        }
+        String name = columnName.toLowerCase(Locale.ROOT).replace("_", "");
+        return name.equals("studentid") || name.equals("studentdataid");
     }
 
     /**
@@ -656,7 +815,8 @@ public class QueryExecutionService {
 
     // ------------------------------------------------------------------ sorts
 
-    private void appendSorts(QuerySpecDto spec, List<SourceRef> sources, StringBuilder sql) {
+    private void appendSorts(QuerySpecDto spec, List<SourceRef> sources, StringBuilder sql,
+                             ReportFieldMask.Viewer viewer) {
         if (spec.getSorts() == null || spec.getSorts().isEmpty()) {
             return;
         }
@@ -664,6 +824,7 @@ public class QueryExecutionService {
         for (QuerySpecDto.Sort sort : spec.getSorts()) {
             ColumnRef ref = resolveColumn(sources, sort.getColumn());
             QueryBuilder column = ref.column();
+            requireViewable(ref, viewer, "sorted");
             if (column.getIsSortable() != null && column.getIsSortable() == 0) {
                 throw badRequest("Column cannot be sorted on: " + column.getColumnName()
                         + " (" + column.getDataType() + ")");

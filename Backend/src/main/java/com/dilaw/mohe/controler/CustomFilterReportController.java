@@ -137,7 +137,7 @@ public class CustomFilterReportController {
                 "report.excel.col.university", "report.excel.col.major", "report.excel.col.country",
                 "report.excel.col.degree", "report.excel.col.study-status", "report.excel.col.study-type",
                 "report.excel.col.financial-amount", "report.excel.col.enrollment-year"};
-        String[] fields  = {"studentName", "nationalNumber", "universityName", "majorName", "countryName", "degreeLevelName", "studyStatusName", "studyTypeName", "financialAmount", "enrollmentYear"};
+        String[] fields  = {"studentName", "passportNumber", "universityName", "majorName", "countryName", "degreeLevelName", "studyStatusName", "studyTypeName", "financialAmount", "enrollmentYear"};
         byte[] xlsx = excelExportService.buildWorkbook(lang, "report.excel.custom-filter.title", null,
                 headers, fields, items);
         reportAccessLogService.logExport("CUSTOM_FILTER", "EXCEL",
