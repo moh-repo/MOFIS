@@ -51,6 +51,10 @@ Sign in at <http://localhost:4200> with a UMS account from the development datab
 .\verify.ps1 -SkipFrontend   # backend only
 ```
 
+On Linux/macOS: `./verify.sh`, with `--skip-database`, `--skip-frontend` or `--skip-backend`. Run the
+backend with a UTF-8 locale (`LANG=C.UTF-8`): Arabic file names fail under a POSIX/C locale. The
+Maven build sets it for the test JVM and for `spring-boot:run`.
+
 Backend tests are in two groups: every `@SpringBootTest` class is `@Tag("integration")` and needs the database; plain `mvnw test` runs only the unit tests, `mvnw test -DexcludedGroups=none` runs both.
 
 ## Production
@@ -65,12 +69,16 @@ The frontend is a static build (`npm run build:prod` writes it to `Frontend/dist
 - [`Backend/docs/MIGRATION_RUNBOOK.md`](Backend/docs/MIGRATION_RUNBOOK.md) — the database scripts, in order
 - [`Backend/docs/JWT_AUTH.md`](Backend/docs/JWT_AUTH.md) — login flow and token claims
 - [`Backend/docs/chart-of-accounts-revenue-load.md`](Backend/docs/chart-of-accounts-revenue-load.md) — how the ministry's revenue chart of accounts (مفردات الموارد) was read and loaded (V064), and what is still missing
-- [`Backend/docs/db-inventory.md`](Backend/docs/db-inventory.md) — tables and views by schema
+- `Backend/docs/db-inventory.md` — tables and views by schema; generated from a live database by `python Backend/scripts/db_inventory.py` and not kept in the repository until someone runs it against dev
 - [`Backend/docs/financial-data-form-v2.md`](Backend/docs/financial-data-form-v2.md) — the second financial data form, field by field
 - [`Backend/docs/report-data-audit.md`](Backend/docs/report-data-audit.md) — what each report template reads, and what is still outstanding
+- [`Backend/docs/DEPLOYMENT_SECURITY.md`](Backend/docs/DEPLOYMENT_SECURITY.md) — production security checklist, reverse proxy, TDE, ZAP scanning
+- [`Backend/docs/DEPENDENCY_ADVISORIES.md`](Backend/docs/DEPENDENCY_ADVISORIES.md) — assessed dependency advisories
+- [`SYSTEM_TEST_REPORT.md`](SYSTEM_TEST_REPORT.md) — the whole-system review and test plan (28 Sep 2026)
+- [`FIXED_ISSUES.md`](FIXED_ISSUES.md) — what was fixed from that review, how, and what still needs a database or a decision
 
 ## Repository notes
 
-- There is no git remote, so `.github/workflows/ci.yml` has never run; `verify.ps1` is the working equivalent.
+- `.github/workflows/ci.yml` runs on every push to GitHub. It cannot run the database-backed integration tests (see the note at its top); `verify.ps1` / `verify.sh` run them on a machine with the dev database.
 - `Backend/docs/scripts/adhoc/` holds one-off scripts that are **not** migrations — read its README before running any.
-- Superseded planning and test reports are not kept in the tree; `MASTER-STATUS-AND-PLAN-2026-09-22.md` is the live work list and names the removed files, which git history keeps.
+- Superseded planning and test reports are not kept in the tree. The live work list is [`FIXED_ISSUES.md`](FIXED_ISSUES.md) (its "still open" section); the earlier `MASTER-STATUS-AND-PLAN-2026-09-22.md` was never committed.

@@ -1,19 +1,18 @@
 # Continuous integration.
 #
-# NOTE: this file does nothing until the repository has a remote. As of V056 it
-# has none (`git remote -v` is empty), so nothing has ever run these checks
-# automatically. `verify.ps1` in the repository root runs the same things — and
-# more, because it can reach a database — from a developer machine today.
+# Runs on every push now that the repository is on GitHub. `verify.ps1` /
+# `verify.sh` in the repository root run the same things — and more, because
+# they can reach a database — from a developer machine.
 #
 # What this cannot do
 # -------------------
-# Every @SpringBootTest class (97 of the 162 backend test classes) is tagged
+# Every @SpringBootTest class (170 of the 395 backend test classes) is tagged
 # "integration" and runs against a populated MOHE database: 941 students, 5,051
 # year results, the lookup rows the assertions name. That database is not in the
 # repository and cannot be built from Backend/docs/scripts, because those
 # migrations alter an existing schema rather than creating one from nothing.
 # Spinning up a SQL Server service container here would produce an empty
-# database and 97 failing classes.
+# database and 170 failing classes.
 #
 # So this job runs what is genuinely portable — compilation, the unit tests that
 # need no context (surefire excludes the integration group by default), and the
@@ -135,6 +134,12 @@ jobs:
       - name: Audit report data provenance
         working-directory: Backend
         run: python scripts/audit_report_data.py
+
+      # ENVIRONMENT.md and the script table in MIGRATION_RUNBOOK.md are generated
+      # from the properties files and docs/scripts; a stale copy fails here.
+      - name: Generated reference docs are current
+        working-directory: Backend
+        run: python scripts/gen_reference_docs.py --check
 
   # ── Security tooling (security plan phase 0, 6 Sep 2026) ────────────────────
   # Actions are pinned to commit SHAs (O-24); Dependabot keeps the pins current.
