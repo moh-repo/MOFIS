@@ -19,6 +19,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/*
+ * SEC-03: roles are global (no country), so every write is gated on the ministry-only
+ * admin-tools codes, as pages, reports and API links are. A country admin holds
+ * UMS_ADMIN.* for its own staff and used to rename or deactivate a global role.
+ */
 @RestController
 @RequestMapping("api/v1/ums/roles")
 @PreAuthorize(MoheSecurityExpressions.UMS_VIEW)
@@ -74,14 +79,14 @@ public class UmsRoleController {
     }
 
     @PostMapping("/")
-    @PreAuthorize(MoheSecurityExpressions.UMS_ADD)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_ADD)
     public ResponseEntity<UmsRole> createRole(@Valid @RequestBody UmsRole role) {
         long createdBy = SecurityRequestUtils.requireUserId();
         return ResponseEntity.ok(roleService.createRole(role, createdBy));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize(MoheSecurityExpressions.UMS_EDIT)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_EDIT)
     public ResponseEntity<UmsRole> updateRole(
             @PathVariable Long id,
             @Valid @RequestBody UmsRole role) {
@@ -90,7 +95,7 @@ public class UmsRoleController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize(MoheSecurityExpressions.UMS_DELETE)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_DELETE)
     public ResponseEntity<Map<String, String>> deleteRole(@PathVariable Long id) {
         long deletedBy = SecurityRequestUtils.requireUserId();
         roleService.deleteRole(id, deletedBy);
@@ -105,7 +110,7 @@ public class UmsRoleController {
     }
 
     @PostMapping("/{id}/permissions/{permissionId}")
-    @PreAuthorize(MoheSecurityExpressions.UMS_EDIT)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_EDIT)
     public ResponseEntity<Map<String, String>> assignPermissionToRole(
             @PathVariable Long id,
             @PathVariable Long permissionId) {
@@ -115,7 +120,7 @@ public class UmsRoleController {
     }
 
     @DeleteMapping("/{id}/permissions/{permissionId}")
-    @PreAuthorize(MoheSecurityExpressions.UMS_EDIT)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_EDIT)
     public ResponseEntity<Map<String, String>> removePermissionFromRole(
             @PathVariable Long id,
             @PathVariable Long permissionId) {
@@ -125,7 +130,7 @@ public class UmsRoleController {
     }
 
     @PutMapping("/{id}/permissions")
-    @PreAuthorize(MoheSecurityExpressions.UMS_EDIT)
+    @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_EDIT)
     public ResponseEntity<Map<String, String>> setRolePermissions(
             @PathVariable Long id,
             @Valid @RequestBody List<Long> permissionIds,

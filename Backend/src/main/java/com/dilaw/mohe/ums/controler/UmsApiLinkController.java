@@ -63,6 +63,8 @@ public class UmsApiLinkController {
     @PostMapping
     @PreAuthorize(MoheSecurityExpressions.ADMIN_TOOLS_ADD)
     public ResponseEntity<UmsApiLink> createApiLink(@Valid @RequestBody UmsApiLink apiLink) {
+        // SEC-01: a create never merges onto an existing row, whatever id the body carried.
+        apiLink.setId(null);
         apiLink.setIsActive(true);
         return ResponseEntity.ok(apiLinkRepository.save(apiLink));
     }

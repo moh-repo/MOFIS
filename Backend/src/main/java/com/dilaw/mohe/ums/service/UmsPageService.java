@@ -78,6 +78,8 @@ public class UmsPageService {
 
     @Transactional
     public UmsPage createPage(UmsPage page) {
+        // SEC-01: a create never merges onto an existing row, whatever id the body carried.
+        page.setId(null);
         if (pageRepository.existsByResourceCode(page.getResourceCode())) {
             throw new IllegalStateException("Page code already exists: " + page.getPageCode());
         }
@@ -163,6 +165,7 @@ public class UmsPageService {
 
     @Transactional
     public UmsPageSection createSection(UmsPageSection section) {
+        section.setId(null); // SEC-01
         section.setCreatedAt(LocalDateTime.now());
         return sectionRepository.save(section);
     }
@@ -202,6 +205,7 @@ public class UmsPageService {
 
     @Transactional
     public UmsField createField(UmsField field) {
+        field.setId(null); // SEC-01
         // The page the request named. Without this the field is saved with no
         // parent and generatePermissionsForField dereferences a null page, which
         // is what made every Add on the Fields screen a 500.

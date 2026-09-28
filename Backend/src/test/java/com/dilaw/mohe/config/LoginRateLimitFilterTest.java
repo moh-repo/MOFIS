@@ -158,4 +158,19 @@ class LoginRateLimitFilterTest {
         other.addHeader("X-Forwarded-For", "203.0.113.8, 10.0.0.1");
         assertThat(status(f, other)).as("a different client behind the same proxy").isEqualTo(200);
     }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "{0}")
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+            "/api/v1/ums/auth/logi%6E", "/api/v1/ums/auth/%6Cogin", "/api/v1/ums/auth/login;x=1",
+            "/api/v1//ums/auth/login", "/api/v1/ums/auth/x/../login", "/api/v1/ums/./auth/login"})
+    @DisplayName("SEC-06: an encoded or unnormalised spelling of the login path shares the login's budget")
+    void encodedLoginPathIsThrottled(String spelling) throws Exception {
+        LoginRateLimitFilter f = filter(false);
+        for (int i = 0; i < MAX; i++) {
+            assertThat(status(f, post("/mohe", "/api/v1/ums/auth/login"))).isEqualTo(200);
+        }
+        assertThat(LoginRateLimitFilter.contextRelativePath(post("/mohe", spelling)))
+                .isEqualTo("/api/v1/ums/auth/login");
+        assertThat(status(f, post("/mohe", spelling))).as(spelling).isEqualTo(429);
+    }
 }

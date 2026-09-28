@@ -9,7 +9,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UrlPathHelper;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -118,20 +120,50 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         return path.startsWith(PORTAL_AUTH_PREFIX) && path.length() > PORTAL_AUTH_PREFIX.length();
     }
 
-    /** The request URI without the context path, e.g. {@code /api/v1/ums/auth/login}. */
+    /**
+     * Decodes and strips {@code ;params}, collapses {@code //}. Stateless once
+     * configured; the defaults (URL-decode, remove semicolon content) are wanted.
+     */
+    private static final UrlPathHelper PATH_HELPER = new UrlPathHelper();
+
+    /**
+     * The path within the application, e.g. {@code /api/v1/ums/auth/login}, as the
+     * container and Spring MVC route it.
+     *
+     * <p>SEC-06: this used to be the raw request URI. The container maps the filter
+     * and the controller on the <em>decoded</em>, normalised path, so
+     * {@code /auth/logi%6E}, {@code /auth/login;x=1}, {@code //auth/login} or
+     * {@code /auth/x/../login} reached the login endpoint while comparing unequal
+     * here, and every such request skipped the throttle. The path is now decoded,
+     * stripped of path parameters, and normalised ({@code //}, {@code .},
+     * {@code ..}) before it is compared.
+     */
     static String contextRelativePath(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        if (uri == null) {
+        if (request.getRequestURI() == null) {
             return "";
         }
-        String context = request.getContextPath();
-        if (context != null && !context.isEmpty() && uri.startsWith(context)) {
-            uri = uri.substring(context.length());
+        String path;
+        try {
+            path = PATH_HELPER.getPathWithinApplication(request);
+        } catch (RuntimeException malformed) {
+            // An undecodable URI never reaches a controller; the raw form is fine for bucketing.
+            path = request.getRequestURI();
+        }
+        if (path == null || path.isEmpty()) {
+            return "";
+        }
+        path = path.replace('\\', '/');
+        while (path.contains("//")) {
+            path = path.replace("//", "/");
+        }
+        path = StringUtils.cleanPath(path);
+        if (!path.startsWith("/")) {
+            path = "/" + path;
         }
         // Normalise a trailing slash so "/login/" is the same endpoint as "/login".
-        while (uri.length() > 1 && uri.endsWith("/")) {
-            uri = uri.substring(0, uri.length() - 1);
+        while (path.length() > 1 && path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
         }
-        return uri;
+        return path;
     }
 }

@@ -77,6 +77,8 @@ public class UmsGroupService {
 
     @Transactional
     public UmsGroup createGroup(UmsGroup group, Long createdBy) {
+        // SEC-01: never merge onto an existing group.
+        group.setId(null);
         if (groupRepository.existsByGroupName(group.getGroupName())) {
             throw new IllegalArgumentException("Group name already exists: " + group.getGroupName());
         }
@@ -122,6 +124,8 @@ public class UmsGroupService {
         existingGroup.setUpdatedAt(LocalDateTime.now());
 
         UmsGroup savedGroup = groupRepository.save(existingGroup);
+        // SEC-03: deactivating a group changes what every member holds.
+        authorityCache.evictAll();
 
         auditLogService.log(updatedBy, "UPDATE_GROUP", "GROUP", id, oldValue, savedGroup.getGroupName());
 

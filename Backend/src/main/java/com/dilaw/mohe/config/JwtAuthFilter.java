@@ -165,6 +165,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             new UsernamePasswordAuthenticationToken(String.valueOf(userId), null, authorities);
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);
+                    // SEC-10: which session this request rides on, so a password change
+                    // can end the holder's other sessions and keep this one.
+                    if (jti != null && !jti.isBlank()) {
+                        request.setAttribute(SecurityRequestUtils.JTI_ATTRIBUTE, jti);
+                    }
                 }
             }
         }

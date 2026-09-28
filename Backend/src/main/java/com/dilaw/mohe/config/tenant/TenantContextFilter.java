@@ -165,7 +165,10 @@ public class TenantContextFilter extends OncePerRequestFilter {
             // this is the call that produces it. Nothing tenanted is read here.
             return TenantContext.runAsSystem(() -> {
                 CountryScopeService.CountryScope scope = countryScopeService.getScope();
-                return TenantContext.Scope.of(scope.isMinistryUser(), scope.getAllowedCountryIds());
+                // SEC-05: the Wafar write key follows the base tier. A ministry-level
+                // account narrowed to one country by X-Country-Id still writes no Wafar.
+                return TenantContext.Scope.of(scope.isMinistryUser(), scope.getAllowedCountryIds(),
+                        !scope.getTier().ministryLevel());
             });
         } catch (RuntimeException ex) {
             // An unauthenticated or unresolvable caller gets no data rather than

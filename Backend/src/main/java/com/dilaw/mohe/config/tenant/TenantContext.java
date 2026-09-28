@@ -74,6 +74,30 @@ public final class TenantContext {
         }
 
         /**
+         * The scope of an account whose countries may have been narrowed.
+         *
+         * <p>SEC-05: {@code mayWriteWafar} comes from the account's <em>base</em>
+         * tier, never from the narrowed country list. A ministry user who picks a
+         * country in the selector ({@code X-Country-Id}) gets a one-country scope
+         * with {@code ministryUser=false} so the JPA country specs filter; before
+         * this, that same narrowing flipped {@code TenantWafarWrite} to 1 and
+         * switched off the V095 backstop against ministry Wafar writes.
+         */
+        public static Scope of(boolean ministryUser, List<Integer> ids, boolean mayWriteWafar) {
+            Scope scope = of(ministryUser, ids);
+            return scope.wafarWrite() && !mayWriteWafar ? scope.withoutWafarWrite() : scope;
+        }
+
+        /**
+         * The same countries, read-only on Wafar: {@code TenantWafarWrite} stays 0.
+         * For a ministry account narrowed to one country (SEC-05) and for the
+         * student portal (SEC-08), neither of which records Wafar.
+         */
+        public Scope withoutWafarWrite() {
+            return wafarWrite ? new Scope(all, countryIds, false) : this;
+        }
+
+        /**
          * The comma-separated id list handed to {@code SESSION_CONTEXT}.
          *
          * <p>Empty for {@link #all} (the predicate short-circuits on the

@@ -33,7 +33,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class GroupRolesAndClearAllTest {
 
     /** Through the controllers, so their @PreAuthorize gates apply. */
-    private static final List<String> UMS_ADMIN = List.of("UMS_ADMIN.VIEW", "UMS_ADMIN.EDIT");
+    // SEC-03: role and group writes are ministry-only (admin tools), so the tier authority rides along.
+    private static final List<String> UMS_ADMIN = List.of("UMS_ADMIN.VIEW", "UMS_ADMIN.EDIT", "ROLE_SUPER_ADMIN");
 
     @Autowired private UmsGroupController groups;
     @Autowired private UmsRoleController roles;
