@@ -68,24 +68,26 @@ public class FundChainController {
                 .body(fiscalPeriodService.openYear(body == null ? null : body.get("yearNo"), opener));
     }
 
+    /** FIN-12: the closer is the signed-in user; it used to be a {@code ?userId=} anyone could set. */
     @PostMapping("/periods/{id}/close")
     @PreAuthorize(MoheSecurityExpressions.FISCAL_PERIOD_CLOSE)
-    public ResponseEntity<FiscalPeriod> closePeriod(@PathVariable Integer id,
-                                                    @RequestParam(required = false) Integer userId) {
-        return ResponseEntity.ok(fiscalPeriodService.closePeriod(id, userId));
+    public ResponseEntity<FiscalPeriod> closePeriod(@PathVariable Integer id) {
+        int closer = (int) SecurityRequestUtils.requireUserId();
+        return ResponseEntity.ok(fiscalPeriodService.closePeriod(id, closer));
     }
 
     /**
      * Closes a year and every period in it.
      *
      * <p>One-way. Reopening needs {@code SESSION_CONTEXT('fincore_allow_reopen')},
-     * which no endpoint sets — it is a deliberate administrative act.
+     * which no endpoint sets — it is a deliberate administrative act. The closer is
+     * the signed-in user (FIN-12).
      */
     @PostMapping("/fiscal-years/{id}/close")
     @PreAuthorize(MoheSecurityExpressions.FISCAL_PERIOD_CLOSE)
-    public ResponseEntity<FiscalYear> closeYear(@PathVariable Integer id,
-                                                @RequestParam(required = false) Integer userId) {
-        return ResponseEntity.ok(fiscalPeriodService.closeYear(id, userId));
+    public ResponseEntity<FiscalYear> closeYear(@PathVariable Integer id) {
+        int closer = (int) SecurityRequestUtils.requireUserId();
+        return ResponseEntity.ok(fiscalPeriodService.closeYear(id, closer));
     }
 
     // ------------------------------------------------------------ allocations

@@ -7,7 +7,6 @@ import com.dilaw.mohe.repository.MoheQuarterRepository;
 import com.dilaw.mohe.repository.StudentDataRepository;
 import com.dilaw.mohe.repository.StudentFinancePaymentRepository;
 import com.dilaw.mohe.repository.StudentFinanceRepository;
-import com.dilaw.mohe.repository.spec.StudentDataSpec;
 import com.dilaw.mohe.ums.service.CountryScopeService;
 import com.dilaw.mohe.ums.service.CountryScopeService.CountryScope;
 import com.dilaw.mohe.util.StudentFinanceLedgerMapper;
@@ -24,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,11 +34,14 @@ import java.util.stream.Collectors;
  * Closes a MOHE quarter: archives the in-scope students and their finance rows, then
  * marks the quarter closed.
  *
- * <p>Country scope follows {@link MoheQuarterCreateService} exactly — ministry users
- * close for every student, country users only for the students of their assigned
- * study countries. The close used to page {@code STUDENT_DATA} unscoped, so a
- * country user closing their own quarter archived (and wrote ledger rows for) every
- * other attaché's students as well.
+ * <p>Who may close follows {@link MoheQuarterCreateService} (FIN-07): a quarter is one
+ * calendar for every attaché, so only a ministry-level account closes it, and the close
+ * covers every student. A country user's close used to archive only their own students
+ * and still flag the whole quarter closed for everyone.
+ *
+ * <p>Only the current quarter — the latest on record — can be closed (FIN-09). The live
+ * rows the close archives are the current quarter's; closing an earlier one filed the
+ * next quarter's data under the old key.
  */
 @Transactional(readOnly = true)
 @Service
@@ -74,6 +77,10 @@ public class MoheQuarterCloseService {
 
     @Autowired
     private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    /** FIN-08: what reached the attachés for the quarter, per currency. */
+    @Autowired
+    private com.dilaw.mohe.accounting.repository.AttacheAllocationRepository allocationRepository;
 
     /** Which received statuses count as paid, by CODE (live QA H2). */
     @Autowired
@@ -118,14 +125,19 @@ public class MoheQuarterCloseService {
         }
 
         CountryScope scope = countryScopeService.getScope();
-        if (!scope.isMinistryUser() && scope.getAllowedCountryIds().isEmpty()) {
-            // Same rule as quarter create: a user with no scope must not close a
-            // quarter, which would archive nothing and still flag it closed.
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User has no country access assigned");
+        // FIN-07: the ministry closes a quarter, for every student.
+        MoheQuarterCreateService.requireMinistry(scope);
+        // FIN-09: only the latest quarter on record holds the live data being archived.
+        int period = q.getQuarter() != null ? q.getQuarter()
+                : QuarterFinanceTotalsService.quarterKey(q.getQuarterYear(), q.getQuarterNumber());
+        Integer latest = moheQuarterRepository.findMaxYearQuarter();
+        if (latest != null && period != latest) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Only the current quarter (" + latest + ") can be closed; " + period + " is not current. "
+                            + "Its students have already moved on, and closing it would file the current "
+                            + "quarter's data under " + period + ".");
         }
-        Specification<StudentDatum> spec = scope.isMinistryUser()
-                ? Specification.where(null)
-                : StudentDataSpec.countryScope(scope);
+        Specification<StudentDatum> spec = Specification.where(null);
 
         if (!force) {
             // 1. Unpaid records check — "paid" by CODE (RECEIVED, DISBURSED, PARTIALLY
@@ -144,17 +156,28 @@ public class MoheQuarterCloseService {
             }
 
             // 2. Budget cap check — only enforced when BUDGET_AMOUNT is set on the quarter.
-            // Summed in the database over the students in scope; this used to load the
-            // whole live finance table into memory and add up every country's money.
+            // FIN-08: per currency and for this quarter only. It used to set the whole
+            // live table's received amounts, every quarter and every currency added
+            // together, against BUDGET_AMOUNT, itself USD + GBP + SAR added together.
+            // Now each currency the quarter was funded in is set against what was
+            // transferred in that currency for this quarter.
             Long budget = q.getBudgetAmount();
             if (budget != null && budget > 0) {
-                long totalPaid = sumReceivedInScope(scope);
-                if (totalPaid > budget) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "Total paid amount (" + totalPaid + ") exceeds quarter budget (" + budget + "). "
-                        + "Adjust payments or call with ?force=true to close anyway.");
+                Map<Integer, BigDecimal> received = receivedByCurrency(q);
+                for (Object[] row : allocationRepository.sumTransferredForQuarterByCurrency(period)) {
+                    Integer currency = (Integer) row[0];
+                    BigDecimal cap = (BigDecimal) row[1];
+                    BigDecimal paid = received.getOrDefault(currency, BigDecimal.ZERO);
+                    if (cap != null && paid.compareTo(cap) > 0) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "Total paid amount (" + paid.toPlainString() + ") exceeds quarter budget ("
+                            + cap.toPlainString() + ") in currency " + currency + ". "
+                            + "Adjust payments or call with ?force=true to close anyway.");
+                    }
                 }
-                q.setPaidAmount(totalPaid);
+                // The quarter's own received total. Still one column for every currency,
+                // as the screen shows it; the check above is what is per currency.
+                q.setPaidAmount(received.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add).longValue());
             }
         }
 
@@ -219,11 +242,13 @@ public class MoheQuarterCloseService {
         return summary;
     }
 
-    /** Sum of {@code STUDENT_FIN_RECIEVED_AMOUNT} over the students the caller may close. */
-    private long sumReceivedInScope(CountryScope scope) {
-        Long sum = scope.isMinistryUser()
-                ? studentFinanceRepository.sumReceivedAmount()
-                : studentFinanceRepository.sumReceivedAmountForStudyCountries(scope.getAllowedCountryIds());
-        return sum != null ? sum : 0L;
+    /** FIN-08: {@code STUDENT_FIN_RECIEVED_AMOUNT} of this quarter's finance rows, per currency. */
+    private Map<Integer, BigDecimal> receivedByCurrency(MoheQuarter q) {
+        Map<Integer, BigDecimal> out = new java.util.HashMap<>();
+        for (Object[] row : studentFinanceRepository.sumReceivedByCurrencyForQuarter(q.getQuarterYear(), q.getQuarterNumber())) {
+            BigDecimal amount = row[1] == null ? BigDecimal.ZERO : new BigDecimal(row[1].toString());
+            out.merge((Integer) row[0], amount, BigDecimal::add);
+        }
+        return out;
     }
 }

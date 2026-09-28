@@ -9,7 +9,6 @@ import com.dilaw.mohe.repository.StudentCurrentLevelRepository;
 import com.dilaw.mohe.repository.StudentDataRepository;
 import com.dilaw.mohe.repository.StudentFinanceRepository;
 import com.dilaw.mohe.repository.StudentStudyStatusRepository;
-import com.dilaw.mohe.repository.spec.StudentDataSpec;
 import com.dilaw.mohe.ums.service.CountryScopeService;
 import com.dilaw.mohe.ums.service.CountryScopeService.CountryScope;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,16 +37,15 @@ import java.util.stream.Collectors;
  *     which owns what a student and a finance row become.
  *  4. Advances StudentDatum.studentLastQuarter to the new quarter.
  *
- * <p>Country scope rules:
- * <ul>
- *   <li>Ministry users process ALL students, and their quarter is global
- *       ({@code COUNTRY_ID} NULL — the meaning {@link MoheQuarterRepository} gives it).</li>
- *   <li>Country users process only students whose studyCountryIn is in their allowed
- *       list, and their quarter carries one of those countries. A {@code countryId} they
- *       send outside their scope is refused with 403; it used to be silently replaced
- *       with their first country, so a quarter could be created for an attaché the
- *       caller never named and the response looked like success.</li>
- * </ul>
+ * <p>Who may create one (FIN-07): ministry-level accounts only, and the roll covers
+ * every student. {@code MOHE_QUARTER} is one global calendar — the next quarter must
+ * follow the latest on record whoever created it — but a country user's roll-forward
+ * used to touch only their own students, so an attaché creating 20263 left every other
+ * country's students on 20262 with no way to roll them. A country user is now refused
+ * (403). A ministry account that has narrowed its view to one country with the country
+ * picker still rolls every student: the picker narrows what it sees, not the calendar.
+ * The quarter's {@code COUNTRY_ID} is whatever the ministry sent, normally NULL (global,
+ * the meaning {@link MoheQuarterRepository} gives it).
  *
  * <p>The screen runs this as a background job ({@link MoheQuarterCreateJobs}, review
  * Q4): for every student it builds a full-profile snapshot, and a request that waited
@@ -112,6 +110,7 @@ public class MoheQuarterCreateService {
      * Fills in {@code countryId} and the {@code QUARTER} key on {@code entity}.
      */
     public void validate(MoheQuarter entity, CountryScope scope) {
+        requireMinistry(scope);
         requirePeriod(entity);
         validateQuarterNumber(entity);
         entity.setCountryId(resolveCountryId(entity.getCountryId(), scope));
@@ -154,10 +153,8 @@ public class MoheQuarterCreateService {
                 saved, studyStatusRepository.findAll(), currentLevelRepository.findAll(),
                 finReceivedStatusRepository.findAll());
 
-        // Snapshot + advance, scoped by country.
-        Specification<StudentDatum> spec = scope.isMinistryUser()
-                ? Specification.where(null)
-                : StudentDataSpec.countryScope(scope);
+        // Snapshot + advance: every student, since the quarter is global (FIN-07).
+        Specification<StudentDatum> spec = Specification.where(null);
 
         AtomicInteger studentsArchived = new AtomicInteger();
         AtomicInteger financeArchived = new AtomicInteger();
@@ -298,33 +295,28 @@ public class MoheQuarterCreateService {
     }
 
     /**
-     * The country the new quarter is stamped with.
-     *
-     * <p>Ministry: whatever was sent, normally null (global). Country user: the sent id
-     * if it is one of theirs, 403 if it is not, and — when nothing was sent — their one
-     * country if they have exactly one. A user holding several countries who names
-     * none is asked to choose: guessing the first would file the quarter under an
-     * attaché they did not pick.
+     * FIN-07: creating or closing a quarter is a ministry act. Decided by the account's
+     * tier, not {@link CountryScope#isMinistryUser()}, which the country picker turns
+     * off for a ministry officer who has narrowed the view to one country.
+     */
+    static void requireMinistry(CountryScope scope) {
+        if (scope == null || scope.getTier() == null || !scope.getTier().ministryLevel()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "MOHE quarters are one calendar for every attaché, so only a ministry account "
+                            + "may create or close one.");
+        }
+    }
+
+    /**
+     * The country the new quarter is stamped with: whatever the ministry sent, normally
+     * null (global). Only a ministry account reaches here (FIN-07); a country the caller
+     * does not hold is still refused, as it was for everyone before.
      */
     static Integer resolveCountryId(Integer requested, CountryScope scope) {
-        if (scope.isMinistryUser()) {
-            return requested;
+        if (requested != null && !scope.isMinistryUser() && !scope.getAllowedCountryIds().contains(requested)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: country not in scope");
         }
-        List<Integer> allowed = scope.getAllowedCountryIds();
-        if (allowed.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User has no country access assigned");
-        }
-        if (requested != null) {
-            if (!allowed.contains(requested)) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: country not in scope");
-            }
-            return requested;
-        }
-        if (allowed.size() == 1) {
-            return allowed.get(0);
-        }
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "countryId is required: the quarter must belong to one of your countries " + allowed);
+        return requested;
     }
 
     /** Returns the YYYYQ value that logically follows the given one (e.g. 20244 → 20251). */

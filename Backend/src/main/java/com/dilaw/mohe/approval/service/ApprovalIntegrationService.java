@@ -1178,11 +1178,13 @@ public class ApprovalIntegrationService {
     private void executeStudentTravelTicketRequest(ApprovalRequest request) throws Exception {
         StudentTravelTicket ticket = objectMapper.readValue(request.getRequestData(), StudentTravelTicket.class);
         Integer actor = request.getRequestedBy() != null ? request.getRequestedBy().intValue() : null;
+        // FIN-02: the Wafar draw-down records who approved the ticket, not who asked for it.
+        Integer approver = request.getExecutedBy() != null ? request.getExecutedBy().intValue() : actor;
         switch (request.getRequestType()) {
             case INSERT: {
                 StudentTravelTicket saved = studentTravelTicketService.create(ticket);
                 ticket.setTravelTicketId(saved.getTravelTicketId());
-                applyOrReverseTravelWafar(ticket, saved.getTravelTicketId(), actor);
+                applyOrReverseTravelWafar(ticket, saved.getTravelTicketId(), actor, approver);
                 logger.info("Executed INSERT for student travel ticket id: {}", saved.getTravelTicketId());
                 break;
             }
@@ -1190,7 +1192,7 @@ public class ApprovalIntegrationService {
                 Integer updateId = Integer.parseInt(request.getEntityId());
                 studentTravelTicketService.update(updateId, ticket);
                 ticket.setTravelTicketId(updateId);
-                applyOrReverseTravelWafar(ticket, updateId, actor);
+                applyOrReverseTravelWafar(ticket, updateId, actor, approver);
                 logger.info("Executed UPDATE for student travel ticket id: {}", updateId);
                 break;
             }
@@ -1208,11 +1210,11 @@ public class ApprovalIntegrationService {
      * After a travel ticket is applied: draw the total from Wafar when the funding source is Wafar
      * (final balance guard + create/update the linked spending), otherwise release any prior spending.
      */
-    private void applyOrReverseTravelWafar(StudentTravelTicket ticket, Integer ticketId, Integer actor) {
+    private void applyOrReverseTravelWafar(StudentTravelTicket ticket, Integer ticketId, Integer actor, Integer approver) {
         if (travelTicketWafarService.isWafarSource(ticket.getFundingSourceId())) {
             java.math.BigDecimal total = TravelTicketWafarService.computeTotal(ticket);
             travelTicketWafarService.assertBalanceCovers(total, ticketId, ticket.getStudentId());
-            travelTicketWafarService.applyTravelTicketSpending(ticket, total, actor);
+            travelTicketWafarService.applyTravelTicketSpending(ticket, total, actor, approver);
         } else {
             travelTicketWafarService.reverseTravelTicketSpending(ticketId);
         }
@@ -1293,7 +1295,8 @@ public class ApprovalIntegrationService {
                 Integer id = Integer.parseInt(request.getEntityId());
                 studyFinReceivedWhomService.delete(id);
                 logger.info("Executed DELETE for finance recipient id: {}", id);
-                withdrawFinanceLinksTo(id, request.getId());
+                withdrawFinanceLinksTo(id, request.getId(),
+                        request.getExecutedBy() != null ? request.getExecutedBy() : request.getRequestedBy());
             }
         }
     }
@@ -1310,11 +1313,15 @@ public class ApprovalIntegrationService {
      * someone else's change and stays. A withdrawal that fails is logged and
      * does not undo the delete.
      */
-    private void withdrawFinanceLinksTo(Integer whomId, Long deleteRequestId) {
+    private void withdrawFinanceLinksTo(Integer whomId, Long deleteRequestId, Long deletedBy) {
         for (ApprovalRequest pending : workflowService.getPendingByEntityType("STUDENT_FINANCE")) {
             try {
                 if (!introducesLinkTo(pending, whomId)) continue;
-                workflowService.rejectRequest(pending.getId(), null,
+                // FIN-11: rejectObsolete, not rejectRequest. The latter checks the
+                // signed-in approver's right to reject this finance request, and its
+                // refusal, though caught here, marked the shared transaction
+                // rollback-only, so the approved delete itself was lost.
+                workflowService.rejectObsolete(pending.getId(), deletedBy,
                         "Recipient " + whomId + " was deleted (approval request " + deleteRequestId + ")");
                 logger.info("Withdrew finance link request {} after deleting recipient {}", pending.getId(), whomId);
             } catch (Exception e) {

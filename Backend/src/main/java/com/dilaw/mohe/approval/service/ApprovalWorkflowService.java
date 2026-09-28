@@ -201,6 +201,7 @@ public class ApprovalWorkflowService {
 
         stepRepository.saveAll(steps);
         request.setSteps(steps);
+        request.setCurrentLevel(firstLevelOf(levels)); // FIN-06
 
         recordHistory(request, ApprovalAction.CREATED, requestedBy, null,
                 null, ApprovalStatus.PENDING.name(),
@@ -209,6 +210,30 @@ public class ApprovalWorkflowService {
                 new ApprovalRequestCreatedEvent(request.getId(), "STUDENT_FINANCE", requestType));
 
         return request;
+    }
+
+    /**
+     * FIN-11: rejects a still-open request that an approved change elsewhere has made
+     * obsolete, as bookkeeping of that change rather than as anyone's decision on it.
+     *
+     * <p>It joins the caller's transaction and, unlike {@link #rejectRequest}, has no
+     * refusal to throw: no policy check (the change that obsoletes the request was
+     * itself approved) and a request that is no longer open is left alone. That matters
+     * because a runtime exception thrown through a transactional proxy marks the
+     * shared transaction rollback-only even when the caller catches it — the approved
+     * recipient DELETE was lost with {@code UnexpectedRollbackException} when the
+     * approver lacked the right to reject the finance request it withdrew.
+     *
+     * @return whether the request was open and is now rejected
+     */
+    @Transactional
+    public boolean rejectObsolete(Long requestId, Long rejectedBy, String reason) {
+        ApprovalRequest r = requestRepository.findById(requestId).orElse(null);
+        if (r == null || (r.getStatus() != ApprovalStatus.PENDING && r.getStatus() != ApprovalStatus.IN_PROGRESS)) {
+            return false;
+        }
+        rejectStaleFinancePendingWithoutParent(r, rejectedBy, reason);
+        return true;
     }
 
     /**
@@ -311,6 +336,7 @@ public class ApprovalWorkflowService {
 
         stepRepository.saveAll(steps);
         request.setSteps(steps);
+        request.setCurrentLevel(firstLevelOf(levels)); // FIN-06
 
         // Record history
         recordHistory(request, ApprovalAction.CREATED, requestedBy, null,
@@ -374,6 +400,7 @@ public class ApprovalWorkflowService {
                         org.springframework.http.HttpStatus.NOT_FOUND, "Request not found: " + requestId));
         ApprovalStep currentStep = stepRepository.findByRequestIdAndLevelOrder(requestId, request.getCurrentLevel())
                 .orElse(null);
+        List<ApprovalStep> allSteps = stepRepository.findByRequestIdOrderByLevelOrderAsc(requestId);
 
         // R-16 (6 Sep 2026): one policy answers the country scope, requester ≠
         // approver (O-01), Wafar ownership (N-04), the required role (O-02) and the
@@ -381,7 +408,7 @@ public class ApprovalWorkflowService {
         // back on the decision and are audited here, one row each, as before.
         Decision decision = accessControl.assertAllowed(
                 new ApprovalDecisionContext(request, currentStep == null ? null : currentStep.getLevel(),
-                        priorApprovers(stepRepository.findByRequestIdOrderByLevelOrderAsc(requestId), request)),
+                        priorApprovers(allSteps, request)),
                 "APPROVE");
         if (request.getStatus() == ApprovalStatus.REJECTED ||
                 request.getStatus() == ApprovalStatus.EXECUTED) {
@@ -401,9 +428,15 @@ public class ApprovalWorkflowService {
         currentStep.setComments(comments);
         stepRepository.save(currentStep);
 
-        // Check if this was the last level
-        ApprovalConfig config = request.getConfig();
-        if (request.getCurrentLevel() >= config.getTotalLevels()) {
+        // FIN-06: the chain is the request's own steps, fixed when it was raised. The
+        // final level used to be the live config's totalLevels, which the config
+        // update accepted from the request body, so setting it to 1 made every
+        // in-flight three-level request final after one signature. And "next" is the
+        // next step on file, not currentLevel + 1: a level that was inactive when the
+        // request was raised has no step, and waiting for it left the request stuck
+        // on "Current step not found".
+        Integer nextLevel = nextLevelAfter(allSteps, request.getCurrentLevel());
+        if (nextLevel == null) {
             // Final approval - execute the request
             request.setStatus(ApprovalStatus.APPROVED);
             recordHistory(request, ApprovalAction.APPROVED, approverId, request.getCurrentLevel(),
@@ -414,13 +447,14 @@ public class ApprovalWorkflowService {
             return executeRequest(request, approverId);
         } else {
             // Move to next level
-            request.setCurrentLevel(request.getCurrentLevel() + 1);
+            Integer approvedLevel = request.getCurrentLevel();
+            request.setCurrentLevel(nextLevel);
             request.setStatus(ApprovalStatus.IN_PROGRESS);
             requestRepository.save(request);
 
-            recordHistory(request, ApprovalAction.APPROVED, approverId, request.getCurrentLevel() - 1,
+            recordHistory(request, ApprovalAction.APPROVED, approverId, approvedLevel,
                     oldStatus, ApprovalStatus.IN_PROGRESS.name(),
-                    "Level " + (request.getCurrentLevel() - 1) + " approved. Moving to level "
+                    "Level " + approvedLevel + " approved. Moving to level "
                             + request.getCurrentLevel() + ". " + (comments != null ? comments : ""));
         }
 
@@ -795,6 +829,29 @@ public class ApprovalWorkflowService {
      * Who approved the request's earlier levels (live QA M3). Only APPROVED steps
      * count: a rejection also records its author in {@code approvedBy}.
      */
+    /**
+     * FIN-06: the level after {@code current} in the request's own chain, or null when
+     * {@code current} is its last. Steps are created from the levels active when the
+     * request was raised and never change afterwards, so neither editing the config
+     * nor deactivating a level alters how many signatures an in-flight request needs.
+     */
+    static Integer nextLevelAfter(List<ApprovalStep> steps, Integer current) {
+        Integer next = null;
+        for (ApprovalStep s : steps) {
+            Integer order = s.getLevelOrder();
+            if (order != null && current != null && order > current && (next == null || order < next)) {
+                next = order;
+            }
+        }
+        return next;
+    }
+
+    /** FIN-06: a new request waits at its first step, which is level 1 only while level 1 is active. */
+    static Integer firstLevelOf(List<ApprovalLevel> levels) {
+        return levels.stream().map(ApprovalLevel::getLevelOrder).filter(Objects::nonNull)
+                .min(Integer::compare).orElse(1);
+    }
+
     static java.util.Set<Long> priorApprovers(List<ApprovalStep> steps, ApprovalRequest request) {
         java.util.Set<Long> ids = new java.util.HashSet<>();
         for (ApprovalStep s : steps) {

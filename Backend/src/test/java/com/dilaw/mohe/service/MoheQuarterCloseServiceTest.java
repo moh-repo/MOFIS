@@ -87,6 +87,7 @@ class MoheQuarterCloseServiceTest {
     @Mock private StudentProfileService studentProfileService;
     @Mock private CountryScopeService countryScopeService;
     @Mock private StudyFinReceivedStatusService receivedStatuses;
+    @Mock private com.dilaw.mohe.accounting.repository.AttacheAllocationRepository allocationRepository;
     @Spy private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
@@ -105,6 +106,8 @@ class MoheQuarterCloseServiceTest {
         quarter.setQuarterClosed(false);
         when(moheQuarterRepository.findById(3)).thenReturn(Optional.of(quarter));
         when(moheQuarterRepository.save(any(MoheQuarter.class))).thenAnswer(inv -> inv.getArgument(0));
+        // FIN-09: this is the current (latest) quarter unless a test says otherwise.
+        when(moheQuarterRepository.findMaxYearQuarter()).thenReturn(PERIOD);
 
         // Ministry-wide by default; the scope tests override this.
         when(countryScopeService.getScope()).thenReturn(new CountryScope(1L, true, true, List.of(1, JORDAN)));
@@ -191,22 +194,40 @@ class MoheQuarterCloseServiceTest {
     }
 
     @Test
-    @DisplayName("a country user closes only that country's students, paged in student-id order")
-    @SuppressWarnings("unchecked")
+    @DisplayName("FIN-07: a country user cannot close the quarter, which is every attaché's")
     void countryScopedCloseArchivesOnlyInScopeStudents() {
         when(countryScopeService.getScope()).thenReturn(new CountryScope(13L, false, true, List.of(JORDAN)));
 
+        assertThatThrownBy(() -> service.closeQuarter(3, true))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        verify(studentDataArchiveService, never()).archive(any(), any(), any());
+        assertThat(quarter.getQuarterClosed()).isFalse();
+    }
+
+    @Test
+    @DisplayName("the ministry's close pages every student in student-id order")
+    @SuppressWarnings("unchecked")
+    void ministryCloseIsPagedByStudentId() {
         service.closeQuarter(3, true);
 
-        ArgumentCaptor<Specification<StudentDatum>> spec = ArgumentCaptor.forClass(Specification.class);
         ArgumentCaptor<Pageable> page = ArgumentCaptor.forClass(Pageable.class);
-        verify(studentDataRepository).findAll(spec.capture(), page.capture());
-        verify(studentDataRepository, never()).findAll(any(Pageable.class));
-
-        ArgumentCaptor<Collection<Object>> allowed = ArgumentCaptor.forClass(Collection.class);
-        verify(countryPathOf(spec.getValue())).in(allowed.capture());
-        assertThat(allowed.getValue()).as("restricted to the caller's study countries").containsExactly(JORDAN);
+        verify(studentDataRepository).findAll(any(Specification.class), page.capture());
         assertThat(page.getValue().getSort()).isEqualTo(Sort.by("studentId"));
+    }
+
+    @Test
+    @DisplayName("FIN-09: a quarter that is not the current one cannot be closed")
+    void nonCurrentQuarterRefused() {
+        when(moheQuarterRepository.findMaxYearQuarter()).thenReturn(20243);
+
+        assertThatThrownBy(() -> service.closeQuarter(3, true))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        verify(studentDataArchiveService, never()).archive(any(), any(), any());
+        assertThat(quarter.getQuarterClosed()).isFalse();
     }
 
     @Test
@@ -246,37 +267,47 @@ class MoheQuarterCloseServiceTest {
 
     // ── Budget check ────────────────────────────────────────────────────────
 
-    @Test
-    @DisplayName("budget check sums the scoped students in the database, not the whole table in memory")
-    void budgetCheckUsesScopedRepositorySum() {
-        quarter.setBudgetAmount(1000L);
-        when(countryScopeService.getScope()).thenReturn(new CountryScope(13L, false, true, List.of(JORDAN)));
+    private void unpaidCheckPasses() {
         when(receivedStatuses.paidStatusIds()).thenReturn(StudyFinReceivedStatusService.PAID_IDS_FALLBACK);
         when(studentFinanceRepository.findUnpaidForQuarter(eq(3), anyCollection())).thenReturn(List.of());
-        when(studentFinanceRepository.sumReceivedAmountForStudyCountries(List.of(JORDAN))).thenReturn(1500L);
-
-        assertThatThrownBy(() -> service.closeQuarter(3, false))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Total paid amount (1500) exceeds quarter budget (1000)");
-
-        verify(studentFinanceRepository).sumReceivedAmountForStudyCountries(List.of(JORDAN));
-        verify(studentFinanceRepository, never()).sumReceivedAmount();
-        verify(studentFinanceRepository, never()).findAll();
     }
 
     @Test
-    @DisplayName("ministry budget check sums the whole table in the database and records the paid amount")
+    @DisplayName("FIN-08: the budget check is per currency and for this quarter, summed in the database")
+    void budgetCheckUsesScopedRepositorySum() {
+        quarter.setBudgetAmount(2000L);
+        unpaidCheckPasses();
+        // USD (1): 1000 transferred, 1500 received — over. SAR (2): 5000 transferred, 100 received.
+        // Added together (6000 against 1600) this used to pass.
+        when(allocationRepository.sumTransferredForQuarterByCurrency(PERIOD)).thenReturn(List.of(
+                new Object[] {1, new java.math.BigDecimal("1000")}, new Object[] {2, new java.math.BigDecimal("5000")}));
+        when(studentFinanceRepository.sumReceivedByCurrencyForQuarter(2024, 2)).thenReturn(List.of(
+                new Object[] {1, 1500L}, new Object[] {2, 100L}));
+
+        assertThatThrownBy(() -> service.closeQuarter(3, false))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Total paid amount (1500) exceeds quarter budget (1000) in currency 1");
+
+        verify(studentFinanceRepository, never()).sumReceivedAmount();
+        verify(studentFinanceRepository, never()).findAll();
+        assertThat(quarter.getQuarterClosed()).isFalse();
+    }
+
+    @Test
+    @DisplayName("ministry budget check within every currency closes and records the quarter's paid amount")
     void ministryBudgetCheckSumsWholeTable() {
         quarter.setBudgetAmount(5000L);
-        when(receivedStatuses.paidStatusIds()).thenReturn(StudyFinReceivedStatusService.PAID_IDS_FALLBACK);
-        when(studentFinanceRepository.findUnpaidForQuarter(eq(3), anyCollection())).thenReturn(List.of());
-        when(studentFinanceRepository.sumReceivedAmount()).thenReturn(1500L);
+        unpaidCheckPasses();
+        when(allocationRepository.sumTransferredForQuarterByCurrency(PERIOD)).thenReturn(List.<Object[]>of(
+                new Object[] {1, new java.math.BigDecimal("5000")}));
+        when(studentFinanceRepository.sumReceivedByCurrencyForQuarter(2024, 2)).thenReturn(List.<Object[]>of(
+                new Object[] {1, 1500L}));
 
         service.closeQuarter(3, false);
 
         // The unpaid check asks for the paid statuses by CODE, not for "status 0" (live QA H2).
         verify(studentFinanceRepository).findUnpaidForQuarter(3, StudyFinReceivedStatusService.PAID_IDS_FALLBACK);
-        verify(studentFinanceRepository).sumReceivedAmount();
+        verify(studentFinanceRepository, never()).sumReceivedAmount();
         verify(studentFinanceRepository, never()).sumReceivedAmountForStudyCountries(anyCollection());
         verify(studentFinanceRepository, never()).findAll();
         assertThat(quarter.getPaidAmount()).isEqualTo(1500L);

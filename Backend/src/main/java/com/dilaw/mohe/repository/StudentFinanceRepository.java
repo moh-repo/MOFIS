@@ -43,6 +43,17 @@ public interface StudentFinanceRepository extends JpaRepository<StudentFinance, 
     Long sumReceivedAmount();
 
     /**
+     * FIN-08: received amounts of one quarter's finance rows (year and quarter number,
+     * as STUDENT_FIN_RECIEVED_YEAR / _MONTH hold them), per currency: rows
+     * {@code [studyCurrencyInId, amount]}. For the quarter-close budget check, which
+     * used to add every quarter and every currency together.
+     */
+    @Query("SELECT f.studyCurrencyInId, COALESCE(SUM(f.studentFinRecievedAmount), 0L) FROM StudentFinance f "
+            + "WHERE f.studentFinRecievedYear = :year AND f.studentFinRecievedMonth = :quarter AND " + OF_LIVE_STUDENT
+            + " GROUP BY f.studyCurrencyInId")
+    List<Object[]> sumReceivedByCurrencyForQuarter(@Param("year") Integer year, @Param("quarter") Integer quarter);
+
+    /**
      * The finance row {@code f} belongs to a student who is not deleted (live QA H7; FIX-PLAN
      * P5-11: the ministry quarter close summed deleted students too and saved the total as
      * MOHE_QUARTER.PAID_AMOUNT). Stated in the query rather than left to StudentDatum's

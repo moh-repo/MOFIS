@@ -157,19 +157,30 @@ class MoheQuarterCreateServiceTest {
                 .thenReturn(new CountryScope(13L, ministry, false, List.of(countries)));
     }
 
-    // ── Country stamp ────────────────────────────────────────────────────────
+    // ── Who may create (FIN-07) ──────────────────────────────────────────────
 
-    @Test
-    @DisplayName("a country user naming a country outside their scope is refused, not re-stamped")
-    void outOfScopeCountryIsRefused() {
-        scope(false, JORDAN);
-        request.setCountryId(SAUDI);
-
+    /**
+     * MOHE_QUARTER is one calendar for every attaché. A country user's quarter used to
+     * roll only their own students, leaving every other country on the old quarter with
+     * no way forward; creating a quarter is now the ministry's alone, whatever country
+     * the country user names or does not name.
+     */
+    private void assertCountryUserRefused() {
         assertThatThrownBy(() -> service.createWithSnapshot(request))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.FORBIDDEN);
         verify(quarterRepository, never()).save(any());
+        verify(studentDataRepository, never()).saveAll(anyIterable());
+    }
+
+    @Test
+    @DisplayName("FIN-07: a country user naming a country outside their scope is refused")
+    void outOfScopeCountryIsRefused() {
+        scope(false, JORDAN);
+        request.setCountryId(SAUDI);
+
+        assertCountryUserRefused();
     }
 
     @Test
@@ -186,41 +197,28 @@ class MoheQuarterCreateServiceTest {
     }
 
     @Test
-    @DisplayName("a single-country user who names no country gets their own stamped")
+    @DisplayName("FIN-07: a single-country user who names no country is refused, not stamped with theirs")
     void singleCountryUserIsStamped() {
         scope(false, JORDAN);
 
-        Map<String, Object> summary = service.createWithSnapshot(request);
-
-        ArgumentCaptor<MoheQuarter> saved = ArgumentCaptor.forClass(MoheQuarter.class);
-        verify(quarterRepository).save(saved.capture());
-        assertThat(saved.getValue().getCountryId()).isEqualTo(JORDAN);
-        assertThat(summary.get("countryId")).isEqualTo(JORDAN);
+        assertCountryUserRefused();
     }
 
     @Test
-    @DisplayName("a country user naming one of their own countries keeps it")
+    @DisplayName("FIN-07: a country user naming one of their own countries is refused too")
     void inScopeCountryIsKept() {
         scope(false, JORDAN, SAUDI);
         request.setCountryId(SAUDI);
 
-        service.createWithSnapshot(request);
-
-        ArgumentCaptor<MoheQuarter> saved = ArgumentCaptor.forClass(MoheQuarter.class);
-        verify(quarterRepository).save(saved.capture());
-        assertThat(saved.getValue().getCountryId()).isEqualTo(SAUDI);
+        assertCountryUserRefused();
     }
 
     @Test
-    @DisplayName("a multi-country user who names no country is asked to choose, not guessed for")
+    @DisplayName("FIN-07: a multi-country user who names no country is refused")
     void multiCountryUserMustChoose() {
         scope(false, JORDAN, SAUDI);
 
-        assertThatThrownBy(() -> service.createWithSnapshot(request))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
-        verify(quarterRepository, never()).save(any());
+        assertCountryUserRefused();
     }
 
     @Test
@@ -232,6 +230,24 @@ class MoheQuarterCreateServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("FIN-07: a ministry officer narrowed to one country by the picker still rolls every student")
+    @SuppressWarnings("unchecked")
+    void narrowedMinistryRollsEveryone() {
+        // The picker turns ministryUser off and leaves one country; the tier is what decides.
+        when(countryScopeService.getScope()).thenReturn(new CountryScope(13L, false, true, List.of(JORDAN),
+                com.dilaw.mohe.ums.model.AdminTier.MINISTRY_ADMIN));
+
+        service.createWithSnapshot(request);
+
+        ArgumentCaptor<Specification<StudentDatum>> spec = ArgumentCaptor.forClass(Specification.class);
+        verify(studentDataRepository).findAll(spec.capture(), any(Pageable.class));
+        jakarta.persistence.criteria.Root<StudentDatum> root = org.mockito.Mockito.mock(jakarta.persistence.criteria.Root.class);
+        jakarta.persistence.criteria.CriteriaBuilder cb = org.mockito.Mockito.mock(jakarta.persistence.criteria.CriteriaBuilder.class);
+        spec.getValue().toPredicate(root, org.mockito.Mockito.mock(jakarta.persistence.criteria.CriteriaQuery.class), cb);
+        verify(root, never()).get("studyCountryIn");
     }
 
     // ── Snapshot loop ────────────────────────────────────────────────────────

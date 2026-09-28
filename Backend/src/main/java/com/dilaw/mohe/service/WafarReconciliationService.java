@@ -154,7 +154,12 @@ public class WafarReconciliationService {
             int recorded = sf.getWafarAmount() != null ? sf.getWafarAmount().intValue() : 0;
             BigDecimal earmark = earmarked.get(sf.getId());
             int earmarkedAmount = earmark == null ? 0 : earmark.setScale(0, RoundingMode.HALF_UP).intValue();
-            int delta = recorded - earmarkedAmount;
+            // FIN-15: compared exactly. The earmark used to be rounded to a whole number
+            // first, so an earmark of 100.40 against a finance record of 100 read as
+            // MATCHED. WAFAR_AMOUNT still stores the rounded figure (the column is an
+            // integer); the note gives the exact one.
+            boolean matched = BigDecimal.valueOf(recorded)
+                    .compareTo(earmark == null ? BigDecimal.ZERO : earmark) == 0;
 
             WafarReconciliation recon = open.get(sf.getId());
             if (recon == null) {
@@ -168,12 +173,12 @@ public class WafarReconciliationService {
             recon.setReconDate(now);
             recon.setMoheAmount(recorded);
             recon.setWafarAmount(earmarkedAmount);
-            if (delta == 0) {
+            if (matched) {
                 recon.setReconStatus(STATUS_MATCHED);
                 recon.setNotes(null);
             } else {
                 recon.setReconStatus(STATUS_DISCREPANCY);
-                recon.setNotes(discrepancyNote(recorded, earmark == null ? null : earmarkedAmount));
+                recon.setNotes(discrepancyNote(recorded, earmark));
                 discrepancies++;
             }
             toSave.add(recon);
@@ -204,14 +209,22 @@ public class WafarReconciliationService {
     }
 
     /** Why a student is a discrepancy, in the terms an officer checks. */
-    static String discrepancyNote(int recorded, Integer earmarked) {
+    static String discrepancyNote(int recorded, BigDecimal earmarked) {
         if (earmarked == null) {
             return "Wafar " + recorded + " is on the finance record but nothing is earmarked in accounting";
         }
+        String earmark = plain(earmarked);
         if (recorded == 0) {
-            return "Accounting earmarked " + earmarked + " but the finance record has no Wafar";
+            return "Accounting earmarked " + earmark + " but the finance record has no Wafar";
         }
-        return "Finance record " + recorded + ", earmarked " + earmarked + " (difference " + (recorded - earmarked) + ")";
+        return "Finance record " + recorded + ", earmarked " + earmark
+                + " (difference " + plain(BigDecimal.valueOf(recorded).subtract(earmarked)) + ")";
+    }
+
+    /** 100.40 as 100.4, 500.00 as 500: the note reads as the officer would write it. */
+    private static String plain(BigDecimal v) {
+        BigDecimal stripped = v.stripTrailingZeros();
+        return (stripped.scale() < 0 ? stripped.setScale(0) : stripped).toPlainString();
     }
 
     @Transactional

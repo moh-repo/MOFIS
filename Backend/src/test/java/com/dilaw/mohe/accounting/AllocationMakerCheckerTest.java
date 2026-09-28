@@ -71,6 +71,9 @@ class AllocationMakerCheckerTest {
         when(countryScopeService.canAccessCountry(1)).thenReturn(true);
         when(countryScopeService.getCurrentUserId()).thenReturn(Optional.of(13L));
         when(allocationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        com.dilaw.mohe.accounting.model.FiscalYear fy = new com.dilaw.mohe.accounting.model.FiscalYear();
+        fy.setId(2);
+        when(fiscalPeriodService.requireYearOfQuarter(20253)).thenReturn(fy);
 
         AttacheAllocation saved = service.create(body);
         assertThat(saved.getCreatedBy()).isEqualTo(13);

@@ -115,4 +115,15 @@ class WafarReconciliationComparisonTest {
         assertThat(rows.get(6).getWafarAmount()).isEqualTo(700);
         assertThat(rows.get(6).getReconStatus()).isEqualTo(WafarReconciliationService.STATUS_MATCHED);
     }
+
+    @Test
+    @DisplayName("FIN-15: an earmark of 100.40 against a finance record of 100 is a discrepancy, not a match")
+    void fractionalEarmarkIsNotRoundedAway() {
+        Map<Integer, WafarReconciliation> rows = run(List.of(finance(7, 1500, 100)),
+                List.<Object[]>of(new Object[] {7, 20242, new BigDecimal("100.40")}));
+
+        WafarReconciliation r = rows.get(7);
+        assertThat(r.getReconStatus()).isEqualTo(WafarReconciliationService.STATUS_DISCREPANCY);
+        assertThat(r.getNotes()).contains("earmarked 100.4").contains("difference -0.4");
+    }
 }

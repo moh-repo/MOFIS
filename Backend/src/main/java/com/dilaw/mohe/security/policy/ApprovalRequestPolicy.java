@@ -18,7 +18,8 @@ import java.util.Set;
  *   <li>the request's country in the caller's scope (a request with no
  *       country is open to anyone in scope, as before);</li>
  *   <li>the approver is not the requester (O-01) — the super admin is exempt,
- *       exemption {@link #SELF_APPROVAL_BYPASS};</li>
+ *       exemption {@link #SELF_APPROVAL_BYPASS}, except on a request that moves
+ *       money ({@link #MONEY_ENTITY_TYPES}, FIN-17), which nobody approves alone;</li>
  *   <li>the approver did not sign an earlier level of the same request (live QA
  *       M3, decision D2-a: one HR Manager approved all four levels of a finance
  *       change) — the super admin is exempt, {@link #SEPARATE_LEVELS_BYPASS};</li>
@@ -59,6 +60,17 @@ public class ApprovalRequestPolicy implements AccessPolicy<ApprovalDecisionConte
     /** Stops a request at any level. */
     static final String REJECT_CODE = "APP_PENDING.REJECT";
 
+    /**
+     * FIN-17: requests that move or redirect money. The super admin's exemption from
+     * requester ≠ approver does not extend to these: one account raising a payment and
+     * then signing every level of it is exactly what four eyes exist to stop. The
+     * other exemptions (a level's role or position, signing more than one level of a
+     * request somebody else raised) are unchanged.
+     */
+    public static final Set<String> MONEY_ENTITY_TYPES = Set.of(
+            "STUDENT_FINANCE", "STUDENT_FINANCE_WAFAR", "WAFAR_CORRECTION", "STUDY_UNIVERSITY_FEE",
+            "STUDENT_TRAVEL_TICKET", "STUDENT_LOAN", "STUDENT_BOOKS_ALLOWANCE", "STUDY_FIN_RECEIVED_WHOM");
+
     /** Entity types whose rows one attaché owns outright (N-04). */
     public static final Set<String> COUNTRY_OWNED_ENTITY_TYPES = Set.of("STUDENT_FINANCE_WAFAR", "WAFAR_CORRECTION");
 
@@ -98,7 +110,9 @@ public class ApprovalRequestPolicy implements AccessPolicy<ApprovalDecisionConte
 
         // 2. Requester is not the approver (O-01).
         if (subject.is(request.getRequestedBy())) {
-            if (!superAdmin) return Decision.deny("A request cannot be approved by the user who raised it.");
+            if (!superAdmin || MONEY_ENTITY_TYPES.contains(request.getEntityType())) {
+                return Decision.deny("A request cannot be approved by the user who raised it.");
+            }
             exemptions.add(SELF_APPROVAL_BYPASS);
         }
 

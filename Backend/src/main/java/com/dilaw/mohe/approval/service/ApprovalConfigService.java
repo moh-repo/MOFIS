@@ -103,7 +103,10 @@ public class ApprovalConfigService {
         existing.setEntityTypeAr(updated.getEntityTypeAr());
         existing.setDescription(updated.getDescription());
         existing.setDescriptionAr(updated.getDescriptionAr());
-        existing.setTotalLevels(updated.getTotalLevels());
+        // FIN-06: totalLevels is not the caller's to set. It is the number of active
+        // levels, and a body saying 1 on a three-level config used to be stored as-is.
+        // (In-flight requests no longer read it at all; see ApprovalWorkflowService.)
+        existing.setTotalLevels(activeLevelCount(id));
         existing.setIsActive(updated.getIsActive());
         existing.setRequireAllLevels(updated.getRequireAllLevels());
         existing.setUpdatedAt(Instant.now());
@@ -207,8 +210,21 @@ public class ApprovalConfigService {
         attachApprovers(existing, incoming);
 
         ApprovalLevel saved = levelRepository.save(existing);
+        // FIN-06: activating or deactivating a level changes how many a new request gets.
+        ApprovalConfig config = existing.getConfig();
+        if (config != null && config.getId() != null) {
+            levelRepository.flush();
+            config.setTotalLevels(activeLevelCount(config.getId()));
+            config.setUpdatedAt(Instant.now());
+            configRepository.save(config);
+        }
         nameApprovers(saved);
         return saved;
+    }
+
+    /** FIN-06: what totalLevels means — the active levels a new request is given a step for. */
+    private int activeLevelCount(Long configId) {
+        return levelRepository.findByConfigIdAndIsActiveTrueOrderByLevelOrderAsc(configId).size();
     }
 
     /**

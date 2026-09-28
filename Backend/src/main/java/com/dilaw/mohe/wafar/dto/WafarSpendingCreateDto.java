@@ -2,6 +2,8 @@ package com.dilaw.mohe.wafar.dto;
 
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -10,6 +12,14 @@ import java.time.LocalDate;
 @Data
 public class WafarSpendingCreateDto {
     private Integer categoryId;
+
+    /**
+     * FIN-01: a spend is money leaving the attaché, so it is strictly positive. A
+     * negative one used to be recorded and approved, and approving it raised the
+     * balance. The service and {@code CK_WAFAR_SPENDING_AMOUNT_POSITIVE} refuse it too.
+     */
+    @NotNull
+    @Positive
     private BigDecimal amount;
     private LocalDate spendingDate;
     private String referenceNumber;
