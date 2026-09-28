@@ -3486,7 +3486,8 @@
       "GROWTH_STATUS_OPTIONS": {
         "GROWTH": "نمو",
         "DECLINE": "انخفاض",
-        "STABLE": "مستقر"
+        "STABLE": "مستقر",
+        "BASELINE": "سنة الأساس"
       },
       "PERIODIC_REPORTS_INDIVIDUAL": {
         "PERIOD": "الفترة",
@@ -6336,6 +6337,7 @@
     "SOURCE_REQUIRED": "اختر طالباً ومصدر مبلغ واحداً على الأقل",
     "CALCULATE_ERROR": "فشل احتساب المبلغ",
     "LOAD_ERROR": "فشل تحميل السجلات",
+    "LOAD_RECORD_ERROR": "تعذر تحميل السجل",
     "SAVE_SUCCESS": "تم حفظ استمارة اعتماد الصرف بنجاح",
     "SAVE_ERROR": "فشل حفظ استمارة اعتماد الصرف",
     "DELETE_SUCCESS": "تم حذف السجل بنجاح",

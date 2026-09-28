@@ -6,6 +6,7 @@ import { OperationsModule } from '../operations.module';
 import { MoheQuarterService } from '../../../service/mohe-quarter.service';
 import { LookupService } from '../../../service/lookup.service';
 import { TranslationService } from '../../../service/translation.service';
+import { UmsAuthService } from '../../../service/ums-auth.service';
 
 /**
  * The page header: title and subtitle on the leading edge, refresh and add on
@@ -42,7 +43,7 @@ describe('MoheQuarter page header', () => {
      */
     let host: HTMLElement;
 
-    const build = async (rtl: boolean) => {
+    const build = async (rtl: boolean, ministry = true) => {
         TestBed.resetTestingModule();
         await TestBed.configureTestingModule({
             imports: [OperationsModule],
@@ -72,6 +73,8 @@ describe('MoheQuarter page header', () => {
             ]
         }).compileComponents();
 
+        // FE-14: Add and Close are offered to the ministry tier only.
+        spyOnProperty(TestBed.inject(UmsAuthService), 'isMinistryLevel', 'get').and.returnValue(ministry);
         fixture = TestBed.createComponent(MoheQuarterComponent);
         fixture.nativeElement.style.width = '1100px';
         host?.remove();
@@ -139,5 +142,16 @@ describe('MoheQuarter page header', () => {
                 expect(badge.right).withContext('English: badge before the words').toBeLessThanOrEqual(heading.left);
             }
         }
+    });
+
+    // FE-14: the server creates and closes quarters for the ministry tier only.
+    it('offers a country user neither Add nor Close quarter', async () => {
+        await build(false, false);
+
+        expect(actions().querySelectorAll('button').length).withContext('refresh only').toBe(1);
+        expect(fixture.nativeElement.querySelector('button .pi-lock, button[icon="pi pi-lock"]'))
+            .withContext('no close button on the rows').toBeNull();
+        expect(fixture.nativeElement.querySelector('button[icon="pi pi-eye"]'))
+            .withContext('the rows are still there to view').not.toBeNull();
     });
 });

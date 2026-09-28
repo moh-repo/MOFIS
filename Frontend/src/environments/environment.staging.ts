@@ -1,7 +1,9 @@
 /**
  * Staging (`ng build --configuration=staging`).
  * Same-origin: leave splitOriginApi empty — apiUrl follows the browser.
- * Cross-origin: set splitOriginApi to the API origin only (no path, no trailing slash).
+ * Cross-origin: set splitOriginApi to the API origin only (no path, no trailing slash),
+ * and add that origin to `connect-src` in src/index.html's Content-Security-Policy,
+ * which otherwise blocks every API call (FE-07; see environment.prod.ts).
  */
 const splitOriginApi = '';
 

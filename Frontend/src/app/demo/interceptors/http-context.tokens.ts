@@ -26,3 +26,15 @@ export function silentErrors(): HttpContext {
  * finishes starting on a shell it has already decided to abandon.
  */
 export const SKIP_AUTH_RECOVERY = new HttpContextToken<boolean>(() => false);
+
+/**
+ * FE-01: requests whose 401 means "the password or code you typed is wrong", not "your
+ * session is over" — sign-in and every second-factor step (`/ums/auth/mfa/verify`,
+ * `enrol/*`, `disable`, `recovery-codes`; the backend's MfaService answers a refused
+ * code with 401). The form that sent one shows its 401; neither interceptor refreshes
+ * the token or signs the user out over it. A session that really has expired is
+ * caught by the next ordinary request.
+ */
+export function isCredentialCheck(url: string): boolean {
+  return url.includes('/ums/auth/login') || url.includes('/ums/auth/mfa/');
+}

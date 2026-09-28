@@ -14,7 +14,8 @@ import { uiReportLang } from '../../../../service/report-lang.util';
 interface CustomFilterReportData {
     studentId: number;
     studentName: string;
-    nationalNumber: string;
+    /** FE-13: was `nationalNumber`; the server renamed it — it always held the passport number. */
+    passportNumber: string;
     universityName: string;
     majorName: string;
     countryName: string;

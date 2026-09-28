@@ -10,7 +10,9 @@
  *   2. development values that only belong in env.template / environment.ts:
  *      the dev API origin, the dev proxy port, the dev credentials the docs
  *      mention, and `splitOriginApi` pointing at localhost;
- *   3. a missing robots.txt or security.txt, which the assets block copies.
+ *   3. a missing robots.txt or security.txt, which the assets block copies;
+ *   4. a split-origin API (environment.prod.ts splitOriginApi) that index.html's
+ *      CSP connect-src does not allow (FE-07).
  *
  * Usage: node scripts/check-dist-hygiene.mjs [distDir]
  * The default dist dir is read from angular.json (outputPath + /browser).
@@ -63,6 +65,21 @@ for (const f of files) {
   }
   for (const { needle, why } of FORBIDDEN) {
     if (text.includes(needle)) problems.push(`${f}: contains "${needle}" - ${why}`);
+  }
+}
+
+/*
+ * FE-07: a split-origin API (splitOriginApi in environment.prod.ts) must be allowed by
+ * the CSP's connect-src in index.html, or the browser refuses every API call and the
+ * build is dead on arrival. Same-origin (the default, '') needs nothing.
+ */
+const prodEnv = readFileSync(join(root, 'src', 'environments', 'environment.prod.ts'), 'utf8');
+const splitOrigin = /const\s+splitOriginApi\s*(?::\s*string\s*)?=\s*['"`]([^'"`]*)['"`]/.exec(prodEnv)?.[1]?.trim() ?? '';
+if (splitOrigin) {
+  const indexHtml = existsSync(join(distDir, 'index.html')) ? readFileSync(join(distDir, 'index.html'), 'utf8') : '';
+  const connectSrc = /connect-src([^;"]*)/.exec(indexHtml)?.[1]?.trim().split(/\s+/) ?? [];
+  if (!connectSrc.includes(splitOrigin)) {
+    problems.push(`index.html: splitOriginApi is '${splitOrigin}' but the CSP connect-src (${connectSrc.join(' ') || 'missing'}) does not allow it - add it to src/index.html`);
   }
 }
 

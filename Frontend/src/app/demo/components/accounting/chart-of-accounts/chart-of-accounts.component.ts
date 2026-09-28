@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { TranslationService } from '../../../service/translation.service';
@@ -30,6 +31,8 @@ import {
     standalone: false
 })
 export class ChartOfAccountsComponent implements OnInit {
+    /** FE-04: currentLanguage$ never completes; the subscription ends with the component. */
+    private readonly destroyRef = inject(DestroyRef);
 
     loading = false;
     saving = false;
@@ -82,7 +85,7 @@ export class ChartOfAccountsComponent implements OnInit {
 
     ngOnInit(): void {
         this.natures = this.codeLists.options('account-nature');
-        this.translate.currentLanguage$.subscribe(() => { this.natures = this.codeLists.options('account-nature'); });
+        this.translate.currentLanguage$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.natures = this.codeLists.options('account-nature'); });
         this.loading = true;
         // The attaché is a study country; the home-country list reuses its ids for other countries (live QA H6).
         this.lookupService.getStudyCountriesIn().subscribe({

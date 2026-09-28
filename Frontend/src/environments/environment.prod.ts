@@ -2,6 +2,11 @@
  * Production (`ng build --configuration=production`).
  * Same-origin: leave splitOriginApi empty — apiUrl follows the browser.
  * Cross-origin: set splitOriginApi to the API origin only (no path, no trailing slash), e.g. 'https://api.example.com'.
+ *
+ * FE-07: a cross-origin API also has to be allowed by the Content-Security-Policy in
+ * src/index.html, whose `connect-src 'self'` otherwise blocks every API call. Add the
+ * same origin there: `connect-src 'self' https://api.example.com`. `npm run check-dist`
+ * fails a production build whose splitOriginApi is missing from connect-src.
  */
 const splitOriginApi: string = '';
 

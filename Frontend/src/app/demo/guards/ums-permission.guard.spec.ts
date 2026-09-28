@@ -103,12 +103,17 @@ describe('UmsPermissionGuard', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('should allow access when UMS not logged in but legacy user is ADMIN', () => {
-    legacyUser.role = { roleName: 'ADMIN' };
-    const route = { data: { pageCode: 'STUDENTS' } } as any;
-    const state = { url: '/students' } as any;
-    expect(activate(route, state)).toBe(true);
-  });
+  // FE-08: a legacy user record from storage claiming ADMIN / SUPER_ADMIN used to pass the
+  // guard without a UMS session. Rights come only from the UMS session now.
+  for (const roleName of ['ADMIN', 'SUPER_ADMIN']) {
+    it(`should deny access when UMS not logged in, even if the legacy user claims ${roleName}`, () => {
+      legacyUser.role = { roleName };
+      const route = { data: { pageCode: 'STUDENTS' } } as any;
+      const state = { url: '/students' } as any;
+      expect(activate(route, state)).toBe(false);
+      expect(router.navigate).toHaveBeenCalledWith(['/auth/access']);
+    });
+  }
 
   it('should deny access when UMS not logged in and legacy user is not admin', () => {
     const route = { data: { pageCode: 'STUDENTS' } } as any;

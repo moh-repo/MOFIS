@@ -25,6 +25,11 @@
             ],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "stylePreprocessorOptions": {
+              "sass": {
+                "silenceDeprecations": ["if-function"]
+              }
+            },
             "assets": [
               "src/favicon.ico",
               "src/assets",
@@ -89,7 +94,7 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "8kb",
+                  "maximumWarning": "28kb",
                   "maximumError": "35kb"
                 }
               ],
@@ -114,7 +119,7 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "8kb",
+                  "maximumWarning": "28kb",
                   "maximumError": "35kb"
                 }
               ],

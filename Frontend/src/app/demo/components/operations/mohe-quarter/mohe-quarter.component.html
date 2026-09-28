@@ -29,13 +29,16 @@
             (click)="loadQuarters()"
             [loading]="loading">
           </button>
-          <button pButton pRipple type="button"
-            icon="pi pi-plus"
-            class="p-button-success"
-            [label]="'OPERATIONS.MOHE_QUARTER.ADD' | translate"
-            [disabled]="!!createJob"
-            (click)="openCreateDialog()">
-          </button>
+          <!-- FE-14: creating a quarter is for the ministry tier only. -->
+          @if (canManageQuarters) {
+            <button pButton pRipple type="button"
+              icon="pi pi-plus"
+              class="p-button-success"
+              [label]="'OPERATIONS.MOHE_QUARTER.ADD' | translate"
+              [disabled]="!!createJob"
+              (click)="openCreateDialog()">
+            </button>
+          }
         </div>
       </div>
 
@@ -221,14 +224,16 @@
             </td>
             <td class="text-center">
               <div class="flex justify-content-center gap-1">
-                <button pButton pRipple type="button"
-                  icon="pi pi-lock"
-                  class="p-button-rounded p-button-text p-button-warning"
-                  [pTooltip]="'OPERATIONS.MOHE_QUARTER.CLOSE_QUARTER' | translate"
-                  tooltipPosition="top"
-                  [disabled]="quarter.quarterClosed"
-                  (click)="confirmCloseQuarter(quarter)">
-                </button>
+                @if (canManageQuarters) {
+                  <button pButton pRipple type="button"
+                    icon="pi pi-lock"
+                    class="p-button-rounded p-button-text p-button-warning"
+                    [pTooltip]="'OPERATIONS.MOHE_QUARTER.CLOSE_QUARTER' | translate"
+                    tooltipPosition="top"
+                    [disabled]="quarter.quarterClosed"
+                    (click)="confirmCloseQuarter(quarter)">
+                  </button>
+                }
                 <button pButton pRipple type="button"
                   icon="pi pi-eye"
                   class="p-button-rounded p-button-text p-button-info"
@@ -731,7 +736,7 @@
   <ng-template pTemplate="footer">
     <div class="dv-footer">
       <div class="dv-footer__hint">
-        @if (selectedQuarter && !selectedQuarter.quarterClosed) {
+        @if (canManageQuarters && selectedQuarter && !selectedQuarter.quarterClosed) {
           <button pButton pRipple type="button"
             class="p-button-text p-button-warning"
             [label]="'OPERATIONS.MOHE_QUARTER.CLOSE_QUARTER' | translate"
