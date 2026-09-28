@@ -16,6 +16,9 @@ import org.springframework.stereotype.Component;
  * {@code InvalidPathException}. The property cannot be changed once the JVM is up, so
  * this only says so loudly at startup — the fix is {@code LANG=C.UTF-8} (or another
  * UTF-8 locale) in the service's environment.
+ *
+ * <p>Windows is exempt: its file APIs take UTF-16 names whatever the code page, so
+ * {@code sun.jnu.encoding} (Cp1252, Cp1256, …) does not limit which names work there.
  */
 @Component
 public class FileNameEncodingCheck implements ApplicationRunner {
@@ -25,11 +28,19 @@ public class FileNameEncodingCheck implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         String encoding = System.getProperty("sun.jnu.encoding");
+        if (!namesFollowLocale(System.getProperty("os.name"))) {
+            return;
+        }
         if (!isUnicode(encoding)) {
             log.error("File names are encoded as '{}', not UTF-8: uploads, imports and exports with "
                     + "Arabic names will fail. Start the service with LANG=C.UTF-8 (or another UTF-8 locale).",
                     encoding);
         }
+    }
+
+    /** Whether file names are encoded with the OS locale: every platform but Windows. */
+    static boolean namesFollowLocale(String osName) {
+        return osName == null || !osName.toLowerCase(java.util.Locale.ROOT).startsWith("windows");
     }
 
     static boolean isUnicode(String encoding) {

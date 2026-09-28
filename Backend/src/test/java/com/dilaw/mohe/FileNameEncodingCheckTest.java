@@ -22,10 +22,24 @@ class FileNameEncodingCheckTest {
         assertThat(FileNameEncodingCheck.isUnicode(null)).isFalse();
     }
 
-    /** The surefire fork is given a UTF-8 locale in pom.xml; an Arabic path must resolve. */
+    @Test
+    void windowsIsExemptEverythingElseFollowsTheLocale() {
+        assertThat(FileNameEncodingCheck.namesFollowLocale("Windows 11")).isFalse();
+        assertThat(FileNameEncodingCheck.namesFollowLocale("Windows Server 2022")).isFalse();
+        assertThat(FileNameEncodingCheck.namesFollowLocale("Linux")).isTrue();
+        assertThat(FileNameEncodingCheck.namesFollowLocale("Mac OS X")).isTrue();
+    }
+
+    /**
+     * The surefire fork is given a UTF-8 locale in pom.xml, so on Linux/macOS the
+     * encoding is UTF-8; on Windows (Cp125x) names are UTF-16 anyway. Either way an
+     * Arabic path must resolve.
+     */
     @Test
     void testJvmCanNameArabicFiles() {
-        assertThat(FileNameEncodingCheck.isUnicode(System.getProperty("sun.jnu.encoding"))).isTrue();
+        if (FileNameEncodingCheck.namesFollowLocale(System.getProperty("os.name"))) {
+            assertThat(FileNameEncodingCheck.isUnicode(System.getProperty("sun.jnu.encoding"))).isTrue();
+        }
         assertThat(Path.of("مصر 20253.xlsx").getFileName().toString()).isEqualTo("مصر 20253.xlsx");
     }
 }
