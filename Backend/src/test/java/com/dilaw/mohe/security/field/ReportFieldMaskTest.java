@@ -131,11 +131,30 @@ class ReportFieldMaskTest {
     }
 
     @Test
-    @DisplayName("the custom filter report's renamed national id and amount are governed")
+    @DisplayName("the custom filter report's passport number and amount are governed")
     void theCustomFilterReportIsGoverned() {
         assertThat(mask().hiddenOn(CustomFilterReport.class, holding()))
-                .contains("nationalNumber", "financialAmount");
+                .contains("passportNumber", "financialAmount");
         assertThat(mask().hiddenOn(CustomFilterReport.class, holding("UMS.VIEW", "FINANCE.VIEW")))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("RPT-01: the custom filter report's passport column answers to the passport rule, not the national id's")
+    void theCustomFilterPassportUsesThePassportRule() {
+        FieldAccessService.Rule passport = FieldAccessService.rulesOf(StudentDatum.class).get("studentPassportNumber");
+        FieldAccessService.Rule onRow = ReportFieldMask.rulesFor(CustomFilterReport.class).get("passportNumber");
+
+        assertThat(onRow).as("the column is the passport number, and is named for it").isNotNull();
+        assertThat(onRow.viewCode()).isEqualTo(passport.viewCode());
+        assertThat(onRow.anyOf()).containsExactly(passport.anyOf());
+        assertThat(ReportFieldMask.rulesFor(CustomFilterReport.class)).doesNotContainKey("nationalNumber");
+
+        // Catalogued: the national-id VIEW code no longer opens the passport column.
+        ReportFieldMask mask = mask("STUDENTS_ADD.ADD_STUDENT_ID_NUMBER.VIEW", "STUDENTS_ADD.ADD_STUDENT_PASSPORT.VIEW");
+        assertThat(mask.hiddenOn(CustomFilterReport.class, holding("STUDENTS_ADD.ADD_STUDENT_ID_NUMBER.VIEW", "FINANCE.VIEW")))
+                .containsExactly("passportNumber");
+        assertThat(mask.hiddenOn(CustomFilterReport.class, holding("STUDENTS_ADD.ADD_STUDENT_PASSPORT.VIEW", "FINANCE.VIEW")))
                 .isEmpty();
     }
 

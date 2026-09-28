@@ -33,36 +33,54 @@ public class DataVisualizationController {
     @Autowired
     private com.dilaw.mohe.report.ReportExports reportExports;
 
+    // RPT-05: every endpoint takes the usual optional country narrowing and is scoped
+    // to the caller's countries by the service, whether or not the page sends one.
+
     @GetMapping
-    public ResponseEntity<List<DataVisualization>> getAllVisualizations() {
-        return ResponseEntity.ok(service.getAllVisualizations());
+    public ResponseEntity<List<DataVisualization>> getAllVisualizations(
+            @RequestParam(required = false) Integer countryId,
+            @RequestParam(required = false) List<Integer> countryIds) {
+        return ResponseEntity.ok(service.getAllVisualizations(countryId, countryIds));
     }
 
     @GetMapping("/by-chart-type/{type}")
-    public ResponseEntity<List<DataVisualization>> getByChartType(@PathVariable String type) {
-        return ResponseEntity.ok(service.getVisualizationsByChartType(type));
+    public ResponseEntity<List<DataVisualization>> getByChartType(
+            @PathVariable String type,
+            @RequestParam(required = false) Integer countryId,
+            @RequestParam(required = false) List<Integer> countryIds) {
+        return ResponseEntity.ok(service.getVisualizationsByChartType(type, countryId, countryIds));
     }
 
     @GetMapping("/by-chart-name/{name}")
-    public ResponseEntity<List<DataVisualization>> getByChartName(@PathVariable String name) {
-        return ResponseEntity.ok(service.getVisualizationsByChartName(name));
+    public ResponseEntity<List<DataVisualization>> getByChartName(
+            @PathVariable String name,
+            @RequestParam(required = false) Integer countryId,
+            @RequestParam(required = false) List<Integer> countryIds) {
+        return ResponseEntity.ok(service.getVisualizationsByChartName(name, countryId, countryIds));
     }
 
     @GetMapping("/by-category/{category}")
-    public ResponseEntity<List<DataVisualization>> getByCategory(@PathVariable String category) {
-        return ResponseEntity.ok(service.getVisualizationsByCategory(category));
+    public ResponseEntity<List<DataVisualization>> getByCategory(
+            @PathVariable String category,
+            @RequestParam(required = false) Integer countryId,
+            @RequestParam(required = false) List<Integer> countryIds) {
+        return ResponseEntity.ok(service.getVisualizationsByCategory(category, countryId, countryIds));
     }
 
     @GetMapping("/chart-names")
-    public ResponseEntity<List<String>> getAllChartNames() {
-        return ResponseEntity.ok(service.getAllChartNames());
+    public ResponseEntity<List<String>> getAllChartNames(
+            @RequestParam(required = false) Integer countryId,
+            @RequestParam(required = false) List<Integer> countryIds) {
+        return ResponseEntity.ok(service.getAllChartNames(countryId, countryIds));
     }
 
     @GetMapping(value = {"/export-report", "/report-pdf", "/doc", "/export-excel", "/report-xlsx"})
     public ResponseEntity<byte[]> exportReport(
             @RequestParam(value = "disposition", required = false) String disposition,
+            @RequestParam(required = false) Integer countryId,
+            @RequestParam(required = false) List<Integer> countryIds,
             @RequestParam(defaultValue = "ar") String lang) {
-        List<DataVisualization> items = service.getAllVisualizations();
+        List<DataVisualization> items = service.getAllVisualizations(countryId, countryIds);
         Map<String, Object> jasperParams = reportParamBuilder.build("DATA_VISUALIZATION", lang);
         return reportExports.render("data-visualization", jasperParams, items, "data-visualization", disposition);
     }

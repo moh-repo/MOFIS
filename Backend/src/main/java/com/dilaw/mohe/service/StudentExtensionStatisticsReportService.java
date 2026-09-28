@@ -39,7 +39,24 @@ public class StudentExtensionStatisticsReportService {
     }
 
     public List<StudentExtensionStatisticsDto> statistics(Integer countryId, List<Integer> requestCountryIds) {
+        return statistics(countryId, requestCountryIds, null);
+    }
+
+    /**
+     * The per-type statistics, over the extensions of one year when {@code year} is
+     * given (RPT-06). The year is the one the trends table buckets by: the
+     * extension's start date, else the date it was recorded; an extension with
+     * neither belongs to no year and is left out of a year's figures.
+     */
+    public List<StudentExtensionStatisticsDto> statistics(Integer countryId, List<Integer> requestCountryIds,
+                                                          Integer year) {
         List<StudentExtension> all = findScopedExtensions(countryId, requestCountryIds);
+        if (year != null) {
+            all = all.stream().filter(se -> {
+                LocalDate d = resolveDate(se);
+                return d != null && d.getYear() == year;
+            }).toList();
+        }
         Map<String, List<StudentExtension>> byType = all.stream()
                 .collect(Collectors.groupingBy(this::typeKey));
 
@@ -98,10 +115,16 @@ public class StudentExtensionStatisticsReportService {
     }
 
     public List<StudentExtensionStatisticsDto> statisticsFiltered(Integer countryId, List<Integer> requestCountryIds, String extensionType) {
+        return statisticsFiltered(countryId, requestCountryIds, extensionType, null);
+    }
+
+    /** {@link #statisticsFiltered(Integer, List, String)} for one year's extensions (RPT-06). */
+    public List<StudentExtensionStatisticsDto> statisticsFiltered(Integer countryId, List<Integer> requestCountryIds,
+                                                                  String extensionType, Integer year) {
         if (extensionType == null || extensionType.isBlank()) {
-            return statistics(countryId, requestCountryIds);
+            return statistics(countryId, requestCountryIds, year);
         }
-        return statistics(countryId, requestCountryIds).stream()
+        return statistics(countryId, requestCountryIds, year).stream()
                 .filter(s -> extensionType.trim().equalsIgnoreCase(s.getExtensionType()))
                 .collect(Collectors.toList());
     }

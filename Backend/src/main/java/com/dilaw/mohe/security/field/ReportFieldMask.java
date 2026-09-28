@@ -89,6 +89,9 @@ public class ReportFieldMask {
     /** The same rules by {@code TABLE.COLUMN}, for rows that arrive as maps. */
     private static volatile Map<String, Rule> columnRules;
 
+    /** The same rules by bare column name, for the same column read through a view (RPT-02). */
+    private static volatile Map<String, Rule> columnNameRules;
+
     private final FieldAccessService fieldAccess;
 
     /** Absent outside Spring; then a viewer can only be built from a context or by hand. */
@@ -160,8 +163,44 @@ public class ReportFieldMask {
      * @return the governing rule, or null when the column is not sensitive
      */
     public static Rule ruleForColumn(String table, String column) {
-        if (table == null || column == null) return null;
-        return columnRules().get(key(table, column));
+        if (column == null) return null;
+        if (table != null) {
+            Rule exact = columnRules().get(key(table, column));
+            if (exact != null) return exact;
+        }
+        return ruleForColumnName(column);
+    }
+
+    /**
+     * The rule on a column by its name alone, whatever object it is read from
+     * (RPT-02).
+     *
+     * <p>Keyed by {@code TABLE.COLUMN} only, the mask covered {@code STUDENT_DATA}
+     * and {@code STUDENT_FINANCE} and nothing else — while the reporting views
+     * ({@code V_STUDENT_PROFILE_DOC}, {@code V_STUDENT_LIST_DETAILED}, …) select the
+     * same columns under the same names, so a query builder user read the passport
+     * number through a view with nothing masked. A column that carries a rule on a
+     * rule-owning table now carries it on every catalogued object, which fails
+     * closed: a view column that merely shares a sensitive name is masked too.
+     *
+     * <p>A passport-number column under a name no owner uses
+     * ({@code student_passport}, {@code PASSPORT_NO}) takes the passport rule.
+     */
+    public static Rule ruleForColumnName(String column) {
+        if (column == null || column.isBlank()) return null;
+        String name = column.trim().toUpperCase(java.util.Locale.ROOT);
+        Rule byName = columnNameRules().get(name);
+        if (byName != null) return byName;
+        String bare = name.replace("_", "");
+        if (bare.contains("PASSPORT") && (bare.endsWith("PASSPORT") || bare.endsWith("NUMBER")
+                || bare.endsWith("NO") || bare.endsWith("NUM"))) {
+            return passportRule();
+        }
+        return null;
+    }
+
+    private static Rule passportRule() {
+        return FieldAccessService.rulesOf(StudentDatum.class).get("studentPassportNumber");
     }
 
     /** Whether this viewer may see that column. */
@@ -189,6 +228,17 @@ public class ReportFieldMask {
         }
         cached = Collections.unmodifiableMap(merged);
         columnRules = cached;
+        return cached;
+    }
+
+    /** {@link #columnRules()} re-keyed by the bare column name; first owner wins on a clash. */
+    private static Map<String, Rule> columnNameRules() {
+        Map<String, Rule> cached = columnNameRules;
+        if (cached != null) return cached;
+        Map<String, Rule> merged = new LinkedHashMap<>();
+        columnRules().forEach((k, rule) -> merged.putIfAbsent(k.substring(k.indexOf('.') + 1), rule));
+        cached = Collections.unmodifiableMap(merged);
+        columnNameRules = cached;
         return cached;
     }
 

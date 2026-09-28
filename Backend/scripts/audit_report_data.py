@@ -231,11 +231,33 @@ def _string_constants(src: str) -> dict[str, str]:
     }
 
 
+# `List<Row> name(` / `java.util.List<pkg.Row> name(`: what a method hands back.
+METHOD_RETURNS = re.compile(
+    r"\b(?:java\.util\.)?(?:List|Collection)<\s*([A-Za-z0-9_.]+)\s*>\s+([a-z]\w*)\s*\("
+)
+
+# The data argument is a call on some receiver: `service.reportRows(items, lang)`.
+METHOD_CALL = re.compile(r"^\s*(?:[a-z]\w*\s*\.\s*)+([a-z]\w*)\s*\(")
+
+
+def _method_return_types(sources: dict[str, str]) -> dict[str, set[str]]:
+    """method name -> element types of the List/Collection it is declared to return."""
+    out: dict[str, set[str]] = defaultdict(set)
+    for src in sources.values():
+        for m in METHOD_RETURNS.finditer(src):
+            out[m.group(2)].add(m.group(1).split(".")[-1])
+    return out
+
+
 def template_beans() -> dict[str, list[str]]:
     """template name -> bean class names, parsed from the Jasper call sites."""
     mapping: dict[str, set[str]] = defaultdict(set)
-    for path in glob.glob(os.path.join(JAVA, "**", "*.java"), recursive=True):
-        src = open(path, encoding="utf-8").read()
+    sources = {
+        path: open(path, encoding="utf-8").read()
+        for path in glob.glob(os.path.join(JAVA, "**", "*.java"), recursive=True)
+    }
+    returns = _method_return_types(sources)
+    for path, src in sources.items():
         if "generatePdf(" not in src and ".render(" not in src:
             continue
         constants = _string_constants(src)
@@ -248,6 +270,16 @@ def template_beans() -> dict[str, list[str]]:
                 if not template:
                     continue        # a constant declared elsewhere; nothing to resolve
             if not data:
+                continue
+            # RPT-00: the data is what a method returns, e.g. growth-analysis's
+            # `service.reportRows(items, lang)`. Its declared return type is the
+            # bean; the arguments are only its input. Reading the arguments'
+            # types instead resolved the template to GrowthAnalysis (the type of
+            # `items`) and reported two fields that GrowthAnalysisReportRow
+            # does supply as missing - a false positive on a working template.
+            call = METHOD_CALL.match(data)
+            if call and returns.get(call.group(1)):
+                mapping[template].update(returns[call.group(1)])
                 continue
             # Types named in the surrounding method give us the element type.
             for cand in re.findall(r"\b([A-Z][A-Za-z0-9]+)\b", data):
