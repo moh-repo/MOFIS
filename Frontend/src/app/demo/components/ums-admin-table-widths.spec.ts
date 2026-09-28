@@ -216,7 +216,7 @@ CASES.forEach(({ name, component, rowsField, rows, identity, foldedAway, maxRowC
                     { provide: TranslationService, useValue: translation },
                     {
                         provide: UmsAuthService,
-                        useValue: new Proxy({ permissions$: of([]) } as any, {
+                        useValue: new Proxy({ permissions$: of([]), profile$: of() } as any, {
                             get: (t, p) => p in t ? t[p] : p === 'getCurrentUser' ? () => ({ id: 1, username: 'tester' }) : () => true
                         })
                     },

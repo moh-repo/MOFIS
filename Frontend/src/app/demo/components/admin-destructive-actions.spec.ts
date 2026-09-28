@@ -72,7 +72,7 @@ const umsProviders = (overrides: any[] = []) => [
     { provide: TranslationService, useValue: translation },
     {
         provide: UmsAuthService,
-        useValue: new Proxy({ permissions$: of([]) } as any, {
+        useValue: new Proxy({ permissions$: of([]), profile$: of() } as any, {
             get: (t: any, p: string) => p in t ? t[p] : p === 'getCurrentUser' ? () => ({ id: 1, username: 'tester' }) : () => true
         })
     },

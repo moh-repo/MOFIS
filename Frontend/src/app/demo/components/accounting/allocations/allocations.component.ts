@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ConfirmationService, MessageService, SortEvent } from 'primeng/api';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
@@ -30,6 +31,8 @@ import { sortRows } from '../../../service/table-sort.util';
     standalone: false
 })
 export class AllocationsComponent implements OnInit {
+    /** FE-04: currentLanguage$ never completes; the subscription ends with the component. */
+    private readonly destroyRef = inject(DestroyRef);
 
     loading = false;
     saving = false;
@@ -80,7 +83,7 @@ export class AllocationsComponent implements OnInit {
 
     ngOnInit(): void {
         this.types = this.codeLists.options('allocation-type');
-        this.translate.currentLanguage$.subscribe(() => { this.types = this.codeLists.options('allocation-type'); });
+        this.translate.currentLanguage$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.types = this.codeLists.options('allocation-type'); });
         this.loading = true;
         forkJoin({
             // The attaché is a study country; the home-country list reuses its ids for other countries (live QA H6).

@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StudentPortalApiService, StudentInquiry } from '../student-portal-api.service';
 import { finalize } from 'rxjs/operators';
 import { TranslationService } from '../../demo/service/translation.service';
@@ -13,6 +14,9 @@ import { CodeListService } from '../../demo/service/code-list.service';
     standalone: false
 })
 export class InquiriesComponent implements OnInit {
+
+  /** FE-04: currentLanguage$ never completes; the subscription ends with the component. */
+  private readonly destroyRef = inject(DestroyRef);
 
   inquiries: StudentInquiry[] = [];
   totalElements = 0;
@@ -47,7 +51,7 @@ export class InquiriesComponent implements OnInit {
 
   ngOnInit(): void {
     this.buildTypeOptions();
-    this.translationService.currentLanguage$.subscribe(() => this.buildTypeOptions());
+    this.translationService.currentLanguage$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.buildTypeOptions());
     this.load();
   }
 

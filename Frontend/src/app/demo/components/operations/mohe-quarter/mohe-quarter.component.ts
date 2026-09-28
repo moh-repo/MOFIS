@@ -8,6 +8,7 @@ import { TranslationService } from '../../../service/translation.service';
 import { LookupService, LookupItem } from '../../../service/lookup.service';
 import { changesOnly } from '../../../service/reload-streams.util';
 import { UmsPermissionService } from '../../../service/ums-permission.service';
+import { UmsAuthService } from '../../../service/ums-auth.service';
 
 @Component({
     selector: 'app-mohe-quarter',
@@ -63,7 +64,8 @@ export class MoheQuarterComponent implements OnInit, OnDestroy {
       private confirmationService: ConfirmationService,
       public translationService: TranslationService,
       private lookupService: LookupService,
-      private permissions: UmsPermissionService
+      private permissions: UmsPermissionService,
+      private umsAuth: UmsAuthService
   ) {
     // quarterAmount and insertedDate are deliberately not form controls.
     // The amount is summed server-side from the finance rows on every read and
@@ -91,7 +93,7 @@ export class MoheQuarterComponent implements OnInit, OnDestroy {
     this.loadQuarters();
     // A creation started earlier (by this user or another) is still shown — to
     // those who may create one; the endpoint refuses everyone else (W4-02).
-    if (this.permissions.hasPermission('MOHE_QUARTER.ADD')) {
+    if (this.canManageQuarters && this.permissions.hasPermission('MOHE_QUARTER.ADD')) {
       this.moheQuarterService.currentCreateJob().subscribe({
         next: job => { if (job) this.followCreateJob(job); },
         error: () => { /* no job to show */ }
@@ -100,6 +102,17 @@ export class MoheQuarterComponent implements OnInit, OnDestroy {
     this.langSub = this.translationService.currentLanguage$.pipe(changesOnly()).subscribe(() => {
       this.initializeDropdownOptions();
     });
+  }
+
+  /**
+   * FE-14: a MOHE quarter is the ministry's payment period for every attaché, so the
+   * server creates and closes one only for the ministry tier (super admin, ministry
+   * admin, ministry staff) and refuses a country user with 403. The Add and Close
+   * actions are not offered to anyone else. The server decides; this only hides what
+   * would be refused.
+   */
+  get canManageQuarters(): boolean {
+    return this.umsAuth.isSuperAdmin() || this.umsAuth.isMinistryLevel;
   }
 
   ngOnDestroy(): void {
@@ -459,7 +472,7 @@ export class MoheQuarterComponent implements OnInit, OnDestroy {
   }
 
   confirmCloseQuarter(quarter: MoheQuarter): void {
-    if (!quarter.id || quarter.quarterClosed) {
+    if (!quarter.id || quarter.quarterClosed || !this.canManageQuarters) {
       return;
     }
 

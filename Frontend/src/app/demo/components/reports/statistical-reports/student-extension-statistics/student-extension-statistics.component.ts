@@ -124,13 +124,28 @@ export class StudentExtensionStatisticsComponent implements OnInit, OnDestroy {
 
     onCountryChange(): void { this.loadStatistics(); this.loadTrends(); }
 
+    /**
+     * FE-13: the statistics endpoint takes the year the export already applies, so the
+     * table and chart on screen count the same extensions as the PDF / Excel of the same
+     * filters. Before, the year only narrowed the trend rows and the export disagreed
+     * with the screen.
+     */
+    private statisticsParams(): HttpParams {
+        const params = this.buildHttpParams();
+        return this.selectedYear != null ? params.set('year', String(this.selectedYear)) : params;
+    }
+
+    /** The year the statistics on screen were loaded for; a change of year reloads them. */
+    private statisticsYear: number | null = null;
+
     loadStatistics(): void {
         this.loading = true;
-        this.http.get<ExtensionStatistics[]>(this.apiUrl.apiPath('/api/reports/statistical/student-extension/statistics'), { params: this.buildHttpParams() })
+        this.statisticsYear = this.selectedYear;
+        this.http.get<ExtensionStatistics[]>(this.apiUrl.apiPath('/api/reports/statistical/student-extension/statistics'), { params: this.statisticsParams() })
             .subscribe({
                 next: (data) => {
                     this.statisticsData = data ?? [];
-                    this.filteredStatistics = this.statisticsData;
+                    this.filteredStatistics = this.filterStatistics();
                     this.updateChart();
                     this.loading = false;
                 },
@@ -193,24 +208,37 @@ export class StudentExtensionStatisticsComponent implements OnInit, OnDestroy {
             });
     }
 
-    filterData(): void {
-        this.filteredStatistics = this.statisticsData.filter(stat => {
-            return !this.selectedType || stat.extensionType === this.selectedType;
-        });
+    private filterStatistics(): ExtensionStatistics[] {
+        return this.statisticsData.filter(stat => !this.selectedType || stat.extensionType === this.selectedType);
+    }
 
+    filterData(): void {
         this.filteredTrends = this.trendData.filter(trend => {
             return !this.selectedYear || trend.year === this.selectedYear;
         });
 
+        // The year is applied by the server (FE-13); the type is narrowed here.
+        if (this.selectedYear !== this.statisticsYear) {
+            this.loadStatistics();
+            return;
+        }
+        this.filteredStatistics = this.filterStatistics();
         this.updateChart();
     }
 
     clearFilters(): void {
+        const hadYear = this.statisticsYear != null;
+        const hadCountries = this.selectedCountryIds.length > 0;
         this.selectedType = '';
         this.selectedYear = null;
         this.selectedCountryIds = [];
-        this.filteredStatistics = this.statisticsData;
         this.filteredTrends = this.trendData;
+        if (hadYear || hadCountries) {
+            this.loadStatistics();
+            if (hadCountries) { this.loadTrends(); }
+            return;
+        }
+        this.filteredStatistics = this.statisticsData;
         this.updateChart();
     }
 

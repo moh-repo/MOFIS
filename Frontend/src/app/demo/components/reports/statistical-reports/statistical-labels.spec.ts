@@ -13,11 +13,13 @@ describe('Comparative Statistics and Growth Analysis — labels (L1)', () => {
         en: {
             'REPORTS.INDIVIDUAL_REPORTS.COMPARATIVE_STATISTICS.TYPES.COUNTRY': 'Study country',
             'REPORTS.INDIVIDUAL_REPORTS.GROWTH_STATUS_OPTIONS.GROWTH': 'Growth',
+            'REPORTS.INDIVIDUAL_REPORTS.GROWTH_STATUS_OPTIONS.BASELINE': 'Base year',
             'REPORTS.INDIVIDUAL_REPORTS.GROWTH_ANALYSIS.CATEGORIES.TOTAL_STUDENTS': 'Total students'
         },
         ar: {
             'REPORTS.INDIVIDUAL_REPORTS.COMPARATIVE_STATISTICS.TYPES.COUNTRY': 'دولة الدراسة',
-            'REPORTS.INDIVIDUAL_REPORTS.GROWTH_STATUS_OPTIONS.GROWTH': 'نمو'
+            'REPORTS.INDIVIDUAL_REPORTS.GROWTH_STATUS_OPTIONS.GROWTH': 'نمو',
+            'REPORTS.INDIVIDUAL_REPORTS.GROWTH_STATUS_OPTIONS.BASELINE': 'سنة الأساس'
         }
     };
     const translationService = (lang: string) => ({
@@ -82,6 +84,13 @@ describe('Comparative Statistics and Growth Analysis — labels (L1)', () => {
             proto.filterData.call(self);
             expect(self.filteredData.map((r: any) => r.analysisYear)).toEqual([2023]);
             expect(proto.getGrowthSeverity.call(self, 'growing')).toBe('success');
+        });
+
+        // FE-12: the server marks the first year of a series `baseline`.
+        it('names the base year instead of showing the raw "baseline" code', () => {
+            expect(page('en').growthStatusLabel('baseline')).toBe('Base year');
+            expect(page('ar').growthStatusLabel('baseline')).toBe('سنة الأساس');
+            expect(proto.getGrowthSeverity.call(page('en'), 'baseline')).toBe('secondary');
         });
     });
 });

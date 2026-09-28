@@ -80,7 +80,7 @@ import { extractApiErrorMessage } from '../../../service/api-error.util';
             </div>
           </div>
           <div class="flex gap-2 flex-wrap">
-            <button nz-button nzType="primary" *hasPermission="'UMS_ADMIN.ADD'" (click)="showCreateModal()">
+            <button nz-button nzType="primary" *hasPermission="'UMS_ADMIN.ADD'; adminTools: true" (click)="showCreateModal()">
               <span nz-icon nzType="plus"></span>
               {{ 'UMS.GROUPS.ADD_GROUP' | translate }}
             </button>
@@ -165,15 +165,15 @@ import { extractApiErrorMessage } from '../../../service/api-error.util';
                 <button nz-button nzType="link" nzSize="small" *hasPermission="'UMS_ADMIN.VIEW'" (click)="showDetailModal(group)" [nz-tooltip]="'UMS.USERS.VIEW_DETAILS' | translate">
                   <span nz-icon nzType="eye"></span>
                 </button>
-                <button nz-button nzType="link" nzSize="small" *hasPermission="'UMS_ADMIN.EDIT'" (click)="showEditModal(group)"
+                <button nz-button nzType="link" nzSize="small" *hasPermission="'UMS_ADMIN.EDIT'; adminTools: true" (click)="showEditModal(group)"
                   [disabled]="group.isSystem"
                   [nz-tooltip]="(group.isSystem ? 'UMS.SHARED.CANNOT_EDIT_SYSTEM_GROUP' : 'COMMON.EDIT') | translate">
                   <span nz-icon nzType="edit"></span>
                 </button>
-                <button nz-button nzType="link" nzSize="small" *hasPermission="'UMS_ADMIN.EDIT'" (click)="showRolesModal(group)" [nz-tooltip]="'UMS.GROUPS.VIEW_ROLES' | translate">
+                <button nz-button nzType="link" nzSize="small" *hasPermission="'UMS_ADMIN.EDIT'; adminTools: true" (click)="showRolesModal(group)" [nz-tooltip]="'UMS.GROUPS.VIEW_ROLES' | translate">
                   <span nz-icon nzType="safety"></span>
                 </button>
-                <button nz-button nzType="link" nzSize="small" nzDanger *hasPermission="'UMS_ADMIN.DELETE'"
+                <button nz-button nzType="link" nzSize="small" nzDanger *hasPermission="'UMS_ADMIN.DELETE'; adminTools: true"
                   [disabled]="group.isSystem" (click)="confirmDelete(group)" [nz-tooltip]="'COMMON.DELETE' | translate">
                   <span nz-icon nzType="delete"></span>
                 </button>
@@ -283,7 +283,7 @@ import { extractApiErrorMessage } from '../../../service/api-error.util';
         <ng-template #groupDetailFooter>
           <button nz-button (click)="isDetailModalVisible = false">{{ 'COMMON.CLOSE' | translate }}</button>
           @if (detailGroup) {
-            <button nz-button nzType="primary" [disabled]="detailGroup?.isSystem" (click)="isDetailModalVisible = false; showEditModal(detailGroup!)">
+            <button nz-button nzType="primary" *hasPermission="'UMS_ADMIN.EDIT'; adminTools: true" [disabled]="detailGroup?.isSystem" (click)="isDetailModalVisible = false; showEditModal(detailGroup!)">
               <span nz-icon nzType="edit"></span> {{ 'COMMON.EDIT' | translate }}
             </button>
           }

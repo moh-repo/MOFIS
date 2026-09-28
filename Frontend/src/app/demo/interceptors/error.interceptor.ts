@@ -7,7 +7,8 @@ import { MessageService } from 'primeng/api';
 import { UmsAuthService } from '../service/ums-auth.service';
 import { AuthService } from '../service/auth.service';
 import { TranslationService } from '../service/translation.service';
-import { SUPPRESS_ERROR_TOAST } from './http-context.tokens';
+import { SUPPRESS_ERROR_TOAST, isCredentialCheck } from './http-context.tokens';
+import { REFRESH_PATH } from './auth.interceptor';
 import { extractApiErrorMessage } from '../service/api-error.util';
 import { StudentPortalApiService } from '../../student-portal/student-portal-api.service';
 
@@ -26,7 +27,12 @@ interface ErrorDetailsBody {
  * Global HTTP error interceptor.
  *
  * 401 → clear auth state + redirect to /auth/login (staff), or clear the portal token
- *        + redirect to /student-portal/login (portal session calls)
+ *        + redirect to /student-portal/login (portal session calls). Not for a refused
+ *        password or MFA code (FE-01, isCredentialCheck): the form shows that one.
+ *
+ * Registered first in app.module.ts, so it is the outermost interceptor and sees an
+ * error only after AuthInterceptor has tried a silent refresh (FE-02). A 401 that
+ * reaches it is one AuthInterceptor could not recover from.
  * 403 → "no permission" toast (honours SUPPRESS_ERROR_TOAST); the component's own error path still runs
  * 400/422 → show field-level validation errors if present, else generic message
  * 404 → show not-found toast
@@ -83,7 +89,11 @@ export class ErrorInterceptor implements HttpInterceptor {
             if (this.isPortalSessionCall(request.url)) {
               this.portalApi.clearToken();
               this.router.navigate(['/student-portal/login']);
-            } else if (!request.url.includes('/student-portal/') && !request.url.includes('/ums/auth/login')) {
+            } else if (!request.url.includes('/student-portal/')
+                && !isCredentialCheck(request.url)
+                // The failed renewal is reported through the request that asked for it,
+                // which AuthInterceptor rethrows as its own 401 — one redirect, not two.
+                && !request.url.includes(REFRESH_PATH)) {
               this.umsAuthService.clearAuthState();
               this.authService.logout();
               this.router.navigate(['/auth/login'], {

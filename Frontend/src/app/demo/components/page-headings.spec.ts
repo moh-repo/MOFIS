@@ -197,7 +197,7 @@ const commonProviders = [
         provide: UmsAuthService,
         // `permissions$` is a stream the *hasPermission directive subscribes
         // to, not a method; the alert scenarios buttons are behind it.
-        useValue: new Proxy({ permissions$: of([]) } as any, {
+        useValue: new Proxy({ permissions$: of([]), profile$: of() } as any, {
             get: (target, prop) => {
                 if (prop in target) { return target[prop]; }
                 if (prop === 'getCurrentUser') { return () => ({ id: 1, username: 'tester' }); }

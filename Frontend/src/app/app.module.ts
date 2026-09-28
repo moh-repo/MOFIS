@@ -1,10 +1,7 @@
 import { APP_INITIALIZER, NgModule } from '@angular/core';
 import { HashLocationStrategy, LocationStrategy } from '@angular/common';
-import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import { AuthInterceptor } from './demo/interceptors/auth.interceptor';
-import { AcceptLanguageInterceptor } from './demo/interceptors/accept-language.interceptor';
-import { CountryScopeInterceptor } from './demo/interceptors/country-scope.interceptor';
-import { ErrorInterceptor } from './demo/interceptors/error.interceptor';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { APP_HTTP_INTERCEPTORS } from './demo/interceptors/http-interceptors';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import { AppLayoutModule } from './layout/app.layout.module';
@@ -139,10 +136,8 @@ export function nzI18nFactory() {
         { provide: NZ_ICONS, useValue: icons },
         { provide: NZ_I18N, useFactory: nzI18nFactory },
         TranslationService, MessageService,
-        { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
-        { provide: HTTP_INTERCEPTORS, useClass: AcceptLanguageInterceptor, multi: true },
-        { provide: HTTP_INTERCEPTORS, useClass: CountryScopeInterceptor, multi: true },
-        { provide: HTTP_INTERCEPTORS, useClass: ErrorInterceptor, multi: true },
+        // Order matters: ErrorInterceptor is outermost so AuthInterceptor's refresh runs first (FE-02).
+        ...APP_HTTP_INTERCEPTORS,
         {
             provide: APP_INITIALIZER,
             useFactory: initializeTranslation,

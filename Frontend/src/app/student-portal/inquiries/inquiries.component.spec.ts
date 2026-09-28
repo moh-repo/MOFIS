@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterModule } from '@angular/router';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { InquiriesComponent } from './inquiries.component';
 import { StudentPortalModule } from '../student-portal.module';
 import { StudentPortalApiService } from '../student-portal-api.service';
@@ -21,7 +21,10 @@ describe('InquiriesComponent', () => {
     let component: InquiriesComponent;
     let createInquiry: jasmine.Spy;
 
+    let lang$: BehaviorSubject<string>;
+
     beforeEach(async () => {
+        lang$ = new BehaviorSubject('en');
         createInquiry = jasmine.createSpy('createInquiry').and.returnValue(of({}));
         await TestBed.configureTestingModule({
             imports: [StudentPortalModule, RouterModule.forRoot([])],
@@ -36,7 +39,7 @@ describe('InquiriesComponent', () => {
                         createInquiry
                     }
                 },
-                { provide: TranslationService, useValue: { currentLanguage$: of('en'), initialized$: of(true), isReady: () => true, isRTL: () => false, translate: (k: string) => k, getCurrentLanguage: () => 'en' } },
+                { provide: TranslationService, useValue: { currentLanguage$: lang$, initialized$: of(true), isReady: () => true, isRTL: () => false, translate: (k: string) => k, getCurrentLanguage: () => 'en' } },
                 { provide: ToastService, useValue: { error: () => {}, success: () => {}, warning: () => {} } },
                 {
                     provide: CodeListService,
@@ -95,5 +98,20 @@ describe('InquiriesComponent', () => {
 
         component.closeDetail();
         fixture.detectChanges();
+    });
+
+    // FE-04: the language subscription outlived the component, and a language switch
+    // after leaving the page still rebuilt the options of a destroyed component.
+    it('stops listening for language changes once destroyed', () => {
+        expect(lang$.observed).withContext('listening while alive').toBeTrue();
+        const rebuild = spyOn(component as any, 'buildTypeOptions').and.callThrough();
+        lang$.next('ar');
+        expect(rebuild).toHaveBeenCalledTimes(1);
+
+        fixture.destroy();
+        rebuild.calls.reset();
+        expect(lang$.observed).withContext('nothing left subscribed').toBeFalse();
+        expect(() => lang$.next('en')).not.toThrow();
+        expect(rebuild).not.toHaveBeenCalled();
     });
 });

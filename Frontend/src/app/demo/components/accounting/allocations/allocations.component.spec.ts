@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpClient } from '@angular/common/http';
 import { Confirmation, ConfirmationService } from 'primeng/api';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { AllocationsComponent } from './allocations.component';
 import { AccountingModule } from '../accounting.module';
 import { AccountingApiService } from '../accounting-api.service';
@@ -22,7 +22,10 @@ describe('AllocationsComponent', () => {
           currencyId: 1, amount: 250.5, status: 'TRANSFERRED', createdBy: 13, updatedBy: 2 }
     ];
 
+    let lang$: BehaviorSubject<string>;
+
     beforeEach(async () => {
+        lang$ = new BehaviorSubject('en');
         created = [];
         approved = [];
         await TestBed.configureTestingModule({
@@ -64,7 +67,7 @@ describe('AllocationsComponent', () => {
                 {
                     provide: TranslationService,
                     useValue: {
-                        currentLanguage$: of('en'), initialized$: of(true), isReady: () => true,
+                        currentLanguage$: lang$, initialized$: of(true), isReady: () => true,
                         isRTL: () => false, getCurrentLanguage: () => 'en',
                         // The confirm message carries placeholders; the stub returns them so the fill-in is checked.
                         translate: (k: string) => k === 'ACCOUNTING.CONFIRM_APPROVE_ALLOCATION'
@@ -90,6 +93,14 @@ describe('AllocationsComponent', () => {
 
         const cells = Array.from(fixture.nativeElement.querySelectorAll('tbody td')) as HTMLElement[];
         expect(cells.some(c => c.textContent?.includes('Egypt'))).withContext('attaché shown by name').toBeTrue();
+    });
+
+    // FE-04: the language subscription outlived the component.
+    it('stops listening for language changes once destroyed', () => {
+        expect(lang$.observed).withContext('listening while alive').toBeTrue();
+        fixture.destroy();
+        expect(lang$.observed).withContext('nothing left subscribed').toBeFalse();
+        expect(() => lang$.next('ar')).not.toThrow();
     });
 
     it('sends a draft for the selected quarter with the single attaché pre-filled', () => {

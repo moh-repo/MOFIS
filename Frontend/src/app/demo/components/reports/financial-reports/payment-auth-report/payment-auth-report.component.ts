@@ -201,7 +201,11 @@ export class PaymentAuthReportComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.loadingRecord = false;
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load record' });
+        this.messageService.add({
+          severity: 'error',
+          summary: this.translationService.translate('COMMON.ERROR'),
+          detail: this.translationService.translate('PAYMENT_AUTH.LOAD_RECORD_ERROR')
+        });
       }
     });
   }

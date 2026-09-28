@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { HasPermissionDirective } from './has-permission.directive';
 import { UmsPermissionService } from '../service/ums-permission.service';
 import { UmsAuthService } from '../service/ums-auth.service';
@@ -11,6 +11,7 @@ import { UmsAuthService } from '../service/ums-auth.service';
         <span id="legacy" *hasPermission="'STUDENTS|EDIT'">legacy</span>
         <span id="anyOf" *hasPermission="['DASHBOARD.VIEW', 'DASHBOARD_FINANCE.VIEW']">any-of</span>
         <span id="anyOfLegacy" *hasPermission="['DASHBOARD|VIEW', 'DASHBOARD_FINANCE|VIEW']">any-of legacy</span>
+        <span id="adminTools" *hasPermission="'UMS_ADMIN.EDIT'; adminTools: true">admin tools</span>
     `,
     imports: [HasPermissionDirective]
 })
@@ -25,12 +26,16 @@ describe('HasPermissionDirective', () => {
     let fixture: ComponentFixture<HostComponent>;
     let granted: Set<string>;
     let permissions$: BehaviorSubject<string[]>;
+    let profile$: Subject<unknown>;
+    let ministryAdmin: boolean;
 
     const has = (id: string) => !!fixture.nativeElement.querySelector(`#${id}`);
 
     beforeEach(async () => {
         granted = new Set<string>();
         permissions$ = new BehaviorSubject<string[]>([]);
+        profile$ = new Subject<unknown>();
+        ministryAdmin = false;
 
         const permissionService = {
             hasPermission: (code: string) => granted.has(code),
@@ -41,7 +46,11 @@ describe('HasPermissionDirective', () => {
             imports: [HostComponent],
             providers: [
                 { provide: UmsPermissionService, useValue: permissionService },
-                { provide: UmsAuthService, useValue: { permissions$: permissions$.asObservable() } }
+                { provide: UmsAuthService, useValue: {
+                    permissions$: permissions$.asObservable(),
+                    profile$: profile$.asObservable(),
+                    isMinistryAdminOrAbove: () => ministryAdmin
+                } }
             ]
         }).compileComponents();
 
@@ -89,5 +98,40 @@ describe('HasPermissionDirective', () => {
         fixture.detectChanges();
 
         expect(has('anyOf')).toBeFalse();
+    });
+
+    // FE-11: role/group/permission writes are ADMIN_TOOLS_* on the server — the super or
+    // ministry admin, and then only with the UMS_ADMIN code.
+    describe('adminTools', () => {
+        it('hides the element from a country admin that holds the code', () => {
+            granted.add('UMS_ADMIN.EDIT');
+            fixture.detectChanges();
+            expect(has('single')).withContext('other elements unaffected').toBeFalse();
+            expect(has('adminTools')).toBeFalse();
+        });
+
+        it('hides it from a ministry admin without the code', () => {
+            ministryAdmin = true;
+            fixture.detectChanges();
+            expect(has('adminTools')).toBeFalse();
+        });
+
+        it('shows it to a ministry admin (or above) with the code', () => {
+            ministryAdmin = true;
+            granted.add('UMS_ADMIN.EDIT');
+            fixture.detectChanges();
+            expect(has('adminTools')).toBeTrue();
+        });
+
+        it('re-evaluates when the profile (and with it the tier) arrives after the permissions', () => {
+            granted.add('UMS_ADMIN.EDIT');
+            fixture.detectChanges();
+            expect(has('adminTools')).toBeFalse();
+
+            ministryAdmin = true;
+            profile$.next({});
+            fixture.detectChanges();
+            expect(has('adminTools')).toBeTrue();
+        });
     });
 });

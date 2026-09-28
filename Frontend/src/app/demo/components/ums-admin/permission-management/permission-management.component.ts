@@ -79,7 +79,7 @@ import { CodeLabelPipe } from '../../../pipes/code-label.pipe';
             </div>
           </div>
           <div class="flex gap-2 flex-wrap">
-            <button nz-button nzType="primary" *hasPermission="'UMS_ADMIN.ADD'" (click)="showCreateModal()">
+            <button nz-button nzType="primary" *hasPermission="'UMS_ADMIN.ADD'; adminTools: true" (click)="showCreateModal()">
               <span nz-icon nzType="plus"></span>
               {{ 'UMS.PERMISSIONS.ADD_PERMISSION' | translate }}
             </button>
@@ -169,10 +169,10 @@ import { CodeLabelPipe } from '../../../pipes/code-label.pipe';
                 <button nz-button nzType="link" nzSize="small" (click)="showDetailModal(perm)" [nz-tooltip]="'COMMON.VIEW' | translate">
                   <span nz-icon nzType="eye"></span>
                 </button>
-                <button nz-button nzType="link" nzSize="small" *hasPermission="'UMS_ADMIN.EDIT'" (click)="showEditModal(perm)" [nz-tooltip]="'COMMON.EDIT' | translate">
+                <button nz-button nzType="link" nzSize="small" *hasPermission="'UMS_ADMIN.EDIT'; adminTools: true" (click)="showEditModal(perm)" [nz-tooltip]="'COMMON.EDIT' | translate">
                   <span nz-icon nzType="edit"></span>
                 </button>
-                <button nz-button nzType="link" nzSize="small" nzDanger *hasPermission="'UMS_ADMIN.DELETE'" (click)="confirmDelete(perm)" [nz-tooltip]="'COMMON.DELETE' | translate">
+                <button nz-button nzType="link" nzSize="small" nzDanger *hasPermission="'UMS_ADMIN.DELETE'; adminTools: true" (click)="confirmDelete(perm)" [nz-tooltip]="'COMMON.DELETE' | translate">
                   <span nz-icon nzType="delete"></span>
                 </button>
               </td>
@@ -293,7 +293,7 @@ import { CodeLabelPipe } from '../../../pipes/code-label.pipe';
         <ng-template #detailModalFooter>
           <button nz-button (click)="isDetailModalVisible = false">{{ 'COMMON.CLOSE' | translate }}</button>
           @if (detailPermission) {
-            <button nz-button nzType="primary" *hasPermission="'UMS_ADMIN.EDIT'"
+            <button nz-button nzType="primary" *hasPermission="'UMS_ADMIN.EDIT'; adminTools: true"
               (click)="isDetailModalVisible = false; showEditModal(detailPermission!)">
               <span nz-icon nzType="edit"></span> {{ 'COMMON.EDIT' | translate }}
             </button>

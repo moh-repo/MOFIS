@@ -28,10 +28,14 @@ interface GrowthData {
  * are read through this key, so the filter matches the rows and each row is named.
  */
 const GROWTH_KEYS: Record<string, string> = {
-    growing: 'GROWTH', growth: 'GROWTH', declining: 'DECLINE', decline: 'DECLINE', stable: 'STABLE'
+    growing: 'GROWTH', growth: 'GROWTH', declining: 'DECLINE', decline: 'DECLINE', stable: 'STABLE',
+    // FE-12: the first year of a series has nothing to compare with; the server calls it
+    // `baseline` ("Base year" / "سنة الأساس"). It is not a trend class, so it has no filter
+    // option and is named from the translation files.
+    baseline: 'BASELINE'
 };
 /** The vocabulary of the rows, which the export filters on. */
-const ROW_STATUS: Record<string, string> = { GROWTH: 'growing', DECLINE: 'declining', STABLE: 'stable' };
+const ROW_STATUS: Record<string, string> = { GROWTH: 'growing', DECLINE: 'declining', STABLE: 'stable', BASELINE: 'baseline' };
 
 @Component({
     selector: 'app-growth-analysis',
@@ -179,6 +183,7 @@ export class GrowthAnalysisComponent implements OnInit, OnDestroy {
         switch (this.growthStatusKey(status)) {
             case 'GROWTH': return 'success';
             case 'DECLINE': return 'danger';
+            case 'BASELINE': return 'secondary';
             default: return 'info';
         }
     }

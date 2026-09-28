@@ -126,13 +126,11 @@ export class UmsPermissionGuard implements CanActivate {
         requiredPageCodes: string[] | undefined,
         url: string
     ): boolean {
-        // If UMS auth is not set up but legacy auth has admin, allow access
+        // No UMS session: no access. FE-08: a legacy user record in storage whose
+        // role.roleName said ADMIN or SUPER_ADMIN used to pass here — anyone could write
+        // that to storage and open every guarded page (the backend still refused the
+        // data). Rights come only from the UMS session the server issued.
         if (!this.umsAuthService.isLoggedIn()) {
-            const currentUser = this.authService.currentUserValue;
-            if (currentUser && (currentUser.role?.roleName === 'ADMIN' || currentUser.role?.roleName === 'SUPER_ADMIN')) {
-                return true;
-            }
-            // Non-admin without UMS permissions - deny access to protected routes
             return this.deny(url);
         }
 
